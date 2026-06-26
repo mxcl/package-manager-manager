@@ -10,7 +10,6 @@ struct MainWindowView: View {
         ZStack {
             background
             mainContent
-            titleBarBackdrop
         }
         .frame(minWidth: 1060, minHeight: 680)
         .background(Color.clear)
@@ -21,17 +20,6 @@ struct MainWindowView: View {
         LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint)
             .backgroundExtensionEffect()
             .ignoresSafeArea()
-    }
-
-    private var titleBarBackdrop: some View {
-        VStack(spacing: 0) {
-            LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.topBarTint)
-                .frame(height: 56)
-                .overlay(alignment: .bottom) { hairline }
-            Spacer(minLength: 0)
-        }
-        .ignoresSafeArea(edges: .top)
-        .allowsHitTesting(false)
     }
 
     private var mainContent: some View {
@@ -137,7 +125,7 @@ struct MainWindowView: View {
                 }
             }
             .padding(.horizontal, 28)
-            .padding(.top, 74)
+            .padding(.top, 32)
             .padding(.bottom, 28)
         }
     }
@@ -231,7 +219,7 @@ struct MainWindowView: View {
                     }
                 }
                 .padding(.horizontal, 22)
-                .padding(.top, 62)
+                .padding(.top, 32)
                 .padding(.bottom, 28)
             } else {
                 Text(model.isReloading ? "Loading packages..." : "No package selected")
