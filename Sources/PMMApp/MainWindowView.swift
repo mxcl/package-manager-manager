@@ -31,22 +31,18 @@ struct MainWindowView: View {
             HStack(spacing: 0) {
                 sidebar.frame(width: sidebarWidth)
                 verticalHairline
-                if model.selectedSection == .dashboard {
-                    dashboardPanel.frame(width: max(width - sidebarWidth - 1, 720))
-                } else {
-                    packageList.frame(width: packageWidth)
-                    verticalHairline
-                    dossierPanel.frame(width: dossierWidth)
-                    verticalHairline
-                    linksPanel.frame(width: max(width - sidebarWidth - packageWidth - dossierWidth - 3, 300))
-                }
+                packageList.frame(width: packageWidth)
+                verticalHairline
+                dossierPanel.frame(width: dossierWidth)
+                verticalHairline
+                linksPanel.frame(width: max(width - sidebarWidth - packageWidth - dossierWidth - 3, 300))
             }
         }
     }
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sidebarHeader("PACKAGE MANAGERS").padding(.top, 26)
+            Spacer().frame(height: 26)
             ForEach(MainWindowSection.librarySections) { sidebarRow($0) }
             if !model.visibleManagerSections.isEmpty {
                 sidebarHeader("MANAGERS").padding(.top, 22)
@@ -100,59 +96,6 @@ struct MainWindowView: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
-    }
-
-    private var dashboardPanel: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Dashboard")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(AVGlassPalette.primaryText)
-                DashboardStatsPanel(summary: model.dashboardSummary, isLoading: model.isReloading)
-                DashboardSectionCard(title: "Outdated", badgeCount: model.dashboardSummary.outdatedPackageCount) {
-                    dashboardRows(model.packages.filter(\.isOutdated).prefix(8).map { $0 })
-                }
-                DashboardSectionCard(title: "Managers") {
-                    VStack(spacing: 8) {
-                        ForEach(model.dashboardSummary.managerCounts, id: \.0) { item in
-                            HStack {
-                                Text(item.0).foregroundStyle(AVGlassPalette.secondaryText)
-                                Spacer()
-                                Text(item.1.formatted()).foregroundStyle(AVGlassPalette.primaryText).monospacedDigit()
-                            }
-                            .font(.system(size: 13, weight: .medium))
-                        }
-                    }
-                }
-                if !model.errors.isEmpty {
-                    DashboardSectionCard(title: "Warnings") {
-                        ForEach(model.errors, id: \.self) { Text($0).foregroundStyle(AVGlassPalette.orange) }
-                    }
-                }
-            }
-            .padding(.horizontal, 28)
-            .padding(.top, 32)
-            .padding(.bottom, 28)
-        }
-    }
-
-    private func dashboardRows(_ packages: [ManagedPackage]) -> some View {
-        VStack(spacing: 0) {
-            if packages.isEmpty {
-                Text(model.isReloading ? "Loading packages..." : "No outdated packages")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AVGlassPalette.quietText)
-            } else {
-                ForEach(packages) { package in
-                    DashboardPackageRow(
-                        title: package.name,
-                        subtitle: package.summary ?? package.manager.title,
-                        trailing: versionText(package)
-                    )
-                    if package.id != packages.last?.id { hairline }
-                }
-            }
-        }
     }
 
     private var packageList: some View {
@@ -265,94 +208,6 @@ struct MainWindowView: View {
 
     private var hairline: some View { Rectangle().fill(AVGlassPalette.hairline).frame(height: 1) }
     private var verticalHairline: some View { Rectangle().fill(AVGlassPalette.hairline).frame(width: 1) }
-}
-
-private struct DashboardStatsPanel: View {
-    let summary: DashboardSummary
-    let isLoading: Bool
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 28) {
-            DashboardStatValue(title: "Packages Monitored", value: summary.totalPackages.formatted())
-            DashboardStatValue(title: "Categories", value: summary.databaseCategoryCount.formatted())
-            DashboardStatValue(title: "Outdated", value: summary.outdatedPackageCount.formatted())
-            if isLoading { ProgressView().controlSize(.small).frame(width: 18, height: 54) }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(AVGlassPalette.controlFill.opacity(0.58), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(AVGlassPalette.controlBorder.opacity(0.16), lineWidth: 1))
-    }
-}
-
-private struct DashboardStatValue: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title.uppercased())
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(AVGlassPalette.quietText)
-                .tracking(0.7)
-            Text(value)
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(AVGlassPalette.primaryText)
-                .monospacedDigit()
-        }
-        .frame(minWidth: 88, minHeight: 54, alignment: .leading)
-    }
-}
-
-private struct DashboardSectionCard<Content: View>: View {
-    let title: String
-    let badgeCount: Int?
-    @ViewBuilder let content: Content
-
-    init(title: String, badgeCount: Int? = nil, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.badgeCount = badgeCount
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(spacing: 8) {
-                Text(title.uppercased())
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(AVGlassPalette.quietText)
-                    .tracking(0.8)
-                if let badgeCount, badgeCount > 0 {
-                    Text(badgeCount.formatted())
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(AVGlassPalette.orange)
-                }
-            }
-            content
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(AVGlassPalette.controlFill.opacity(0.58), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(AVGlassPalette.controlBorder.opacity(0.16), lineWidth: 1))
-    }
-}
-
-private struct DashboardPackageRow: View {
-    let title: String
-    let subtitle: String
-    let trailing: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(AVGlassPalette.primaryText).lineLimit(1)
-                Spacer(minLength: 10)
-                Text(trailing).font(.system(size: 12, weight: .medium)).foregroundStyle(AVGlassPalette.secondaryText).lineLimit(1)
-            }
-            Text(subtitle).font(.system(size: 12)).foregroundStyle(AVGlassPalette.quietText).lineLimit(1)
-        }
-        .padding(.vertical, 9)
-    }
 }
 
 private struct PackageRow: View {

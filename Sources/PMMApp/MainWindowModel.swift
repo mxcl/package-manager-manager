@@ -3,7 +3,6 @@ import Foundation
 import PMMCore
 
 enum MainWindowSection: String, CaseIterable, Identifiable {
-    case dashboard
     case installed
     case outdated
     case homebrew
@@ -26,7 +25,7 @@ enum MainWindowSection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    static let librarySections: [MainWindowSection] = [.dashboard, .installed, .outdated]
+    static let librarySections: [MainWindowSection] = [.installed, .outdated]
     static let managerSections: [MainWindowSection] = [.homebrew, .npm, .npx]
     static let categorySections: [MainWindowSection] = [
         .developerTools, .cloudInfrastructure, .networking, .system, .security,
@@ -36,7 +35,6 @@ enum MainWindowSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .dashboard: "Dashboard"
         case .installed: "Installed"
         case .outdated: "Outdated"
         case .homebrew: "Homebrew"
@@ -61,7 +59,6 @@ enum MainWindowSection: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
-        case .dashboard: "chart.pie"
         case .installed: "shippingbox"
         case .outdated: "clock"
         case .homebrew: "mug"
@@ -110,16 +107,9 @@ enum MainWindowLinkTab: String, CaseIterable, Identifiable {
     var title: String { "Home" }
 }
 
-struct DashboardSummary {
-    let totalPackages: Int
-    let databaseCategoryCount: Int
-    let outdatedPackageCount: Int
-    let managerCounts: [(String, Int)]
-}
-
 @MainActor
 final class MainWindowModel: ObservableObject {
-    @Published var selectedSection: MainWindowSection = .dashboard
+    @Published var selectedSection: MainWindowSection = .installed
     @Published private(set) var packages: [ManagedPackage] = []
     @Published private(set) var selectedPackage: ManagedPackage?
     @Published private(set) var isReloading = false
@@ -138,18 +128,9 @@ final class MainWindowModel: ObservableObject {
         MainWindowSection.categorySections.filter { (count(for: $0) ?? 0) > 0 }
     }
 
-    var dashboardSummary: DashboardSummary {
-        DashboardSummary(
-            totalPackages: packages.count,
-            databaseCategoryCount: inventory.categoryCounts.count,
-            outdatedPackageCount: inventory.outdatedPackages.count,
-            managerCounts: PackageManagerKind.allCases.map { ($0.title, inventory.managerCounts[$0] ?? 0) }
-        )
-    }
-
     var displayedPackages: [ManagedPackage] {
         let base: [ManagedPackage] = switch selectedSection {
-        case .dashboard, .installed:
+        case .installed:
             packages
         case .outdated:
             packages.filter(\.isOutdated)
@@ -193,7 +174,7 @@ final class MainWindowModel: ObservableObject {
 
     func count(for section: MainWindowSection) -> Int? {
         switch section {
-        case .dashboard, .about: nil
+        case .about: nil
         case .installed: packages.count
         case .outdated: packages.filter(\.isOutdated).count
         case .homebrew: packages.filter { $0.manager == .homebrew }.count
