@@ -33,6 +33,19 @@ public struct PackageDatabase: Sendable {
         )
     }
 
+    public var catalogPackages: [ManagedPackage] {
+        let packages = (
+            managedPackages(for: .homebrew, metadata: formulas) +
+            managedPackages(for: .homebrew, metadata: casks) +
+            managedPackages(for: .npm, metadata: npms)
+        )
+        return Dictionary(grouping: packages, by: \.id).compactMap { $0.value.first }
+            .sorted {
+                if $0.manager != $1.manager { return $0.manager.rawValue < $1.manager.rawValue }
+                return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
+    }
+
     public func metadata(for manager: PackageManagerKind, name: String) -> PackageMetadata? {
         switch manager {
         case .homebrew:
@@ -51,6 +64,20 @@ public struct PackageDatabase: Sendable {
                 category: raw["category"] as? String,
                 homepage: raw["homepage"] as? String,
                 version: raw["version"] as? String
+            )
+        }
+    }
+
+    private func managedPackages(for manager: PackageManagerKind, metadata: [String: PackageMetadata]) -> [ManagedPackage] {
+        metadata.map { name, metadata in
+            ManagedPackage(
+                manager: manager,
+                name: name,
+                installedVersion: nil,
+                latestVersion: metadata.version,
+                summary: metadata.summary,
+                category: metadata.category,
+                homepage: metadata.homepage
             )
         }
     }

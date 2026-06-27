@@ -203,7 +203,7 @@ struct MainWindowView: View {
         if package.isOutdated {
             return "\(package.installedVersion ?? "?") -> \(package.latestVersion ?? "?")"
         }
-        return package.installedVersion ?? "installed"
+        return package.installedVersion ?? package.latestVersion ?? "available"
     }
 
     private var hairline: some View { Rectangle().fill(AVGlassPalette.hairline).frame(height: 1) }

@@ -30,3 +30,18 @@ import Testing
     #expect(db.metadata(for: .homebrew, name: "git")?.category == "developer-tools")
     #expect(db.metadata(for: .npm, name: "typescript")?.version == "5.9.2")
 }
+
+@Test func exposesCatalogPackagesFromDatabaseMetadata() {
+    let db = PackageDatabase(
+        formulas: [
+            "git": PackageMetadata(summary: "Distributed revision control", category: "developer-tools", homepage: nil, version: "2.50.0")
+        ],
+        npms: [
+            "typescript": PackageMetadata(summary: "Typed JavaScript", category: "language-runtime", homepage: nil, version: "5.9.2")
+        ]
+    )
+
+    #expect(db.catalogPackages.map(\.name) == ["git", "typescript"])
+    #expect(db.catalogPackages.map(\.installedVersion) == [nil, nil])
+    #expect(Set(db.catalogPackages.compactMap(\.category)) == ["developer-tools", "language-runtime"])
+}

@@ -117,6 +117,7 @@ final class MainWindowModel: ObservableObject {
     @Published var searchText = ""
 
     private var inventory = PackageInventory(packages: [])
+    private var catalogPackages: [ManagedPackage] = []
 
     var activeSidebarSection: MainWindowSection? { selectedSection }
 
@@ -143,7 +144,7 @@ final class MainWindowModel: ObservableObject {
         case .about:
             []
         default:
-            packages.filter { $0.category == selectedSection.categoryIdentifier }
+            catalogPackages.filter { $0.category == selectedSection.categoryIdentifier }
         }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return base }
@@ -156,9 +157,10 @@ final class MainWindowModel: ObservableObject {
             let db = await PackageDatabase.load()
             let next = await PackageScanner().inventory(database: db)
             inventory = next
+            catalogPackages = db.catalogPackages
             packages = next.packages
             errors = next.errors
-            selectedPackage = selectedPackage.flatMap { selected in packages.first { $0.id == selected.id } } ?? packages.first
+            selectedPackage = selectedPackage.flatMap { selected in displayedPackages.first { $0.id == selected.id } } ?? displayedPackages.first
             isReloading = false
         }
     }
@@ -181,7 +183,7 @@ final class MainWindowModel: ObservableObject {
         case .npm: packages.filter { $0.manager == .npm }.count
         case .npx: packages.filter { $0.manager == .npx }.count
         default:
-            packages.filter { $0.category == section.categoryIdentifier }.count
+            catalogPackages.filter { $0.category == section.categoryIdentifier }.count
         }
     }
 
