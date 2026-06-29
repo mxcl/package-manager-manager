@@ -217,13 +217,13 @@ final class MainWindowModel: ObservableObject {
     }
 
     private func scanAndApply(database: PackageDatabase, newUpdatedLastClickedAt: Date?) async {
-        let catalogPackages = database.catalogPackages
+        let catalogPackages = await Task.detached(priority: .background, operation: { database.catalogPackages }).value
         let previousPackages = packages
         var scannedPackages: [ManagedPackage] = []
         var scannedErrors: [String] = []
         var scannedManagers = Set<PackageManagerKind>()
 
-        apply(packages: previousPackages, errors: errors, catalogPackages: catalogPackages, newUpdatedLastClickedAt: newUpdatedLastClickedAt)
+        await apply(packages: previousPackages, errors: errors, catalogPackages: catalogPackages, newUpdatedLastClickedAt: newUpdatedLastClickedAt)
 
         await withTaskGroup(of: PackageScanBatch.self) { group in
             group.addTask {
@@ -248,18 +248,22 @@ final class MainWindowModel: ObservableObject {
                 scannedPackages += batch.packages
                 scannedErrors += batch.errors
                 let visiblePackages = previousPackages.filter { !scannedManagers.contains($0.manager) } + scannedPackages
-                apply(packages: visiblePackages, errors: scannedErrors, catalogPackages: catalogPackages, newUpdatedLastClickedAt: newUpdatedLastClickedAt)
+                await apply(packages: visiblePackages, errors: scannedErrors, catalogPackages: catalogPackages, newUpdatedLastClickedAt: newUpdatedLastClickedAt)
             }
         }
     }
 
-    private func apply(packages nextPackages: [ManagedPackage], errors nextErrors: [String], catalogPackages: [ManagedPackage], newUpdatedLastClickedAt: Date?) {
-        let sortedPackages = nextPackages.sorted {
-            if $0.manager != $1.manager { return $0.manager.rawValue < $1.manager.rawValue }
-            return $0.name.localizedStandardCompare($1.name) == .orderedAscending
-        }
-        let next = PackageInventory(packages: sortedPackages, errors: nextErrors)
-        apply(inventory: next, index: PackageIndex(packages: sortedPackages, catalogPackages: catalogPackages, newUpdatedLastClickedAt: newUpdatedLastClickedAt))
+    private func apply(packages nextPackages: [ManagedPackage], errors nextErrors: [String], catalogPackages: [ManagedPackage], newUpdatedLastClickedAt: Date?) async {
+        let (next, index) = await Task.detached(priority: .background) {
+            let sortedPackages = nextPackages.sorted {
+                if $0.manager != $1.manager { return $0.manager.rawValue < $1.manager.rawValue }
+                return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
+            let next = PackageInventory(packages: sortedPackages, errors: nextErrors)
+            let index = PackageIndex(packages: sortedPackages, catalogPackages: catalogPackages, newUpdatedLastClickedAt: newUpdatedLastClickedAt)
+            return (next, index)
+        }.value
+        apply(inventory: next, index: index)
     }
 }
 
@@ -279,7 +283,7 @@ private struct PackageIndex: Sendable {
     init(packages: [ManagedPackage], catalogPackages: [ManagedPackage], newUpdatedLastClickedAt: Date?) {
         let newUpdated = catalogPackages
             .filter { $0.pulseKind != nil }
-            .sorted { Self.updatedAt($0) > Self.updatedAt($1) }
+            .sorted { ($0.lastUpdatedAt ?? "") > ($1.lastUpdatedAt ?? "") }
 
         var bySection: [MainWindowSection: [ManagedPackage]] = [
             .installed: packages,
@@ -297,21 +301,11 @@ private struct PackageIndex: Sendable {
         packagesBySection = bySection
         countsBySection = bySection.mapValues(\.count)
 
+        let clickedAt = newUpdatedLastClickedAt.map { ISO8601DateFormatter().string(from: $0) }
         let unread = newUpdated.filter {
-            guard let newUpdatedLastClickedAt else { return $0.pulseKind == "new" }
-            return Self.updatedAt($0) > newUpdatedLastClickedAt
+            guard let clickedAt else { return $0.pulseKind == "new" }
+            return ($0.lastUpdatedAt ?? "") > clickedAt
         }.count
         newUpdatedUnreadCount = unread > 0 ? unread : nil
-    }
-
-    private static func updatedAt(_ package: ManagedPackage) -> Date {
-        guard let lastUpdatedAt = package.lastUpdatedAt else { return .distantPast }
-        let iso8601Formatter = ISO8601DateFormatter()
-        iso8601Formatter.formatOptions = [.withInternetDateTime]
-        let fractionalISO8601Formatter = ISO8601DateFormatter()
-        fractionalISO8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return iso8601Formatter.date(from: lastUpdatedAt)
-            ?? fractionalISO8601Formatter.date(from: lastUpdatedAt)
-            ?? .distantPast
     }
 }
