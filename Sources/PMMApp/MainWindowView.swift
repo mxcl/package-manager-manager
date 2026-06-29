@@ -64,7 +64,10 @@ struct MainWindowView: View {
         .background {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(.ultraThinMaterial)
-                .overlay(AVGlassPalette.sidebarTint)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(AVGlassPalette.sidebarTint)
+                }
         }
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)

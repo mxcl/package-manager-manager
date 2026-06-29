@@ -33,8 +33,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.minSize = NSSize(width: 1060, height: 680)
         window.center()
         window.makeKeyAndOrderFront(nil)
+        positionTrafficLights(in: window)
+        DispatchQueue.main.async { self.positionTrafficLights(in: window) }
         self.window = window
         NSApp.activate()
+    }
+
+    private func positionTrafficLights(in window: NSWindow) {
+        guard
+            let close = window.standardWindowButton(.closeButton),
+            let miniaturize = window.standardWindowButton(.miniaturizeButton),
+            let zoom = window.standardWindowButton(.zoomButton),
+            let superview = close.superview
+        else { return }
+
+        let y = max(superview.bounds.height - close.frame.height - 20, 0)
+        close.setFrameOrigin(NSPoint(x: 22, y: y))
+        miniaturize.setFrameOrigin(NSPoint(x: 42, y: y))
+        zoom.setFrameOrigin(NSPoint(x: 62, y: y))
     }
 
     private func makeMainMenu() -> NSMenu {
