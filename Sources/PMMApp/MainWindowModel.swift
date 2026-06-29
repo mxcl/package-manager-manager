@@ -137,7 +137,8 @@ final class MainWindowModel: ObservableObject {
     var activeSidebarSection: MainWindowSection? { selectedSection }
 
     var visibleManagerSections: [MainWindowSection] {
-        MainWindowSection.managerSections.filter { loadingManagerSections.contains($0) || (count(for: $0) ?? 0) > 0 }
+        if isReloading { return MainWindowSection.managerSections }
+        return MainWindowSection.managerSections.filter { loadingManagerSections.contains($0) || (count(for: $0) ?? 0) > 0 }
     }
 
     var visibleCategorySections: [MainWindowSection] {
