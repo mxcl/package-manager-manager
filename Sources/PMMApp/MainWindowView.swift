@@ -30,12 +30,11 @@ struct MainWindowView: View {
             let dossierWidth = min(360, max(310, width * 0.25))
             HStack(spacing: 0) {
                 sidebar.frame(width: sidebarWidth)
-                verticalHairline
                 packageList.frame(width: packageWidth)
                 verticalHairline
                 dossierPanel.frame(width: dossierWidth)
                 verticalHairline
-                linksPanel.frame(width: max(width - sidebarWidth - packageWidth - dossierWidth - 3, 300))
+                linksPanel.frame(width: max(width - sidebarWidth - packageWidth - dossierWidth - 2, 300))
             }
         }
     }
@@ -59,8 +58,20 @@ struct MainWindowView: View {
             Spacer(minLength: 24)
             ForEach(MainWindowSection.utilitySections) { sidebarRow($0) }
         }
-        .padding(.horizontal, 18)
-        .background { LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.sidebarTint) }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 16)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(AVGlassPalette.sidebarTint)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(AVGlassPalette.sidebarBorder)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 14)
+        .padding(.vertical, 10)
     }
 
     private func sidebarHeader(_ text: String) -> some View {
@@ -83,11 +94,9 @@ struct MainWindowView: View {
     private func sidebarRow(_ section: MainWindowSection) -> some View {
         Button { model.selectSection(section) } label: {
             HStack(spacing: 12) {
-                Image(systemName: section.systemImage)
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(width: 17)
+                sidebarIcon(section)
                 Text(section.title)
-                    .font(.system(size: 14))
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
                 Spacer(minLength: 6)
                 if model.isLoadingCount(for: section) {
@@ -105,17 +114,36 @@ struct MainWindowView: View {
                 }
             }
             .foregroundStyle(model.activeSidebarSection == section ? AVGlassPalette.primaryText : AVGlassPalette.secondaryText)
-            .padding(.horizontal, 7)
-            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
             .background {
                 if model.activeSidebarSection == section {
-                    Capsule(style: .continuous).fill(AVGlassPalette.sidebarSelectedFill)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous).fill(AVGlassPalette.sidebarSelectedFill)
                 }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
+    }
+
+    private func sidebarIcon(_ section: MainWindowSection) -> some View {
+        Image(systemName: section.systemImage)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 22, height: 22)
+            .background(sidebarIconFill(for: section), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+
+    private func sidebarIconFill(for section: MainWindowSection) -> Color {
+        switch section {
+        case .outdated, .newUpdated: AVGlassPalette.orange
+        case .security: Color(red: 0.16, green: 0.62, blue: 0.95)
+        case .homebrew, .npm, .npx, .developerTools: Color(red: 0.00, green: 0.48, blue: 1.00)
+        case .productivity, .science: Color(red: 0.35, green: 0.30, blue: 0.95)
+        case .media, .games, .toys: Color(red: 0.95, green: 0.22, blue: 0.36)
+        default: Color(red: 0.46, green: 0.49, blue: 0.53)
+        }
     }
 
     private var packageList: some View {
@@ -163,11 +191,8 @@ struct MainWindowView: View {
         .font(.system(size: 13))
         .foregroundStyle(AVGlassPalette.secondaryText)
         .padding(.horizontal, 12)
-        .frame(height: 32)
-        .background(AVGlassPalette.controlFill, in: Capsule(style: .continuous))
-        .overlay {
-            Capsule(style: .continuous).stroke(AVGlassPalette.controlBorder)
-        }
+        .frame(height: 34)
+        .background(AVGlassPalette.searchFill, in: Capsule(style: .continuous))
     }
 
     private var dossierPanel: some View {
@@ -402,14 +427,16 @@ private struct LiquidGlassSurface: View {
 private enum AVGlassPalette {
     static let windowTint = Color(red: 0.05, green: 0.06, blue: 0.07).opacity(0.50)
     static let topBarTint = Color(red: 0.07, green: 0.08, blue: 0.09).opacity(0.36)
-    static let sidebarTint = Color(red: 0.04, green: 0.05, blue: 0.06).opacity(0.58)
+    static let sidebarTint = Color(red: 0.06, green: 0.07, blue: 0.07).opacity(0.72)
     static let primaryText = Color.white.opacity(0.92)
-    static let secondaryText = Color.white.opacity(0.66)
+    static let secondaryText = Color.white.opacity(0.72)
     static let quietText = Color.white.opacity(0.42)
     static let hairline = Color.white.opacity(0.07)
-    static let sidebarSelectedFill = Color.white.opacity(0.10)
+    static let sidebarBorder = Color.white.opacity(0.14)
+    static let sidebarSelectedFill = Color(red: 0.00, green: 0.38, blue: 0.86)
     static let packageSelectedFill = Color.white.opacity(0.08)
     static let controlFill = Color.white.opacity(0.07)
+    static let searchFill = Color.white.opacity(0.11)
     static let controlBorder = Color.white.opacity(0.18)
     static let orange = Color(red: 0.95, green: 0.72, blue: 0.20)
 }
