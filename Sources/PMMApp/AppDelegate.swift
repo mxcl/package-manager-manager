@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.titlebarSeparatorStyle = .none
         window.toolbarStyle = .unified
         window.isMovableByWindowBackground = true
+        window.delegate = self
         window.setContentSize(NSSize(width: 1380, height: 760))
         window.minSize = NSSize(width: 1060, height: 680)
         window.center()
@@ -63,5 +64,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appItem.submenu = appMenu
         menu.addItem(appItem)
         return menu
+    }
+}
+
+extension AppDelegate: NSWindowDelegate {
+    func windowDidResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        DispatchQueue.main.async { self.positionTrafficLights(in: window) }
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        positionTrafficLights(in: window)
     }
 }
