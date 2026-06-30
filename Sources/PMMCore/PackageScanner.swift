@@ -199,11 +199,12 @@ public struct PackageScanner {
     private func uvTools(_ uv: String, toolDir: String?, database: PackageDatabase) throws -> [ManagedPackage] {
         let result = try runner.run(uv, ["tool", "list", "--show-paths", "--show-version-specifiers", "--show-python", "--offline", "--color", "never"])
         guard result.status == 0 else { return [] }
-        return parseUVToolList(result.stdout, toolDir: toolDir, database: database)
+        return parseUVToolList(result.stdout, toolDir: toolDir, outdated: uvToolOutdated(uv), database: database)
     }
 
     private func uvPythons(_ uv: String, pythonDir: String?) throws -> [ManagedPackage] {
         guard let pythonDir else { return [] }
+        let latest = uvPythonLatestVersions(uv)
         let result = try runner.run(uv, ["python", "list", "--only-installed", "--output-format", "json", "--offline", "--color", "never"])
         guard result.status == 0,
               let data = result.stdout.data(using: .utf8),
@@ -213,11 +214,12 @@ public struct PackageScanner {
                   path == pythonDir || path.hasPrefix("\(pythonDir)/"),
                   let key = row["key"] as? String,
                   let version = row["version"] as? String else { return nil }
+            let latestVersion = uvPythonKey(row).flatMap { latest[$0] }.flatMap { $0 == version ? nil : $0 }
             return ManagedPackage(
                 manager: .uv,
                 name: key,
                 installedVersion: version,
-                latestVersion: nil,
+                latestVersion: latestVersion,
                 summary: "uv-managed Python",
                 category: "language-runtime",
                 installLocation: URL(fileURLWithPath: path).deletingLastPathComponent().path,
@@ -226,9 +228,28 @@ public struct PackageScanner {
         }
     }
 
-    private func parseUVToolList(_ output: String, toolDir: String?, database: PackageDatabase) -> [ManagedPackage] {
+    private func uvToolOutdated(_ uv: String) -> [String: String] {
+        guard let result = try? runner.run(uv, ["tool", "list", "--outdated", "--show-paths", "--show-version-specifiers", "--show-python", "--color", "never"]),
+              result.status == 0 else { return [:] }
+        return parseUVToolLatestMap(result.stdout)
+    }
+
+    private func uvPythonLatestVersions(_ uv: String) -> [String: String] {
+        guard let result = try? runner.run(uv, ["python", "list", "--all-versions", "--only-downloads", "--output-format", "json", "--offline", "--color", "never"]),
+              result.status == 0,
+              let data = result.stdout.data(using: .utf8),
+              let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return [:] }
+        return rows.reduce(into: [:]) { latest, row in
+            guard let key = uvPythonKey(row), let version = row["version"] as? String else { return }
+            if latest[key].map({ version.localizedStandardCompare($0) == .orderedDescending }) ?? true {
+                latest[key] = version
+            }
+        }
+    }
+
+    private func parseUVToolList(_ output: String, toolDir: String?, outdated: [String: String], database: PackageDatabase) -> [ManagedPackage] {
         var packages: [ManagedPackage] = []
-        var current: (name: String, version: String?, lines: [String])?
+        var current: (name: String, version: String?, latest: String?, lines: [String])?
 
         func flush() {
             guard let tool = current else { return }
@@ -243,7 +264,7 @@ public struct PackageScanner {
                 manager: .uv,
                 name: tool.name,
                 installedVersion: tool.version,
-                latestVersion: metadata?.version,
+                latestVersion: tool.latest ?? outdated[tool.name] ?? metadata?.version,
                 summary: metadata?.summary ?? "uv-installed tool",
                 category: metadata?.category ?? "developer-tools",
                 homepage: metadata?.homepage,
@@ -257,7 +278,7 @@ public struct PackageScanner {
         for line in output.split(whereSeparator: \.isNewline).map(String.init) {
             if let header = uvToolHeader(line) {
                 flush()
-                current = (header.name, header.version, [])
+                current = (header.name, header.version, header.latest, [])
             } else {
                 current?.lines.append(line)
             }
@@ -266,19 +287,39 @@ public struct PackageScanner {
         return packages
     }
 
-    private func uvToolHeader(_ line: String) -> (name: String, version: String?)? {
+    private func parseUVToolLatestMap(_ output: String) -> [String: String] {
+        output.split(whereSeparator: \.isNewline).reduce(into: [:]) { result, line in
+            guard let header = uvToolHeader(String(line)), let latest = header.latest else { return }
+            result[header.name] = latest
+        }
+    }
+
+    private func uvToolHeader(_ line: String) -> (name: String, version: String?, latest: String?)? {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.hasPrefix("/") else { return nil }
         let parts = trimmed.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
         guard let name = parts.first, !name.hasPrefix("-"), name != "No" else { return nil }
         let version = parts.dropFirst().first { $0.hasPrefix("v") }.map { String($0.dropFirst()) }
-        return (name, version)
+        let latest = trimmed.latestVersionMarker
+        return (name, version, latest)
     }
 
     private func absolutePath(_ line: String) -> String? {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let slash = trimmed.firstIndex(of: "/") else { return nil }
         return String(trimmed[slash...])
+    }
+
+    private func uvPythonKey(_ row: [String: Any]) -> String? {
+        guard let implementation = row["implementation"] as? String,
+              let os = row["os"] as? String,
+              let arch = row["arch"] as? String,
+              let libc = row["libc"] as? String,
+              let variant = row["variant"] as? String,
+              let parts = row["version_parts"] as? [String: Any],
+              let major = parts["major"] as? Int,
+              let minor = parts["minor"] as? Int else { return nil }
+        return [implementation, "\(major).\(minor)", os, arch, libc, variant].joined(separator: ":")
     }
 
     private func successfulLine(_ executable: String, _ arguments: [String]) -> String? {
@@ -440,5 +481,13 @@ private extension FileManager {
     func directoryExists(atPath path: String) -> Bool {
         var isDirectory: ObjCBool = false
         return fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+}
+
+private extension String {
+    var latestVersionMarker: String? {
+        guard let start = range(of: "[latest: ")?.upperBound,
+              let end = self[start...].firstIndex(of: "]") else { return nil }
+        return String(self[start..<end])
     }
 }

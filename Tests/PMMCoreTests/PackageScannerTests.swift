@@ -105,8 +105,14 @@ private struct FakeRunner: CommandRunning {
 
     let pythonJSON = """
     [
-      {"key":"cpython-3.13.12-macos-aarch64-none","version":"3.13.12","path":"\(pythonBin.appendingPathComponent("python3.13").path)"},
-      {"key":"cpython-3.14.6-macos-aarch64-none","version":"3.14.6","path":"/opt/homebrew/bin/python3.14"}
+      {"key":"cpython-3.13.12-macos-aarch64-none","version":"3.13.12","version_parts":{"major":3,"minor":13,"patch":12},"path":"\(pythonBin.appendingPathComponent("python3.13").path)","os":"macos","variant":"default","implementation":"cpython","arch":"aarch64","libc":"none"},
+      {"key":"cpython-3.14.6-macos-aarch64-none","version":"3.14.6","version_parts":{"major":3,"minor":14,"patch":6},"path":"/opt/homebrew/bin/python3.14","os":"macos","variant":"default","implementation":"cpython","arch":"aarch64","libc":"none"}
+    ]
+    """
+    let downloadJSON = """
+    [
+      {"key":"cpython-3.13.14-macos-aarch64-none","version":"3.13.14","version_parts":{"major":3,"minor":13,"patch":14},"path":null,"os":"macos","variant":"default","implementation":"cpython","arch":"aarch64","libc":"none"},
+      {"key":"cpython-3.14.6-macos-aarch64-none","version":"3.14.6","version_parts":{"major":3,"minor":14,"patch":6},"path":null,"os":"macos","variant":"default","implementation":"cpython","arch":"aarch64","libc":"none"}
     ]
     """
     let runner = FakeRunner(responses: [
@@ -118,7 +124,12 @@ private struct FakeRunner: CommandRunning {
           \(bin.appendingPathComponent("ruff").path)
           \(tools.appendingPathComponent("ruff").path)
         """, stderr: "", status: 0),
+        "/fake/uv tool list --outdated --show-paths --show-version-specifiers --show-python --color never": CommandResult(stdout: """
+        ruff v0.6.9 [latest: 0.7.0]
+        - ruff
+        """, stderr: "", status: 0),
         "/fake/uv python list --only-installed --output-format json --offline --color never": CommandResult(stdout: pythonJSON, stderr: "", status: 0),
+        "/fake/uv python list --all-versions --only-downloads --output-format json --offline --color never": CommandResult(stdout: downloadJSON, stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["uv": "/fake/uv"])
 
@@ -126,9 +137,11 @@ private struct FakeRunner: CommandRunning {
 
     #expect(packages.map(\.name) == ["ruff", "cpython-3.13.12-macos-aarch64-none"])
     #expect(packages.first?.installedVersion == "0.6.9")
+    #expect(packages.first?.latestVersion == "0.7.0")
     #expect(packages.first?.installLocation == tools.appendingPathComponent("ruff").path)
     #expect(packages.first?.binaryPath == bin.appendingPathComponent("ruff").path)
     #expect(packages.last?.installedVersion == "3.13.12")
+    #expect(packages.last?.latestVersion == "3.13.14")
 }
 
 @Test func uvxScannerReadsCachedToolEnvironments() throws {
