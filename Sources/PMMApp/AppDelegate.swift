@@ -21,9 +21,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        let initialContentSize = NSSize(width: 1307, height: 824)
         let controller = MainWindowController()
         let window = PMMWindow(
-            contentRect: NSRect(origin: .zero, size: NSSize(width: 1307, height: 824)),
+            contentRect: NSRect(origin: .zero, size: initialContentSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -38,9 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolbar.displayMode = .iconOnly
         window.toolbar = toolbar
         window.isMovableByWindowBackground = true
-        window.minSize = NSSize(width: 1060, height: 680)
-        // Installing the split view controller can shrink the frame to its fitting size.
-        window.setContentSize(NSSize(width: 1307, height: 824))
+        window.minSize = NSSize(width: 1104, height: 680)
+        window.setContentSize(initialContentSize)
         window.center()
         window.makeKeyAndOrderFront(nil)
         self.window = window
