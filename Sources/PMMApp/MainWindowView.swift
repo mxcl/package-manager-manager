@@ -1,4 +1,5 @@
 import PMMCore
+import Foundation
 import SwiftUI
 import WebKit
 
@@ -101,7 +102,7 @@ struct MainWindowView: View {
             HStack(spacing: 12) {
                 sidebarIcon(section)
                 Text(section.title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .medium))
                     .lineLimit(1)
                 Spacer(minLength: 6)
                 if model.isLoadingCount(for: section) {
@@ -177,7 +178,7 @@ struct MainWindowView: View {
                                 package: package,
                                 selected: model.selectedPackage?.id == package.id,
                                 showsManager: model.activeSidebarSection == .outdated,
-                                versionText: versionText(package)
+                                versionText: versionText(package, section: model.activeSidebarSection)
                             ) {
                                 model.select(package)
                             }
@@ -223,8 +224,8 @@ struct MainWindowView: View {
                         PermissionRow(label: "Category", value: package.category ?? "uncategorized")
                     }
                     InfoSection(title: "Location") {
-                        PermissionRow(label: "Install Root", value: package.installLocation ?? "unknown")
-                        PermissionRow(label: "Binary", value: package.binaryPath ?? "unknown")
+                        PermissionRow(label: "Install Root", value: homeRelativePath(package.installLocation))
+                        PermissionRow(label: "Binary", value: homeRelativePath(package.binaryPath))
                     }
                 }
                 .padding(.horizontal, 22)
@@ -259,11 +260,22 @@ struct MainWindowView: View {
         model.selectedPackage?.homepage.flatMap(URL.init(string:))
     }
 
-    private func versionText(_ package: ManagedPackage) -> String {
+    private func versionText(_ package: ManagedPackage, section: MainWindowSection? = nil) -> String {
         if package.isOutdated {
             return "\(package.installedVersion ?? "?") → \(package.latestVersion ?? "?")"
         }
+        if section?.categoryIdentifier != nil, package.installedVersion == nil, package.latestVersion == nil {
+            return package.manager.title
+        }
         return package.installedVersion ?? package.latestVersion ?? "available"
+    }
+
+    private func homeRelativePath(_ path: String?) -> String {
+        guard let path else { return "unknown" }
+        let home = NSHomeDirectory()
+        if path == home { return "~" }
+        if path.hasPrefix(home + "/") { return "~/" + String(path.dropFirst(home.count + 1)) }
+        return path
     }
 
     private var hairline: some View { Rectangle().fill(AVGlassPalette.hairline).frame(height: 1) }
