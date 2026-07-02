@@ -24,6 +24,10 @@ let package = Package(
             name: "PMMCoreTests",
             dependencies: ["PMMCore"]
         ),
+        .testTarget(
+            name: "PMMAppTests",
+            dependencies: ["PMMApp"]
+        ),
     ],
     swiftLanguageModes: [.v5]
 )

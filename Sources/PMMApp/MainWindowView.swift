@@ -441,16 +441,34 @@ private struct LinkURLBar: View {
 
 private struct PackageWebView: NSViewRepresentable {
     let url: URL
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> WKWebView {
         let webView = WKWebView()
         webView.setValue(false, forKey: "drawsBackground")
         return webView
     }
+
     func updateNSView(_ webView: WKWebView, context: Context) {
-        if webView.url != url {
-            webView.load(URLRequest(url: url))
+        if context.coordinator.loadedURL != url {
+            context.coordinator.loadedURL = url
+            webView.load(URLRequest(url: initialBrowserURL(for: url)))
         }
     }
+
+    final class Coordinator {
+        var loadedURL: URL?
+    }
+}
+
+func initialBrowserURL(for url: URL) -> URL {
+    guard url.host() == "github.com", url.fragment() == nil else { return url }
+    let parts = url.pathComponents.filter { $0 != "/" }
+    guard parts.count == 2, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+    components.fragment = "readme"
+    return components.url ?? url
 }
 
 private struct LiquidGlassSurface: View {
