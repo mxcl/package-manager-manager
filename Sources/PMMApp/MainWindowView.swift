@@ -40,7 +40,6 @@ struct MainWindowView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .ignoresSafeArea(.container, edges: .top)
     }
 
     private var sidebar: some View {
