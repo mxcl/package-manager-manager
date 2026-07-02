@@ -31,6 +31,25 @@ import Testing
     #expect(model.selectedPackage == nil)
 }
 
+@MainActor
+@Test func adjacentPackageSelectionMovesWithinDisplayedPackages() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let packages = [package(.homebrew, "alpha"), package(.homebrew, "beta"), package(.homebrew, "gamma")]
+
+    model.apply(
+        inventory: PackageInventory(packages: packages),
+        index: PackageIndex(packages: packages, catalogPackages: [], newUpdatedLastClickedAt: nil)
+    )
+    model.select(packages[1])
+
+    #expect(model.selectAdjacentPackage(offset: 1))
+    #expect(model.selectedPackage?.name == "gamma")
+    #expect(model.selectAdjacentPackage(offset: 1))
+    #expect(model.selectedPackage?.name == "gamma")
+    #expect(model.selectAdjacentPackage(offset: -1))
+    #expect(model.selectedPackage?.name == "beta")
+}
+
 @Test func installedSectionSortsPackagesAlphabetically() {
     let packages = [
         package(.npm, "zeta"),

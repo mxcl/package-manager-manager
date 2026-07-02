@@ -43,6 +43,18 @@ final class MainWindowController: NSSplitViewController {
         model.reload()
     }
 
+    override func moveUp(_ sender: Any?) {
+        if !model.selectAdjacentPackage(offset: -1) {
+            super.moveUp(sender)
+        }
+    }
+
+    override func moveDown(_ sender: Any?) {
+        if !model.selectAdjacentPackage(offset: 1) {
+            super.moveDown(sender)
+        }
+    }
+
     private func sidebarItem() -> NSSplitViewItem {
         let controller = NSHostingController(rootView: MainWindowSidebarView(model: model))
         let item = NSSplitViewItem(sidebarWithViewController: controller)

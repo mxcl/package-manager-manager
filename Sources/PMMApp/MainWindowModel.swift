@@ -257,6 +257,19 @@ final class MainWindowModel: ObservableObject {
         loadSelectedPackageMetadata()
     }
 
+    func selectAdjacentPackage(offset: Int) -> Bool {
+        guard offset != 0, let selectedPackage else { return false }
+        let packages = displayedPackages
+        guard !packages.isEmpty else { return false }
+
+        let index = packages.firstIndex { $0.id == selectedPackage.id } ?? (offset > 0 ? -1 : packages.count)
+        let nextIndex = min(max(index + offset, 0), packages.count - 1)
+        if nextIndex != index {
+            select(packages[nextIndex])
+        }
+        return true
+    }
+
     func count(for section: MainWindowSection) -> Int? {
         switch section {
         case .about: nil
