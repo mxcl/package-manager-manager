@@ -5,7 +5,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        loadAppIcon()
         NSApp.mainMenu = makeMainMenu()
         showMainWindow()
     }
@@ -53,11 +52,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appItem.submenu = appMenu
         menu.addItem(appItem)
         return menu
-    }
-
-    private func loadAppIcon() {
-        guard let url = Bundle.module.url(forResource: "AppIcon", withExtension: "icns"),
-              let image = NSImage(contentsOf: url) else { return }
-        NSApp.applicationIconImage = image
     }
 }

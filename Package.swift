@@ -15,10 +15,7 @@ let package = Package(
         .executableTarget(
             name: "PMMApp",
             dependencies: ["PMMCore"],
-            resources: [
-                .process("Resources/AppIcon.icns"),
-                .copy("Resources/AppIcon.icon"),
-            ]
+            resources: [.copy("Resources/AppIcon.icon")]
         ),
         .executableTarget(
             name: "pmmctl",
