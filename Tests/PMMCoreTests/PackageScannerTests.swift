@@ -51,9 +51,10 @@ private struct FakeRunner: CommandRunning {
     let bin = temp.appendingPathComponent("bin", isDirectory: true)
     try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
     try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
-    try """
-    {"name":"@scope/tool","version":"1.0.0","bin":{"tool":"cli.js"}}
-    """.write(to: package.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+    try #"""
+    {"name":"@scope/tool","version":"1.0.0","description":"A scoped CLI","homepage":"https://example.com/tool","repository":{"url":"git+https://github.com/example/tool.git"},"bin":{"tool":"cli.js"}}
+    """#
+        .write(to: package.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
     FileManager.default.createFile(atPath: bin.appendingPathComponent("tool").path, contents: Data())
     defer { try? FileManager.default.removeItem(at: temp) }
 
@@ -66,7 +67,7 @@ private struct FakeRunner: CommandRunning {
     let scanner = PackageScanner(runner: runner, toolPaths: ["npm": "/fake/npm"])
 
     let packages = try scanner.scanNPM(database: PackageDatabase(npms: [
-        "@scope/tool": PackageMetadata(summary: "A scoped CLI", category: "developer-tools", homepage: nil, version: "1.2.0")
+        "@scope/tool": PackageMetadata(summary: "Ignored db summary", category: "developer-tools", homepage: nil, version: "9.9.9")
     ]))
 
     #expect(packages == [
@@ -77,10 +78,52 @@ private struct FakeRunner: CommandRunning {
             latestVersion: "1.2.0",
             summary: "A scoped CLI",
             category: "developer-tools",
+            homepage: "https://example.com/tool",
+            repo: "https://github.com/example/tool",
             installLocation: package.path,
             binaryPath: bin.appendingPathComponent("tool").path
         )
     ])
+}
+
+@Test func homebrewScannerUsesCachedAPIMetadata() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let formulaCache = temp.appendingPathComponent("api/formula", isDirectory: true)
+    let caskCache = temp.appendingPathComponent("api/cask", isDirectory: true)
+    try FileManager.default.createDirectory(at: formulaCache, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: caskCache, withIntermediateDirectories: true)
+    try """
+    {"desc":"Distributed revision control system","homepage":"https://git-scm.com/","versions":{"stable":"2.51.0"},"urls":{"head":{"url":"https://github.com/git/git.git"}}}
+    """.write(to: formulaCache.appendingPathComponent("git.json"), atomically: true, encoding: .utf8)
+    try """
+    {"desc":"Code editor","homepage":"https://code.visualstudio.com/","version":"1.102.0"}
+    """.write(to: caskCache.appendingPathComponent("visual-studio-code.json"), atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let runner = FakeRunner(responses: [
+        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "git\n", stderr: "", status: 0),
+        "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/brew list --versions --formula": CommandResult(stdout: "git 2.50.0\n", stderr: "", status: 0),
+        "/fake/brew list --versions --cask": CommandResult(stdout: "visual-studio-code 1.101.2\n", stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"], environment: ["HOMEBREW_CACHE": temp.path])
+
+    let packages = try scanner.scanHomebrew(database: PackageDatabase(
+        formulas: ["git": PackageMetadata(summary: "Ignored db summary", category: "developer-tools", homepage: nil, version: "9.9.9", lastUpdatedAt: "2026-06-26T22:01:54Z", pulseKind: "updated")],
+        casks: ["visual-studio-code": PackageMetadata(summary: nil, category: "productivity", homepage: nil, version: nil)]
+    ))
+
+    #expect(packages.map(\.name) == ["git", "visual-studio-code"])
+    #expect(packages.first?.latestVersion == "2.51.0")
+    #expect(packages.first?.summary == "Distributed revision control system")
+    #expect(packages.first?.category == "developer-tools")
+    #expect(packages.first?.homepage == "https://git-scm.com/")
+    #expect(packages.first?.repo == "https://github.com/git/git")
+    #expect(packages.first?.lastUpdatedAt == "2026-06-26T22:01:54Z")
+    #expect(packages.first?.pulseKind == "updated")
+    #expect(packages.last?.latestVersion == "1.102.0")
+    #expect(packages.last?.summary == "Code editor")
+    #expect(packages.last?.category == "productivity")
 }
 
 @Test func homebrewScannerKeepsOnlyRequestedFormulaeAndCasks() throws {
@@ -108,7 +151,7 @@ private struct FakeRunner: CommandRunning {
         try FileManager.default.createDirectory(at: transitive, withIntermediateDirectories: true)
         try #"{"packages":{"":{"dependencies":{"acorn":"\#(version)"}}}}"#
             .write(to: home.appendingPathComponent(".npm/_npx/\(cacheID)/package-lock.json"), atomically: true, encoding: .utf8)
-        try #"{"name":"acorn","version":"\#(version)"}"#
+        try #"{"name":"acorn","version":"\#(version)","description":"JS parser","homepage":"https://example.com/acorn","repository":"git+https://github.com/acornjs/acorn.git"}"#
             .write(to: package.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
         try #"{"name":"commander","version":"14.0.0"}"#
             .write(to: transitive.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
@@ -116,7 +159,7 @@ private struct FakeRunner: CommandRunning {
 
     let scanner = PackageScanner(runner: FakeRunner(responses: [:]), homeDirectory: home)
     let packages = try scanner.scanNPX(database: PackageDatabase(npms: [
-        "acorn": PackageMetadata(summary: nil, category: nil, homepage: nil, version: "1.2.0")
+        "acorn": PackageMetadata(summary: nil, category: "developer-tools", homepage: nil, version: "9.9.9")
     ]))
 
     #expect(packages.count == 1)
@@ -125,6 +168,10 @@ private struct FakeRunner: CommandRunning {
     #expect(packages.first?.installedVersion == "1.2.0")
     #expect(packages.first?.installedVersions == ["1.2.0", "1.0.0"])
     #expect(packages.first?.otherInstalledVersions == ["1.0.0"])
+    #expect(packages.first?.summary == "JS parser")
+    #expect(packages.first?.category == "developer-tools")
+    #expect(packages.first?.homepage == "https://example.com/acorn")
+    #expect(packages.first?.repo == "https://github.com/acornjs/acorn")
 }
 
 @Test func uvScannerIncludesToolsAndOnlyUvManagedPythons() throws {

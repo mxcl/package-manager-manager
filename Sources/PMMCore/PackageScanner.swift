@@ -70,20 +70,22 @@ public struct PackageScanner {
         return dependencies.compactMap { name, raw in
             guard let body = raw as? [String: Any] else { return nil }
             let version = body["version"] as? String
-            let metadata = database.metadata(for: .npm, name: name)
+            let curation = database.metadata(for: .npm, name: name)
+            let installLocation = root.map { "\($0)/\(name)" }
+            let package = installLocation.flatMap { readPackageJSON(URL(fileURLWithPath: $0).appendingPathComponent("package.json")) }
             return ManagedPackage(
                 manager: .npm,
                 name: name,
                 installedVersion: version,
-                latestVersion: outdated[name] ?? metadata?.version,
-                summary: metadata?.summary,
-                category: metadata?.category,
-                homepage: metadata?.homepage,
-                docs: metadata?.docs,
-                repo: metadata?.repo,
-                lastUpdatedAt: metadata?.lastUpdatedAt,
-                pulseKind: metadata?.pulseKind,
-                installLocation: root.map { "\($0)/\(name)" },
+                latestVersion: outdated[name],
+                summary: package?.summary,
+                category: curation?.category,
+                homepage: package?.homepage,
+                docs: nil,
+                repo: package?.repo,
+                lastUpdatedAt: curation?.lastUpdatedAt,
+                pulseKind: curation?.pulseKind,
+                installLocation: installLocation,
                 binaryPath: npmBinaryPath(packageName: name, root: root, bin: bin)
             )
         }
@@ -102,19 +104,19 @@ public struct PackageScanner {
             return names.flatMap { packageNames(in: modules, name: $0) }.compactMap { packageURL in
                 guard let package = readPackageJSON(packageURL.appendingPathComponent("package.json")) else { return nil }
                 let name = package.name
-                let metadata = database.metadata(for: .npx, name: name)
+                let curation = database.metadata(for: .npx, name: name)
                 return ManagedPackage(
                     manager: .npx,
                     name: name,
                     installedVersion: package.version,
-                    latestVersion: metadata?.version,
-                    summary: metadata?.summary,
-                    category: metadata?.category,
-                    homepage: metadata?.homepage,
-                    docs: metadata?.docs,
-                    repo: metadata?.repo,
-                    lastUpdatedAt: metadata?.lastUpdatedAt,
-                    pulseKind: metadata?.pulseKind,
+                    latestVersion: nil,
+                    summary: package.summary,
+                    category: curation?.category,
+                    homepage: package.homepage,
+                    docs: nil,
+                    repo: package.repo,
+                    lastUpdatedAt: curation?.lastUpdatedAt,
+                    pulseKind: curation?.pulseKind,
                     installLocation: packageURL.path,
                     binaryPath: nil
                 )
@@ -222,23 +224,96 @@ public struct PackageScanner {
             guard let name = parts.first else { return nil }
             if let names, !names.contains(name) { return nil }
             let version = parts.dropFirst().last
-            let metadata = database.metadata(for: .homebrew, name: name)
+            let curation = database.metadata(for: .homebrew, name: name)
+            let metadata = homebrewCachedMetadata(name: name, kindFlag: kindFlag)
             return ManagedPackage(
                 manager: .homebrew,
                 name: name,
                 installedVersion: version,
                 latestVersion: outdated[name] ?? metadata?.version,
                 summary: metadata?.summary,
-                category: metadata?.category,
+                category: curation?.category,
                 homepage: metadata?.homepage,
                 docs: metadata?.docs,
                 repo: metadata?.repo,
-                lastUpdatedAt: metadata?.lastUpdatedAt,
-                pulseKind: metadata?.pulseKind,
+                lastUpdatedAt: curation?.lastUpdatedAt,
+                pulseKind: curation?.pulseKind,
                 installLocation: nil,
                 binaryPath: nil
             )
         }
+    }
+
+    private func homebrewCachedMetadata(name: String, kindFlag: String) -> PackageMetadata? {
+        let kind = kindFlag == "--cask" ? "cask" : "formula"
+        for cache in homebrewCacheURLs {
+            let item = cache.appendingPathComponent("api", isDirectory: true)
+                .appendingPathComponent(kind, isDirectory: true)
+                .appendingPathComponent("\(name).json")
+            if let metadata = homebrewMetadata(from: item) {
+                return metadata
+            }
+        }
+        for cache in homebrewCacheURLs {
+            for item in homebrewAggregateCacheURLs(cache: cache, kind: kind) {
+                if let metadata = homebrewMetadata(named: name, from: item) {
+                    return metadata
+                }
+            }
+        }
+        return nil
+    }
+
+    private var homebrewCacheURLs: [URL] {
+        var urls: [URL] = []
+        if let cache = environment["HOMEBREW_CACHE"], !cache.isEmpty {
+            urls.append(URL(fileURLWithPath: cache, isDirectory: true))
+        }
+        urls.append(homeDirectory.appendingPathComponent("Library/Caches/Homebrew", isDirectory: true))
+        return urls
+    }
+
+    private func homebrewAggregateCacheURLs(cache: URL, kind: String) -> [URL] {
+        let plural = kind == "formula" ? "formulae" : "casks"
+        let api = cache.appendingPathComponent("api", isDirectory: true)
+        return [
+            api.appendingPathComponent("\(kind).json"),
+            api.appendingPathComponent("\(plural).json"),
+            cache.appendingPathComponent("\(kind).json"),
+            cache.appendingPathComponent("\(plural).json"),
+        ]
+    }
+
+    private func homebrewMetadata(from url: URL) -> PackageMetadata? {
+        guard let data = try? Data(contentsOf: url),
+              let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return homebrewMetadata(from: raw)
+    }
+
+    private func homebrewMetadata(named name: String, from url: URL) -> PackageMetadata? {
+        guard let data = try? Data(contentsOf: url),
+              let raw = try? JSONSerialization.jsonObject(with: data) else { return nil }
+        if let array = raw as? [[String: Any]] {
+            return array.first { ($0["name"] as? String) == name || ($0["token"] as? String) == name }.flatMap(homebrewMetadata)
+        }
+        if let map = raw as? [String: Any],
+           let item = map[name] as? [String: Any] {
+            return homebrewMetadata(from: item)
+        }
+        return nil
+    }
+
+    private func homebrewMetadata(from raw: [String: Any]) -> PackageMetadata {
+        let versions = raw["versions"] as? [String: Any]
+        let sourceURL = (raw["urls"] as? [String: Any])
+            .flatMap { $0["head"] as? [String: Any] ?? $0["stable"] as? [String: Any] }?["url"] as? String
+        return PackageMetadata(
+            summary: raw["desc"] as? String,
+            category: nil,
+            homepage: raw["homepage"] as? String,
+            repo: sourceRepositoryURL(sourceURL),
+            version: versions?["stable"] as? String ?? raw["version"] as? String
+        )
     }
 
     private func homebrewRequestedFormulae(_ brew: String) -> Set<String>? {
@@ -452,11 +527,17 @@ public struct PackageScanner {
         return scoped
     }
 
-    private func readPackageJSON(_ url: URL) -> (name: String, version: String?)? {
+    private func readPackageJSON(_ url: URL) -> PackageJSON? {
         guard let data = try? Data(contentsOf: url),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let name = json["name"] as? String else { return nil }
-        return (name, json["version"] as? String)
+        return PackageJSON(
+            name: name,
+            version: json["version"] as? String,
+            summary: json["description"] as? String,
+            homepage: json["homepage"] as? String,
+            repo: sourceRepositoryURL(json["repository"])
+        )
     }
 
     private func npxRequestedPackageNames(in entry: URL) -> [String]? {
@@ -606,6 +687,28 @@ private func outdatedMap(_ value: Any?) -> [String: String] {
             result[name] = newest
         }
     }
+}
+
+private struct PackageJSON {
+    let name: String
+    let version: String?
+    let summary: String?
+    let homepage: String?
+    let repo: String?
+}
+
+private func sourceRepositoryURL(_ raw: Any?) -> String? {
+    let value: String?
+    if let raw = raw as? String {
+        value = raw
+    } else if let raw = raw as? [String: Any] {
+        value = raw["url"] as? String
+    } else {
+        value = nil
+    }
+    return value?
+        .replacingOccurrences(of: "git+", with: "")
+        .replacingOccurrences(of: ".git", with: "")
 }
 
 private extension FileManager {

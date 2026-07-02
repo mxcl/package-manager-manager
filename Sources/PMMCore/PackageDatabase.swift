@@ -70,12 +70,12 @@ public struct PackageDatabase: Sendable {
         return map.reduce(into: [:]) { result, pair in
             guard let raw = pair.value as? [String: Any] else { return }
             result[pair.key] = PackageMetadata(
-                summary: raw["summary"] as? String,
+                summary: nil,
                 category: raw["category"] as? String,
-                homepage: raw["homepage"] as? String,
-                docs: raw["docs"] as? String,
-                repo: raw["repo"] as? String,
-                version: raw["version"] as? String,
+                homepage: nil,
+                docs: nil,
+                repo: nil,
+                version: nil,
                 lastUpdatedAt: raw["last_updated_at"] as? String,
                 pulseKind: raw["pulse_kind"] as? String
             )
@@ -88,12 +88,12 @@ public struct PackageDatabase: Sendable {
                 manager: manager,
                 name: name,
                 installedVersion: nil,
-                latestVersion: metadata.version,
-                summary: metadata.summary,
+                latestVersion: nil,
+                summary: nil,
                 category: metadata.category,
-                homepage: metadata.homepage,
-                docs: metadata.docs,
-                repo: metadata.repo,
+                homepage: nil,
+                docs: nil,
+                repo: nil,
                 lastUpdatedAt: metadata.lastUpdatedAt,
                 pulseKind: metadata.pulseKind
             )
