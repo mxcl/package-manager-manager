@@ -4,13 +4,13 @@ import ServiceManagement
 
 @MainActor
 final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
-    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var state = MenuBarMenuState()
     private var timer: Timer?
     private var refreshTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        statusItem.button?.title = state.statusTitle
+        configureStatusButton()
         rebuildMenu()
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 3300, repeats: true) { [weak self] _ in
@@ -55,8 +55,6 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func rebuildMenu() {
-        statusItem.button?.title = state.statusTitle
-
         let menu = NSMenu()
         for row in state.rows {
             switch row {
@@ -88,6 +86,16 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         quitItem.target = NSApp
 
         statusItem.menu = menu
+    }
+
+    private func configureStatusButton() {
+        guard let button = statusItem.button else { return }
+        let image = NSImage(systemSymbolName: "shippingbox.fill", accessibilityDescription: "Package Manager Manager")
+        image?.isTemplate = true
+        button.image = image
+        button.imagePosition = .imageOnly
+        button.toolTip = "Package Manager Manager"
+        button.setAccessibilityLabel("Package Manager Manager")
     }
 
     private func disabledItem(_ title: String) -> NSMenuItem {

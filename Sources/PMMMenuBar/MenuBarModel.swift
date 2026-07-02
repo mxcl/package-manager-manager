@@ -20,12 +20,6 @@ struct MenuBarMenuState: Equatable {
     var isRefreshing = false
     var errorMessage: String?
 
-    var statusTitle: String {
-        if inventory == nil || isRefreshing { return "PMM ..." }
-        let count = outdatedRows.count
-        return count == 0 ? "PMM" : "PMM \(count)"
-    }
-
     var rows: [MenuBarMenuRow] {
         var rows: [MenuBarMenuRow] = []
         if inventory == nil || isRefreshing {
