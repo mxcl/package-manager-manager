@@ -301,23 +301,22 @@ private struct PackageRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 7) {
-                        Text(package.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(AVGlassPalette.primaryText).lineLimit(1)
-                        if package.isOutdated { PackageBadgePill(text: "Outdated", color: AVGlassPalette.orange) }
-                    }
-                    Text(subtitle)
-                        .font(.system(size: 12))
-                        .foregroundStyle(AVGlassPalette.quietText)
-                        .lineLimit(2)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text(package.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(AVGlassPalette.primaryText).lineLimit(1)
+                    if package.isOutdated { PackageBadgePill(text: "Outdated", color: AVGlassPalette.orange) }
+                    Spacer(minLength: 8)
+                    Text(versionText)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(AVGlassPalette.secondaryText)
+                        .lineLimit(1)
                 }
-                Spacer(minLength: 8)
-                Text(versionText)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AVGlassPalette.secondaryText)
-                    .lineLimit(1)
+                Text(subtitle)
+                    .font(.system(size: 12))
+                    .foregroundStyle(AVGlassPalette.quietText)
+                    .lineLimit(2)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 13)
             .frame(height: 72)
             .background {
