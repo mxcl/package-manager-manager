@@ -125,6 +125,26 @@ public struct PackageScanner {
         return ManagedPackage.consolidatingInstalledVersions(in: packages)
     }
 
+    public func scanNPX(database: PackageDatabase, npmRegistryClient: NPMRegistryClient) async throws -> [ManagedPackage] {
+        let packages = try scanNPX(database: database)
+        let names = Set(packages.map(\.name))
+        let metadata = await withTaskGroup(of: (String, PackageMetadata?).self, returning: [String: PackageMetadata].self) { group in
+            for name in names {
+                group.addTask {
+                    (name, try? await npmRegistryClient.metadata(for: name))
+                }
+            }
+            var metadata: [String: PackageMetadata] = [:]
+            for await (name, value) in group {
+                metadata[name] = value
+            }
+            return metadata
+        }
+        return packages.map { package in
+            package.applyingNPXSourceMetadata(metadata[package.name])
+        }
+    }
+
     public func scanUV(database: PackageDatabase) throws -> [ManagedPackage] {
         guard let uv = executable(named: "uv", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]) else { return [] }
         let toolDir = successfulLine(uv, ["tool", "dir", "--offline", "--color", "never"])
@@ -694,6 +714,27 @@ private struct PackageJSON {
     let summary: String?
     let homepage: String?
     let repo: String?
+}
+
+private extension ManagedPackage {
+    func applyingNPXSourceMetadata(_ metadata: PackageMetadata?) -> ManagedPackage {
+        ManagedPackage(
+            manager: manager,
+            name: name,
+            installedVersion: installedVersion,
+            installedVersions: installedVersions,
+            latestVersion: metadata?.version,
+            summary: summary ?? metadata?.summary,
+            category: category,
+            homepage: homepage ?? metadata?.homepage,
+            docs: docs ?? metadata?.docs,
+            repo: repo ?? metadata?.repo,
+            lastUpdatedAt: lastUpdatedAt,
+            pulseKind: pulseKind,
+            installLocation: installLocation,
+            binaryPath: binaryPath
+        )
+    }
 }
 
 private func sourceRepositoryURL(_ raw: Any?) -> String? {

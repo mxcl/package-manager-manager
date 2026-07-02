@@ -10,6 +10,24 @@ private struct FakeRunner: CommandRunning {
     }
 }
 
+private final class NPMRegistryURLProtocol: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var responses: [String: Data] = [:]
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let data = Self.responses[request.url?.path ?? ""] ?? Data()
+        let status = data.isEmpty ? 404 : 200
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
 @Test func cargoInstallScannerParsesInstalledCratesAndBinaryPath() throws {
     let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     let bin = home.appendingPathComponent(".cargo/bin", isDirectory: true)
@@ -172,6 +190,45 @@ private struct FakeRunner: CommandRunning {
     #expect(packages.first?.category == "developer-tools")
     #expect(packages.first?.homepage == "https://example.com/acorn")
     #expect(packages.first?.repo == "https://github.com/acornjs/acorn")
+}
+
+@Test func npxScannerChecksRegistryForLatestVersion() async throws {
+    let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let package = home.appendingPathComponent(".npm/_npx/a/node_modules/acorn", isDirectory: true)
+    try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+    try #"{"packages":{"":{"dependencies":{"acorn":"1.0.0"}}}}"#
+        .write(to: home.appendingPathComponent(".npm/_npx/a/package-lock.json"), atomically: true, encoding: .utf8)
+    try #"{"name":"acorn","version":"1.0.0","description":"Local parser"}"#
+        .write(to: package.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: home) }
+
+    NPMRegistryURLProtocol.responses = ["/acorn": Data("""
+    {
+      "description": "Registry parser",
+      "dist-tags": { "latest": "1.2.0" },
+      "versions": {
+        "1.2.0": { "homepage": "https://example.com/acorn" }
+      }
+    }
+    """.utf8)]
+    defer { NPMRegistryURLProtocol.responses = [:] }
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [NPMRegistryURLProtocol.self]
+    let client = NPMRegistryClient(
+        session: URLSession(configuration: configuration),
+        baseURL: URL(string: "https://registry.example")!
+    )
+    let scanner = PackageScanner(runner: FakeRunner(responses: [:]), homeDirectory: home)
+    let packages = try await scanner.scanNPX(database: PackageDatabase(npms: [
+        "acorn": PackageMetadata(summary: nil, category: "developer-tools", homepage: nil, version: nil)
+    ]), npmRegistryClient: client)
+
+    #expect(packages.first?.latestVersion == "1.2.0")
+    #expect(packages.first?.isOutdated == true)
+    #expect(packages.first?.summary == "Local parser")
+    #expect(packages.first?.category == "developer-tools")
+    #expect(packages.first?.homepage == "https://example.com/acorn")
 }
 
 @Test func uvScannerIncludesToolsAndOnlyUvManagedPythons() throws {

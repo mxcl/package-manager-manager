@@ -422,9 +422,9 @@ final class MainWindowModel: ObservableObject {
                 do { return PackageScanBatch(managers: [.npm], packages: try scanner.scanNPM(database: database)) }
                 catch { return PackageScanBatch(managers: [.npm], errors: [error.localizedDescription]) }
             }
-            group.addTask {
+            group.addTask { [npmRegistryClient] in
                 let scanner = PackageScanner()
-                do { return PackageScanBatch(managers: [.npx], packages: try scanner.scanNPX(database: database)) }
+                do { return PackageScanBatch(managers: [.npx], packages: try await scanner.scanNPX(database: database, npmRegistryClient: npmRegistryClient)) }
                 catch { return PackageScanBatch(managers: [.npx], errors: [error.localizedDescription]) }
             }
             group.addTask {
