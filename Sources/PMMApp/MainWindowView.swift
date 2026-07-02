@@ -181,6 +181,16 @@ struct MainWindowDossierView: View {
                         PermissionRow(label: "Install Root", value: mainWindowHomeRelativePath(package.installLocation))
                         PermissionRow(label: "Binary", value: mainWindowHomeRelativePath(package.binaryPath))
                     }
+                    if package.installedVersion != nil {
+                        Button { model.uninstall(package) } label: {
+                            Label("Uninstall", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .tint(.red)
+                        .disabled(model.uninstallingPackageName != nil)
+                    }
                 }
                 .padding(.horizontal, 22)
                 .padding(.top, 32)
@@ -190,7 +200,15 @@ struct MainWindowDossierView: View {
         }
         .ignoresSafeArea(.container, edges: .top)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint).ignoresSafeArea())
+        .sheet(isPresented: uninstallModalBinding) {
+            UninstallProgressView(packageName: model.uninstallingPackageName ?? "package")
+                .interactiveDismissDisabled(true)
+        }
         .preferredColorScheme(.dark)
+    }
+
+    private var uninstallModalBinding: Binding<Bool> {
+        Binding(get: { model.uninstallingPackageName != nil }, set: { _ in })
     }
 }
 
@@ -389,6 +407,26 @@ private struct PermissionRow: View {
             Text(label).font(.system(size: 12, weight: .medium)).foregroundStyle(AVGlassPalette.quietText).frame(width: 82, alignment: .leading)
             Text(value).font(.system(size: 12)).foregroundStyle(AVGlassPalette.secondaryText).lineLimit(3).textSelection(.enabled)
         }
+    }
+}
+
+private struct UninstallProgressView: View {
+    let packageName: String
+
+    var body: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Uninstalling \(packageName)")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AVGlassPalette.primaryText)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+        }
+        .padding(28)
+        .frame(width: 260)
+        .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint))
+        .preferredColorScheme(.dark)
     }
 }
 

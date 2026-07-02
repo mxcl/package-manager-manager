@@ -129,6 +129,7 @@ final class MainWindowModel: ObservableObject {
     @Published private(set) var loadingManagerSections = Set(MainWindowSection.managerSections)
     @Published private(set) var errors: [String] = []
     @Published private(set) var isLoadingSelectedPackageMetadata = false
+    @Published private(set) var uninstallingPackageName: String?
     @Published var searchText = ""
 
     nonisolated private static let newUpdatedLastClickedAtDefaultsKey = "MainWindowModel.newUpdatedLastClickedAt"
@@ -140,17 +141,20 @@ final class MainWindowModel: ObservableObject {
     private let userDefaults: UserDefaults
     private let cratesIOClient: CratesIOClient
     private let npmRegistryClient: NPMRegistryClient
+    private let packageUninstaller: PackageUninstaller
     private var packageMetadataCache: [String: PackageMetadata] = [:]
     private var selectedMetadataTask: Task<Void, Never>?
 
     init(
         userDefaults: UserDefaults = .standard,
         cratesIOClient: CratesIOClient = CratesIOClient(),
-        npmRegistryClient: NPMRegistryClient = NPMRegistryClient()
+        npmRegistryClient: NPMRegistryClient = NPMRegistryClient(),
+        packageUninstaller: PackageUninstaller = PackageUninstaller()
     ) {
         self.userDefaults = userDefaults
         self.cratesIOClient = cratesIOClient
         self.npmRegistryClient = npmRegistryClient
+        self.packageUninstaller = packageUninstaller
         newUpdatedLastClickedAt = userDefaults.object(forKey: Self.newUpdatedLastClickedAtDefaultsKey) as? Date
     }
 
@@ -226,6 +230,24 @@ final class MainWindowModel: ObservableObject {
     func open(url: URL?) {
         guard let url else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    func uninstall(_ package: ManagedPackage) {
+        guard package.installedVersion != nil, uninstallingPackageName == nil else { return }
+        uninstallingPackageName = package.name
+        Task {
+            let result = await Task.detached { [packageUninstaller] in
+                Result { try packageUninstaller.uninstall(package) }
+            }.value
+            uninstallingPackageName = nil
+            switch result {
+            case .success:
+                selectedPackage = nil
+                reload()
+            case .failure(let error):
+                errors.append(error.localizedDescription)
+            }
+        }
     }
 
     private var newUpdatedUnreadCount: Int? {
