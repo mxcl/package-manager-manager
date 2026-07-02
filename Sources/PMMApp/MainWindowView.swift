@@ -44,26 +44,30 @@ struct MainWindowView: View {
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Spacer().frame(height: 72)
-            searchField
-                .padding(.bottom, 18)
-            ForEach(MainWindowSection.librarySections) { sidebarRow($0) }
-            if !model.visibleManagerSections.isEmpty {
-                sidebarHeader("MANAGERS").padding(.top, 22)
-                ForEach(model.visibleManagerSections) { sidebarRow($0) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer().frame(height: 72)
+                searchField
+                    .padding(.bottom, 18)
+                ForEach(MainWindowSection.librarySections) { sidebarRow($0) }
+                if !model.visibleManagerSections.isEmpty {
+                    sidebarHeader("MANAGERS").padding(.top, 22)
+                    ForEach(model.visibleManagerSections) { sidebarRow($0) }
+                }
+                if !model.visibleCategorySections.isEmpty {
+                    sidebarHeader("CATEGORIES").padding(.top, 22)
+                    ForEach(model.visibleCategorySections) { sidebarRow($0) }
+                    sidebarDivider
+                    ForEach(MainWindowSection.categoryShortcutSections) { sidebarRow($0) }
+                }
+                Spacer(minLength: 24)
+                ForEach(MainWindowSection.utilitySections) { sidebarRow($0) }
             }
-            if !model.visibleCategorySections.isEmpty {
-                sidebarHeader("CATEGORIES").padding(.top, 22)
-                ForEach(model.visibleCategorySections) { sidebarRow($0) }
-                sidebarDivider
-                ForEach(MainWindowSection.categoryShortcutSections) { sidebarRow($0) }
-            }
-            Spacer(minLength: 24)
-            ForEach(MainWindowSection.utilitySections) { sidebarRow($0) }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 16)
+        .scrollIndicators(.hidden)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(.ultraThinMaterial)
