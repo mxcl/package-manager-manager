@@ -239,30 +239,32 @@ struct MainWindowDossierView: View {
 
 struct MainWindowLinksView: View {
     @ObservedObject var model: MainWindowModel
-    @State private var selectedTab: MainWindowLinkTab = .homepage
+    @State private var selectedTab: MainWindowLinkTab?
 
     var body: some View {
         let links = mainWindowLinks(for: model.selectedPackage)
+        let releaseNotesURL = mainWindowReleaseNotesURL(for: model.selectedPackage)
         let selectedLink = selectedLink(in: links)
+        let selectedURL = releaseNotesURL ?? selectedLink?.url
 
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                if links.count > 1 {
+                if links.count > 1, releaseNotesURL == nil {
                     Picker("Page", selection: selectedTabBinding(in: links)) {
                         ForEach(links) { link in
-                            Text(link.tab.title).tag(link.tab)
+                            Text(link.tab.title).tag(Optional(link.tab))
                         }
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 170)
                     .labelsHidden()
                 }
-                LinkURLBar(url: selectedLink?.url) { model.open(url: selectedLink?.url) }
+                LinkURLBar(url: selectedURL) { model.open(url: selectedURL) }
             }
                 .padding(.horizontal, 12)
                 .frame(height: 42)
             hairline
-            if let url = selectedLink?.url {
+            if let url = selectedURL {
                 PackageWebView(url: url)
             } else {
                 Spacer(minLength: 0)
@@ -271,20 +273,23 @@ struct MainWindowLinksView: View {
         .ignoresSafeArea(.container, edges: .top)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint).ignoresSafeArea())
         .onChange(of: links) { _, links in
-            if !links.contains(where: { $0.tab == selectedTab }) {
-                selectedTab = links.first?.tab ?? .homepage
+            if let selectedTab, !links.contains(where: { $0.tab == selectedTab }) {
+                self.selectedTab = nil
             }
         }
         .preferredColorScheme(.dark)
     }
 
     private func selectedLink(in links: [MainWindowPackageLink]) -> MainWindowPackageLink? {
-        links.first { $0.tab == selectedTab } ?? links.first
+        if let selectedTab {
+            return links.first { $0.tab == selectedTab }
+        }
+        return links.first
     }
 
-    private func selectedTabBinding(in links: [MainWindowPackageLink]) -> Binding<MainWindowLinkTab> {
+    private func selectedTabBinding(in links: [MainWindowPackageLink]) -> Binding<MainWindowLinkTab?> {
         Binding(
-            get: { selectedLink(in: links)?.tab ?? .homepage },
+            get: { selectedLink(in: links)?.tab },
             set: { selectedTab = $0 }
         )
     }

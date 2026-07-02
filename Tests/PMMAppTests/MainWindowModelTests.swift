@@ -136,6 +136,31 @@ import Testing
     #expect(links.map(\.tab) == [.repo, .docs])
 }
 
+@Test func outdatedGitHubPackageLoadsLatestReleaseNotes() {
+    let url = mainWindowReleaseNotesURL(for: ManagedPackage(
+        manager: .homebrew,
+        name: "pkg",
+        installedVersion: "1.0.0",
+        latestVersion: "2.0.0",
+        homepage: "https://example.com",
+        docs: "https://github.com/foo/bar/tree/main/docs"
+    ))
+
+    #expect(url?.absoluteString == "https://github.com/foo/bar/releases/latest")
+}
+
+@Test func currentGitHubPackageDoesNotLoadReleaseNotes() {
+    let url = mainWindowReleaseNotesURL(for: ManagedPackage(
+        manager: .homebrew,
+        name: "pkg",
+        installedVersion: "2.0.0",
+        latestVersion: "2.0.0",
+        repo: "https://github.com/foo/bar"
+    ))
+
+    #expect(url == nil)
+}
+
 private func package(
     _ manager: PackageManagerKind,
     _ name: String,

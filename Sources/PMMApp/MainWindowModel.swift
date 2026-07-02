@@ -151,11 +151,31 @@ func mainWindowLinks(for package: ManagedPackage?) -> [MainWindowPackageLink] {
     }
 }
 
+func mainWindowReleaseNotesURL(for package: ManagedPackage?) -> URL? {
+    guard let package, package.isOutdated else { return nil }
+    return [package.repo, package.homepage, package.docs]
+        .compactMap(mainWindowGitHubRepoReleaseNotesURL)
+        .first
+}
+
 private func mainWindowWebURL(_ string: String?) -> URL? {
     guard let string, let url = URL(string: string), let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme), url.host() != nil else {
         return nil
     }
     return url
+}
+
+private func mainWindowGitHubRepoReleaseNotesURL(_ string: String?) -> URL? {
+    guard let url = mainWindowWebURL(string), url.host()?.lowercased() == "github.com" else { return nil }
+    let parts = url.pathComponents.filter { $0 != "/" }
+    guard parts.count >= 2, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+    let repo = parts[1].hasSuffix(".git") ? String(parts[1].dropLast(4)) : parts[1]
+    components.scheme = "https"
+    components.host = "github.com"
+    components.path = "/" + parts[0] + "/" + repo + "/releases/latest"
+    components.query = nil
+    components.fragment = nil
+    return components.url
 }
 
 @MainActor
