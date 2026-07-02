@@ -162,11 +162,8 @@ struct MainWindowDossierView: View {
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(AVGlassPalette.primaryText)
                         .lineLimit(3)
-                    if model.isLoadingSelectedPackageMetadata && package.summary == nil {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Text(package.summary ?? "No package summary available.")
+                    if let summary = package.summary {
+                        Text(summary)
                             .font(.system(size: 14))
                             .foregroundStyle(AVGlassPalette.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -189,10 +186,6 @@ struct MainWindowDossierView: View {
                 .padding(.top, 32)
                 .padding(.bottom, 28)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                Text(model.isReloading ? "Loading packages..." : "No package selected")
-                    .foregroundStyle(AVGlassPalette.quietText)
-                    .frame(maxWidth: .infinity, minHeight: 300)
             }
         }
         .ignoresSafeArea(.container, edges: .top)
@@ -212,16 +205,9 @@ struct MainWindowLinksView: View {
             hairline
             if let url = selectedURL {
                 PackageWebView(url: url)
-            } else if model.isLoadingSelectedPackageMetadata {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                Text("No homepage")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AVGlassPalette.quietText)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+                Spacer(minLength: 0)
+            }
         }
         .ignoresSafeArea(.container, edges: .top)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint).ignoresSafeArea())
@@ -410,7 +396,9 @@ private struct LinkURLBar: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: "link")
-                Text(url?.absoluteString ?? "No URL").lineLimit(1).truncationMode(.middle)
+                if let url {
+                    Text(url.absoluteString).lineLimit(1).truncationMode(.middle)
+                }
                 Spacer(minLength: 0)
             }
             .font(.system(size: 12, weight: .medium))
