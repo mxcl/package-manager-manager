@@ -191,6 +191,7 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 
     let runner = FakeRunner(responses: [
         "/fake/brew leaves --installed-on-request": CommandResult(stdout: "create-dmg\n", stderr: "", status: 0),
+        "/fake/brew --prefix": CommandResult(stdout: "/fake/homebrew\n", stderr: "", status: 0),
         "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
         "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"""
         {
@@ -207,6 +208,7 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
         """#, stderr: "", status: 0),
         "/fake/brew list --versions --formula": CommandResult(stdout: "create-dmg 1.3.0\n", stderr: "", status: 0),
         "/fake/brew list --versions --cask": CommandResult(stdout: "", stderr: "", status: 0),
+        "/fake/brew list --formula create-dmg": CommandResult(stdout: "/fake/homebrew/Cellar/create-dmg/1.3.0/bin/create-dmg\n", stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"], environment: ["HOMEBREW_CACHE": temp.path])
 
@@ -220,6 +222,38 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages.first?.homepage == "https://github.com/create-dmg/create-dmg")
     #expect(packages.first?.repo == "https://github.com/create-dmg/create-dmg")
     #expect(packages.first?.category == "developer-tools")
+    #expect(packages.first?.installLocation == "/fake/homebrew/opt/create-dmg")
+    #expect(packages.first?.binaryPath == "/fake/homebrew/Cellar/create-dmg/1.3.0/bin/create-dmg")
+}
+
+@Test func homebrewScannerUsesCaskLocationMetadata() throws {
+    let runner = FakeRunner(responses: [
+        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "", stderr: "", status: 0),
+        "/fake/brew --prefix": CommandResult(stdout: "/fake/homebrew\n", stderr: "", status: 0),
+        "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"""
+        {
+          "formulae": [],
+          "casks": [{
+            "token": "codex",
+            "desc": "OpenAI's coding agent",
+            "homepage": "https://github.com/openai/codex",
+            "version": "0.142.5",
+            "installed": "0.142.5",
+            "artifacts": [{ "binary": ["codex-aarch64-apple-darwin", { "target": "codex" }], "target": "/fake/homebrew/bin/codex" }]
+          }]
+        }
+        """#, stderr: "", status: 0),
+        "/fake/brew list --versions --formula": CommandResult(stdout: "", stderr: "", status: 0),
+        "/fake/brew list --versions --cask": CommandResult(stdout: "codex 0.142.5\n", stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"])
+
+    let package = try #require(scanner.scanHomebrew(database: PackageDatabase()).first)
+
+    #expect(package.identifier == "brew:cask:codex")
+    #expect(package.installLocation == "/fake/homebrew/Caskroom/codex/0.142.5")
+    #expect(package.binaryPath == "/fake/homebrew/bin/codex")
 }
 
 @Test func homebrewScannerDoesNotMarkInstalledFormulaRevisionsOutdated() throws {
