@@ -213,6 +213,11 @@ import Testing
     #expect(mainWindowSelectedBrowserLink(in: links, selectedTab: .docs)?.tab == .repo)
 }
 
+@Test func browserDisplayURLDropsSchemeAndTrailingSlash() {
+    #expect(mainWindowBrowserDisplayURL(URL(string: "https://example.com/docs/")!) == "example.com/docs")
+    #expect(mainWindowBrowserDisplayURL(URL(string: "http://example.com")!) == "example.com")
+}
+
 @Test func outdatedGitHubPackageLoadsLatestReleaseNotes() {
     let url = mainWindowReleaseNotesURL(for: ManagedPackage(
         manager: .homebrew,

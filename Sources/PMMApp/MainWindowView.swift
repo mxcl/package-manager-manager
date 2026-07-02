@@ -139,14 +139,21 @@ struct MainWindowPackageListView: View {
                     if model.isReloading { ProgressView().controlSize(.small) }
                 }
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(AVGlassPalette.quietText)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 12)
                 .frame(height: 42)
-                .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.topBarTint).ignoresSafeArea(.container, edges: .top))
-                Rectangle()
-                    .fill(AVGlassPalette.sidebarBorder)
-                    .frame(height: 1)
-                    .padding(.trailing, 1)
+                .background {
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .mask(
+                            LinearGradient(
+                                colors: [.black, .black.opacity(0)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .ignoresSafeArea(.container, edges: .top)
+                }
             }
         }
         .overlay(alignment: .trailing) {
@@ -161,62 +168,65 @@ struct MainWindowDossierView: View {
     @ObservedObject var model: MainWindowModel
 
     var body: some View {
-        ScrollView {
-            if let package = model.selectedPackage {
-                VStack(alignment: .leading, spacing: 18) {
-                    Text(package.name)
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(AVGlassPalette.primaryText)
-                        .lineLimit(3)
-                    if let summary = package.summary {
-                        Text(summary)
-                            .font(.system(size: 14))
-                            .foregroundStyle(AVGlassPalette.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    PackageLinkStack(model: model)
-                        .padding(.trailing, -22)
-                    if package.isOutdated {
-                        PackageBadgeBanner(text: "Outdated \(mainWindowVersionText(package))", color: AVGlassPalette.orange)
-                        if PackageUpdater.supports(package) {
-                            Button { model.update(package) } label: {
-                                Label("Update", systemImage: "arrow.down.circle")
+        ZStack(alignment: .trailing) {
+            columnBorder
+            ScrollView {
+                if let package = model.selectedPackage {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text(package.name)
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(AVGlassPalette.primaryText)
+                            .lineLimit(3)
+                        if let summary = package.summary {
+                            Text(summary)
+                                .font(.system(size: 14))
+                                .foregroundStyle(AVGlassPalette.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        PackageLinkStack(model: model)
+                            .padding(.horizontal, -22)
+                        if package.isOutdated {
+                            PackageBadgeBanner(text: "Outdated \(mainWindowVersionText(package))", color: AVGlassPalette.orange)
+                            if PackageUpdater.supports(package) {
+                                Button { model.update(package) } label: {
+                                    Label("Update", systemImage: "arrow.down.circle")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.large)
+                                .tint(AVGlassPalette.orange)
+                                .disabled(isPackageActionRunning)
+                            }
+                        }
+                        InfoSection(title: "Package") {
+                            PermissionRow(label: "Manager", value: package.manager.title)
+                            PermissionRow(label: "Installed", value: package.installedVersion ?? "unknown")
+                            if !package.otherInstalledVersions.isEmpty {
+                                PermissionRow(label: "Other", value: package.otherInstalledVersions.joined(separator: ", "))
+                            }
+                            PermissionRow(label: "Latest", value: package.latestVersion ?? "unknown")
+                            PermissionRow(label: "Category", value: package.category ?? "uncategorized")
+                        }
+                        InfoSection(title: "Location") {
+                            PermissionRow(label: "Install Root", value: mainWindowHomeRelativePath(package.installLocation))
+                            PermissionRow(label: "Binary", value: mainWindowHomeRelativePath(package.binaryPath))
+                        }
+                        if package.installedVersion != nil {
+                            Button { model.uninstall(package) } label: {
+                                Label("Uninstall", systemImage: "trash")
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.large)
-                            .tint(AVGlassPalette.orange)
+                            .tint(.red)
                             .disabled(isPackageActionRunning)
                         }
                     }
-                    InfoSection(title: "Package") {
-                        PermissionRow(label: "Manager", value: package.manager.title)
-                        PermissionRow(label: "Installed", value: package.installedVersion ?? "unknown")
-                        if !package.otherInstalledVersions.isEmpty {
-                            PermissionRow(label: "Other", value: package.otherInstalledVersions.joined(separator: ", "))
-                        }
-                        PermissionRow(label: "Latest", value: package.latestVersion ?? "unknown")
-                        PermissionRow(label: "Category", value: package.category ?? "uncategorized")
-                    }
-                    InfoSection(title: "Location") {
-                        PermissionRow(label: "Install Root", value: mainWindowHomeRelativePath(package.installLocation))
-                        PermissionRow(label: "Binary", value: mainWindowHomeRelativePath(package.binaryPath))
-                    }
-                    if package.installedVersion != nil {
-                        Button { model.uninstall(package) } label: {
-                            Label("Uninstall", systemImage: "trash")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .tint(.red)
-                        .disabled(isPackageActionRunning)
-                    }
+                    .padding(.horizontal, 22)
+                    .padding(.top, 32)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, 22)
-                .padding(.top, 32)
-                .padding(.bottom, 28)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .ignoresSafeArea(.container, edges: .top)
@@ -299,6 +309,18 @@ func mainWindowSelectedBrowserLink(in links: [MainWindowBrowserLink], selectedTa
     return links.first
 }
 
+func mainWindowBrowserDisplayURL(_ url: URL) -> String {
+    var string = url.absoluteString
+    for prefix in ["https://", "http://"] where string.hasPrefix(prefix) {
+        string.removeFirst(prefix.count)
+        break
+    }
+    if string.count > 1, string.hasSuffix("/") {
+        string.removeLast()
+    }
+    return string
+}
+
 private func mainWindowVersionText(_ package: ManagedPackage, section: MainWindowSection? = nil) -> String {
     if section == .newUpdated, let pulseKind = package.pulseKind {
         return pulseKind
@@ -363,6 +385,7 @@ private struct PackageLinkStack: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -376,23 +399,23 @@ private struct PackageLinkRow: View {
         Button(action: action) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(link.title.uppercased())
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(0.7)
+                    .font(.system(size: 9, weight: .medium))
+                    .tracking(1)
                     .foregroundStyle(selected ? AVGlassPalette.primaryText : AVGlassPalette.quietText)
-                    .frame(width: 58, alignment: .leading)
-                Text(link.url.absoluteString)
+                    .fixedSize(horizontal: true, vertical: false)
+                Text(mainWindowBrowserDisplayURL(link.url))
                     .font(.system(size: 12))
                     .foregroundStyle(selected ? AVGlassPalette.secondaryText : AVGlassPalette.quietText)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 10)
+            .padding(.leading, 22)
             .padding(.trailing, 12)
             .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
             .background {
                 if selected {
-                    Rectangle().fill(AVGlassPalette.packageSelectedFill)
+                    Rectangle().fill(AVGlassPalette.linkSelectedFill)
                 }
             }
             .contentShape(Rectangle())
@@ -632,6 +655,7 @@ private enum AVGlassPalette {
     static let sidebarBorder = Color.white.opacity(0.14)
     static let sidebarSelectedFill = Color(red: 0.00, green: 0.38, blue: 0.86)
     static let packageSelectedFill = Color.white.opacity(0.08)
+    static let linkSelectedFill = Color(red: 0.14, green: 0.16, blue: 0.16)
     static let controlFill = Color.white.opacity(0.07)
     static let searchFill = Color.white.opacity(0.11)
     static let controlBorder = Color.white.opacity(0.18)
