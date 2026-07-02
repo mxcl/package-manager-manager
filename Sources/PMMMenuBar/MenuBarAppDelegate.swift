@@ -82,7 +82,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
 
         menu.addItem(.separator())
-        let quitItem = menu.addItem(withTitle: "Quit Menu Bar App", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quitItem = menu.addItem(withTitle: "Quit PM² Menu Bar Helper", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quitItem.target = NSApp
 
         statusItem.menu = menu
