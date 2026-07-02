@@ -188,8 +188,6 @@ struct MainWindowDossierView: View {
                                 .foregroundStyle(AVGlassPalette.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        PackageLinkStack(model: model)
-                            .padding(.horizontal, -22)
                         if package.isOutdated {
                             PackageBadgeBanner(text: "Outdated \(mainWindowVersionText(package))", color: AVGlassPalette.orange)
                             if PackageUpdater.supports(package) {
@@ -225,6 +223,12 @@ struct MainWindowDossierView: View {
                             .controlSize(.large)
                             .tint(.red)
                             .disabled(isPackageActionRunning)
+                        }
+                        if !mainWindowBrowserLinks(for: package).isEmpty {
+                            InfoSection(title: "External URLs") {
+                                PackageLinkStack(model: model)
+                                    .padding(.horizontal, -22)
+                            }
                         }
                     }
                     .padding(.horizontal, 22)
