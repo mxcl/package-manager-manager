@@ -170,6 +170,16 @@ struct MainWindowDossierView: View {
                     }
                     if package.isOutdated {
                         PackageBadgeBanner(text: "Outdated \(mainWindowVersionText(package))", color: AVGlassPalette.orange)
+                        if PackageUpdater.supports(package) {
+                            Button { model.update(package) } label: {
+                                Label("Update", systemImage: "arrow.down.circle")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                            .tint(AVGlassPalette.orange)
+                            .disabled(isPackageActionRunning)
+                        }
                     }
                     InfoSection(title: "Package") {
                         PermissionRow(label: "Manager", value: package.manager.title)
@@ -192,7 +202,7 @@ struct MainWindowDossierView: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
                         .tint(.red)
-                        .disabled(model.uninstallingPackageName != nil)
+                        .disabled(isPackageActionRunning)
                     }
                 }
                 .padding(.horizontal, 22)
@@ -204,14 +214,26 @@ struct MainWindowDossierView: View {
         .ignoresSafeArea(.container, edges: .top)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint).ignoresSafeArea())
         .sheet(isPresented: uninstallModalBinding) {
-            UninstallProgressView(packageName: model.uninstallingPackageName ?? "package")
+            PackageProgressView(title: "Uninstalling \(model.uninstallingPackageName ?? "package")")
+                .interactiveDismissDisabled(true)
+        }
+        .sheet(isPresented: updateModalBinding) {
+            PackageProgressView(title: "Updating \(model.updatingPackageName ?? "package")")
                 .interactiveDismissDisabled(true)
         }
         .preferredColorScheme(.dark)
     }
 
+    private var isPackageActionRunning: Bool {
+        model.uninstallingPackageName != nil || model.updatingPackageName != nil
+    }
+
     private var uninstallModalBinding: Binding<Bool> {
         Binding(get: { model.uninstallingPackageName != nil }, set: { _ in })
+    }
+
+    private var updateModalBinding: Binding<Bool> {
+        Binding(get: { model.updatingPackageName != nil }, set: { _ in })
     }
 }
 
@@ -413,14 +435,14 @@ private struct PermissionRow: View {
     }
 }
 
-private struct UninstallProgressView: View {
-    let packageName: String
+private struct PackageProgressView: View {
+    let title: String
 
     var body: some View {
         VStack(spacing: 14) {
             ProgressView()
                 .controlSize(.large)
-            Text("Uninstalling \(packageName)")
+            Text(title)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AVGlassPalette.primaryText)
                 .lineLimit(2)

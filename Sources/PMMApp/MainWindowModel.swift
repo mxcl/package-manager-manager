@@ -130,6 +130,7 @@ final class MainWindowModel: ObservableObject {
     @Published private(set) var errors: [String] = []
     @Published private(set) var isLoadingSelectedPackageMetadata = false
     @Published private(set) var uninstallingPackageName: String?
+    @Published private(set) var updatingPackageName: String?
     @Published var searchText = ""
 
     nonisolated private static let newUpdatedLastClickedAtDefaultsKey = "MainWindowModel.newUpdatedLastClickedAt"
@@ -142,6 +143,7 @@ final class MainWindowModel: ObservableObject {
     private let cratesIOClient: CratesIOClient
     private let npmRegistryClient: NPMRegistryClient
     private let packageUninstaller: PackageUninstaller
+    private let packageUpdater: PackageUpdater
     private var packageMetadataCache: [String: PackageMetadata] = [:]
     private var selectedMetadataTask: Task<Void, Never>?
 
@@ -149,12 +151,14 @@ final class MainWindowModel: ObservableObject {
         userDefaults: UserDefaults = .standard,
         cratesIOClient: CratesIOClient = CratesIOClient(),
         npmRegistryClient: NPMRegistryClient = NPMRegistryClient(),
-        packageUninstaller: PackageUninstaller = PackageUninstaller()
+        packageUninstaller: PackageUninstaller = PackageUninstaller(),
+        packageUpdater: PackageUpdater = PackageUpdater()
     ) {
         self.userDefaults = userDefaults
         self.cratesIOClient = cratesIOClient
         self.npmRegistryClient = npmRegistryClient
         self.packageUninstaller = packageUninstaller
+        self.packageUpdater = packageUpdater
         newUpdatedLastClickedAt = userDefaults.object(forKey: Self.newUpdatedLastClickedAtDefaultsKey) as? Date
     }
 
@@ -233,7 +237,7 @@ final class MainWindowModel: ObservableObject {
     }
 
     func uninstall(_ package: ManagedPackage) {
-        guard package.installedVersion != nil, uninstallingPackageName == nil else { return }
+        guard package.installedVersion != nil, uninstallingPackageName == nil, updatingPackageName == nil else { return }
         uninstallingPackageName = package.name
         Task {
             let result = await Task.detached { [packageUninstaller] in
@@ -243,6 +247,23 @@ final class MainWindowModel: ObservableObject {
             switch result {
             case .success:
                 selectedPackage = nil
+                reload()
+            case .failure(let error):
+                errors.append(error.localizedDescription)
+            }
+        }
+    }
+
+    func update(_ package: ManagedPackage) {
+        guard PackageUpdater.supports(package), uninstallingPackageName == nil, updatingPackageName == nil else { return }
+        updatingPackageName = package.name
+        Task {
+            let result = await Task.detached { [packageUpdater] in
+                Result { try packageUpdater.update(package) }
+            }.value
+            updatingPackageName = nil
+            switch result {
+            case .success:
                 reload()
             case .failure(let error):
                 errors.append(error.localizedDescription)
