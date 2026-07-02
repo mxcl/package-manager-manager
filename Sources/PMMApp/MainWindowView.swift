@@ -184,6 +184,7 @@ struct MainWindowDossierView: View {
                 .padding(.horizontal, 22)
                 .padding(.top, 32)
                 .padding(.bottom, 28)
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 Text(model.isReloading ? "Loading packages..." : "No package selected")
                     .foregroundStyle(AVGlassPalette.quietText)
