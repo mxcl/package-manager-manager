@@ -10,6 +10,40 @@ private struct FakeRunner: CommandRunning {
     }
 }
 
+@Test func cargoInstallScannerParsesInstalledCratesAndBinaryPath() throws {
+    let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let bin = home.appendingPathComponent(".cargo/bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+    FileManager.default.createFile(atPath: bin.appendingPathComponent("rg").path, contents: Data())
+    defer { try? FileManager.default.removeItem(at: home) }
+
+    let runner = FakeRunner(responses: [
+        "/fake/cargo install --list --color never": CommandResult(stdout: """
+        ripgrep v14.1.1:
+            rg
+        cargo-edit v0.13.0:
+            cargo-add
+            cargo-rm
+        """, stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, homeDirectory: home, toolPaths: ["cargo": "/fake/cargo"], environment: [:])
+
+    let packages = try scanner.scanCargoInstall(database: PackageDatabase())
+
+    #expect(packages.first == ManagedPackage(
+        manager: .cargoInstall,
+        name: "ripgrep",
+        installedVersion: "14.1.1",
+        latestVersion: nil,
+        summary: "cargo-installed Rust binary",
+        category: "developer-tools",
+        installLocation: home.appendingPathComponent(".cargo").path,
+        binaryPath: bin.appendingPathComponent("rg").path
+    ))
+    #expect(packages.last?.name == "cargo-edit")
+    #expect(packages.last?.binaryPath == nil)
+}
+
 @Test func npmScannerUsesGlobalRootPrefixOutdatedAndPackageBinNames() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     let root = temp.appendingPathComponent("lib/node_modules", isDirectory: true)

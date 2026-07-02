@@ -6,6 +6,7 @@ enum MainWindowSection: String, CaseIterable, Identifiable, Sendable {
     case installed
     case outdated
     case newUpdated
+    case cargoInstall
     case homebrew
     case npm
     case npx
@@ -29,7 +30,7 @@ enum MainWindowSection: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 
     static let librarySections: [MainWindowSection] = [.installed, .outdated]
-    static let managerSections: [MainWindowSection] = [.homebrew, .npm, .npx, .uv, .uvx]
+    static let managerSections: [MainWindowSection] = [.cargoInstall, .homebrew, .npm, .npx, .uv, .uvx]
     static let categorySections: [MainWindowSection] = [
         .developerTools, .cloudInfrastructure, .networking, .system, .security,
         .data, .languageRuntime, .media, .productivity, .science, .games, .toys, .other
@@ -42,6 +43,7 @@ enum MainWindowSection: String, CaseIterable, Identifiable, Sendable {
         case .installed: "Installed"
         case .outdated: "Outdated"
         case .newUpdated: "New / Updated"
+        case .cargoInstall: "cargo install"
         case .homebrew: "Homebrew"
         case .npm: "npm"
         case .npx: "npx"
@@ -69,6 +71,7 @@ enum MainWindowSection: String, CaseIterable, Identifiable, Sendable {
         case .installed: "shippingbox"
         case .outdated: "clock"
         case .newUpdated: "sparkles"
+        case .cargoInstall: "hammer"
         case .homebrew: "mug"
         case .npm: "shippingbox.circle"
         case .npx: "terminal"
@@ -242,6 +245,11 @@ final class MainWindowModel: ObservableObject {
         await withTaskGroup(of: PackageScanBatch.self) { group in
             group.addTask {
                 let scanner = PackageScanner()
+                do { return PackageScanBatch(managers: [.cargoInstall], packages: try scanner.scanCargoInstall(database: database)) }
+                catch { return PackageScanBatch(managers: [.cargoInstall], errors: [error.localizedDescription]) }
+            }
+            group.addTask {
+                let scanner = PackageScanner()
                 do { return PackageScanBatch(managers: [.homebrew], packages: try scanner.scanHomebrew(database: database)) }
                 catch { return PackageScanBatch(managers: [.homebrew], errors: [error.localizedDescription]) }
             }
@@ -300,6 +308,7 @@ private struct PackageScanBatch: Sendable {
     var sections: Set<MainWindowSection> {
         Set(managers.map {
             switch $0 {
+            case .cargoInstall: .cargoInstall
             case .homebrew: .homebrew
             case .npm: .npm
             case .npx: .npx
@@ -326,6 +335,7 @@ private struct PackageIndex: Sendable {
             .installed: packages,
             .outdated: packages.filter(\.isOutdated),
             .newUpdated: newUpdated,
+            .cargoInstall: packages.filter { $0.manager == .cargoInstall },
             .homebrew: packages.filter { $0.manager == .homebrew },
             .npm: packages.filter { $0.manager == .npm },
             .npx: packages.filter { $0.manager == .npx },

@@ -143,7 +143,7 @@ struct MainWindowView: View {
         switch section {
         case .outdated, .newUpdated: AVGlassPalette.orange
         case .security: Color(red: 0.16, green: 0.62, blue: 0.95)
-        case .homebrew, .npm, .npx, .uv, .uvx, .developerTools: Color(red: 0.00, green: 0.48, blue: 1.00)
+        case .cargoInstall, .homebrew, .npm, .npx, .uv, .uvx, .developerTools: Color(red: 0.00, green: 0.48, blue: 1.00)
         case .productivity, .science: Color(red: 0.35, green: 0.30, blue: 0.95)
         case .media, .games, .toys: Color(red: 0.95, green: 0.22, blue: 0.36)
         default: Color(red: 0.46, green: 0.49, blue: 0.53)

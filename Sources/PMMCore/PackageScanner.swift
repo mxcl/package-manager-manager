@@ -5,23 +5,27 @@ public struct PackageScanner {
     private let fileManager: FileManager
     private let homeDirectory: URL
     private let toolPaths: [String: String]
+    private let environment: [String: String]
 
     public init(
         runner: CommandRunning = SystemCommandRunner(),
         fileManager: FileManager = .default,
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
-        toolPaths: [String: String] = [:]
+        toolPaths: [String: String] = [:],
+        environment: [String: String] = ProcessInfo.processInfo.environment
     ) {
         self.runner = runner
         self.fileManager = fileManager
         self.homeDirectory = homeDirectory
         self.toolPaths = toolPaths
+        self.environment = environment
     }
 
     public func inventory(database: PackageDatabase) async -> PackageInventory {
         var errors: [String] = []
         var packages: [ManagedPackage] = []
 
+        do { packages += try scanCargoInstall(database: database) } catch { errors.append(error.localizedDescription) }
         do { packages += try scanHomebrew(database: database) } catch { errors.append(error.localizedDescription) }
         do { packages += try scanNPM(database: database) } catch { errors.append(error.localizedDescription) }
         do { packages += try scanNPX(database: database) } catch { errors.append(error.localizedDescription) }
@@ -35,6 +39,13 @@ public struct PackageScanner {
             },
             errors: errors
         )
+    }
+
+    public func scanCargoInstall(database: PackageDatabase) throws -> [ManagedPackage] {
+        guard let cargo = executable(named: "cargo", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]) else { return [] }
+        let result = try runner.run(cargo, ["install", "--list", "--color", "never"])
+        guard result.status == 0 else { return [] }
+        return parseCargoInstallList(result.stdout)
     }
 
     public func scanHomebrew(database: PackageDatabase) throws -> [ManagedPackage] {
@@ -137,6 +148,57 @@ public struct PackageScanner {
                 binaryPath: uvxBinaryPath(in: entry, preferredName: name)
             )
         }
+    }
+
+    private func parseCargoInstallList(_ output: String) -> [ManagedPackage] {
+        var packages: [ManagedPackage] = []
+        var current: (name: String, version: String, bins: [String])?
+
+        func flush() {
+            guard let crate = current else { return }
+            packages.append(ManagedPackage(
+                manager: .cargoInstall,
+                name: crate.name,
+                installedVersion: crate.version,
+                latestVersion: nil,
+                summary: "cargo-installed Rust binary",
+                category: "developer-tools",
+                installLocation: cargoHome.path,
+                binaryPath: crate.bins.first.flatMap(cargoBinaryPath)
+            ))
+        }
+
+        for line in output.split(whereSeparator: \.isNewline).map(String.init) {
+            if let header = cargoInstallHeader(line) {
+                flush()
+                current = (header.name, header.version, [])
+            } else if line.first?.isWhitespace == true {
+                let bin = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !bin.isEmpty { current?.bins.append(bin) }
+            }
+        }
+        flush()
+        return packages
+    }
+
+    private func cargoInstallHeader(_ line: String) -> (name: String, version: String)? {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasSuffix(":") else { return nil }
+        let parts = trimmed.dropLast().split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        guard parts.count >= 2, let version = parts.last, version.hasPrefix("v") else { return nil }
+        return (parts.dropLast().joined(separator: " "), String(version.dropFirst()))
+    }
+
+    private var cargoHome: URL {
+        if let value = environment["CARGO_HOME"], !value.isEmpty {
+            return URL(fileURLWithPath: value, isDirectory: true)
+        }
+        return homeDirectory.appendingPathComponent(".cargo", isDirectory: true)
+    }
+
+    private func cargoBinaryPath(_ name: String) -> String? {
+        let path = cargoHome.appendingPathComponent("bin", isDirectory: true).appendingPathComponent(name).path
+        return fileManager.fileExists(atPath: path) ? path : nil
     }
 
     private func homebrewList(
