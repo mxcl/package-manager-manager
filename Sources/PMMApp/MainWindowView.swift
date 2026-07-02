@@ -150,9 +150,7 @@ struct MainWindowPackageListView: View {
             }
         }
         .overlay(alignment: .trailing) {
-            Rectangle()
-                .fill(AVGlassPalette.sidebarBorder)
-                .frame(width: 1)
+            columnBorder
         }
         .ignoresSafeArea(.container, edges: .top)
         .preferredColorScheme(.dark)
@@ -220,11 +218,10 @@ struct MainWindowDossierView: View {
             }
         }
         .ignoresSafeArea(.container, edges: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint).ignoresSafeArea())
         .overlay(alignment: .trailing) {
-            Rectangle()
-                .fill(AVGlassPalette.sidebarBorder)
-                .frame(width: 1)
+            columnBorder
         }
         .sheet(isPresented: uninstallModalBinding) {
             PackageProgressView(title: "Uninstalling \(model.uninstallingPackageName ?? "package")")
@@ -333,6 +330,12 @@ private func mainWindowHomeRelativePath(_ path: String?) -> String {
 }
 
 private var hairline: some View { Rectangle().fill(AVGlassPalette.hairline).frame(height: 1) }
+private var columnBorder: some View {
+    Rectangle()
+        .fill(AVGlassPalette.sidebarBorder)
+        .frame(width: 1)
+        .padding(.vertical, 0.5)
+}
 
 private extension MainWindowSidebarView {
     var searchField: some View {
