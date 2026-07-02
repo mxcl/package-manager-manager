@@ -147,7 +147,6 @@ struct MainWindowPackageListView: View {
             }
         }
         .ignoresSafeArea(.container, edges: .top)
-        .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint).ignoresSafeArea())
         .preferredColorScheme(.dark)
     }
 }
