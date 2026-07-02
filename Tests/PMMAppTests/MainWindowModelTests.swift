@@ -26,9 +26,11 @@ import Testing
         index: PackageIndex(packages: [package], catalogPackages: [], newUpdatedLastClickedAt: nil)
     )
     model.select(package)
+    model.selectedLinkTab = .docs
     model.selectSection(.outdated)
 
     #expect(model.selectedPackage == nil)
+    #expect(model.selectedLinkTab == nil)
 }
 
 @MainActor
@@ -48,6 +50,23 @@ import Testing
     #expect(model.selectedPackage?.name == "gamma")
     #expect(model.selectAdjacentPackage(offset: -1))
     #expect(model.selectedPackage?.name == "beta")
+}
+
+@MainActor
+@Test func packageSelectionResetsSelectedBrowserTab() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let first = package(.homebrew, "alpha")
+    let second = package(.homebrew, "beta")
+
+    model.apply(
+        inventory: PackageInventory(packages: [first, second]),
+        index: PackageIndex(packages: [first, second], catalogPackages: [], newUpdatedLastClickedAt: nil)
+    )
+    model.select(first)
+    model.selectedLinkTab = .docs
+    model.select(second)
+
+    #expect(model.selectedLinkTab == nil)
 }
 
 @Test func installedSectionSortsPackagesAlphabetically() {
@@ -167,6 +186,31 @@ import Testing
     ))
 
     #expect(links.map(\.tab) == [.repo, .docs])
+}
+
+@Test func selectedBrowserLinkUsesFirstLinkWhenNoTabIsSelected() {
+    let links = mainWindowBrowserLinks(for: ManagedPackage(
+        manager: .homebrew,
+        name: "pkg",
+        installedVersion: nil,
+        latestVersion: nil,
+        docs: "https://example.com/docs",
+        repo: "https://example.com/repo"
+    ))
+
+    #expect(mainWindowSelectedBrowserLink(in: links, selectedTab: nil)?.tab == .repo)
+}
+
+@Test func selectedBrowserLinkFallsBackToFirstAvailableLink() {
+    let links = mainWindowBrowserLinks(for: ManagedPackage(
+        manager: .homebrew,
+        name: "pkg",
+        installedVersion: nil,
+        latestVersion: nil,
+        repo: "https://example.com/repo"
+    ))
+
+    #expect(mainWindowSelectedBrowserLink(in: links, selectedTab: .docs)?.tab == .repo)
 }
 
 @Test func outdatedGitHubPackageLoadsLatestReleaseNotes() {

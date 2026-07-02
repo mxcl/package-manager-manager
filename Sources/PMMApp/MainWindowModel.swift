@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import PMMCore
 
@@ -190,6 +189,7 @@ final class MainWindowModel: ObservableObject {
     @Published var selectedSection: MainWindowSection = .installed
     @Published private(set) var packages: [ManagedPackage] = []
     @Published private(set) var selectedPackage: ManagedPackage?
+    @Published var selectedLinkTab: MainWindowLinkTab?
     @Published private(set) var isReloading = false
     @Published private(set) var loadingManagers = Set(PackageManagerKind.allCases)
     @Published private(set) var errors: [String] = []
@@ -276,11 +276,13 @@ final class MainWindowModel: ObservableObject {
         }
         selectedSection = section
         selectedPackage = nil
+        selectedLinkTab = nil
         loadSelectedPackageMetadata()
     }
 
     func select(_ package: ManagedPackage) {
         selectedPackage = package.applying(metadata: cachedMetadata(for: package))
+        selectedLinkTab = nil
         loadSelectedPackageMetadata()
     }
 
@@ -309,11 +311,6 @@ final class MainWindowModel: ObservableObject {
         !section.packageManagers.isDisjoint(with: loadingManagers)
     }
 
-    func open(url: URL?) {
-        guard let url else { return }
-        NSWorkspace.shared.open(url)
-    }
-
     func uninstall(_ package: ManagedPackage) {
         guard package.installedVersion != nil, uninstallingPackageName == nil, updatingPackageName == nil else { return }
         uninstallingPackageName = package.name
@@ -325,6 +322,7 @@ final class MainWindowModel: ObservableObject {
             switch result {
             case .success:
                 selectedPackage = nil
+                selectedLinkTab = nil
                 reload()
             case .failure(let error):
                 errors.append(error.localizedDescription)

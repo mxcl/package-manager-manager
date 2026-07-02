@@ -32,13 +32,6 @@ final class MainWindowController: NSSplitViewController {
         model.reload()
     }
 
-    func makeToolbar() -> NSToolbar {
-        let toolbar = NSToolbar(identifier: "PMMToolbar")
-        toolbar.displayMode = .iconOnly
-        toolbar.delegate = self
-        return toolbar
-    }
-
     @objc func refresh(_ sender: Any?) {
         model.reload()
     }
@@ -84,28 +77,4 @@ private final class NoDividerSplitView: NSSplitView {
     override var dividerThickness: CGFloat { 0 }
 
     override func drawDivider(in rect: NSRect) {}
-}
-
-extension MainWindowController: NSToolbarDelegate {
-    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.refresh, .flexibleSpace]
-    }
-
-    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.flexibleSpace, .refresh]
-    }
-
-    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
-        guard itemIdentifier == .refresh else { return nil }
-        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-        item.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Refresh")
-        item.label = "Refresh"
-        item.target = self
-        item.action = #selector(refresh(_:))
-        return item
-    }
-}
-
-private extension NSToolbarItem.Identifier {
-    static let refresh = NSToolbarItem.Identifier("PMMRefreshToolbarItem")
 }

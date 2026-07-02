@@ -174,6 +174,8 @@ struct MainWindowDossierView: View {
                             .foregroundStyle(AVGlassPalette.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    PackageLinkStack(model: model)
+                        .padding(.trailing, -22)
                     if package.isOutdated {
                         PackageBadgeBanner(text: "Outdated \(mainWindowVersionText(package))", color: AVGlassPalette.orange)
                         if PackageUpdater.supports(package) {
@@ -220,9 +222,6 @@ struct MainWindowDossierView: View {
         .ignoresSafeArea(.container, edges: .top)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint).ignoresSafeArea())
-        .overlay(alignment: .trailing) {
-            columnBorder
-        }
         .sheet(isPresented: uninstallModalBinding) {
             PackageProgressView(title: "Uninstalling \(model.uninstallingPackageName ?? "package")")
                 .interactiveDismissDisabled(true)
@@ -249,31 +248,12 @@ struct MainWindowDossierView: View {
 
 struct MainWindowLinksView: View {
     @ObservedObject var model: MainWindowModel
-    @State private var selectedTab: MainWindowLinkTab?
 
     var body: some View {
-        let links = mainWindowLinks(for: model.selectedPackage)
-        let releaseNotesURL = mainWindowReleaseNotesURL(for: model.selectedPackage)
-        let selectedLink = selectedLink(in: links)
-        let selectedURL = releaseNotesURL ?? selectedLink?.url
+        let links = mainWindowBrowserLinks(for: model.selectedPackage)
+        let selectedURL = selectedLink(in: links)?.url
 
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                if links.count > 1, releaseNotesURL == nil {
-                    Picker("Page", selection: selectedTabBinding(in: links)) {
-                        ForEach(links) { link in
-                            Text(link.tab.title).tag(Optional(link.tab))
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 170)
-                    .labelsHidden()
-                }
-                LinkURLBar(url: selectedURL) { model.open(url: selectedURL) }
-            }
-                .padding(.horizontal, 12)
-                .frame(height: 42)
-            hairline
+        Group {
             if let url = selectedURL {
                 PackageWebView(url: url)
             } else {
@@ -283,26 +263,40 @@ struct MainWindowLinksView: View {
         .ignoresSafeArea(.container, edges: .top)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint).ignoresSafeArea())
         .onChange(of: links) { _, links in
-            if let selectedTab, !links.contains(where: { $0.tab == selectedTab }) {
-                self.selectedTab = nil
+            if let selectedTab = model.selectedLinkTab, !links.contains(where: { $0.tab == selectedTab }) {
+                model.selectedLinkTab = nil
             }
         }
         .preferredColorScheme(.dark)
     }
 
-    private func selectedLink(in links: [MainWindowPackageLink]) -> MainWindowPackageLink? {
-        if let selectedTab {
-            return links.first { $0.tab == selectedTab }
-        }
-        return links.first
+    private func selectedLink(in links: [MainWindowBrowserLink]) -> MainWindowBrowserLink? {
+        mainWindowSelectedBrowserLink(in: links, selectedTab: model.selectedLinkTab)
     }
+}
 
-    private func selectedTabBinding(in links: [MainWindowPackageLink]) -> Binding<MainWindowLinkTab?> {
-        Binding(
-            get: { selectedLink(in: links)?.tab },
-            set: { selectedTab = $0 }
-        )
+struct MainWindowBrowserLink: Equatable, Identifiable {
+    let title: String
+    let tab: MainWindowLinkTab?
+    let url: URL
+
+    var id: String { tab?.rawValue ?? url.absoluteString }
+}
+
+func mainWindowBrowserLinks(for package: ManagedPackage?) -> [MainWindowBrowserLink] {
+    if let releaseNotesURL = mainWindowReleaseNotesURL(for: package) {
+        return [MainWindowBrowserLink(title: "Releases", tab: nil, url: releaseNotesURL)]
     }
+    return mainWindowLinks(for: package).map {
+        MainWindowBrowserLink(title: $0.tab.title, tab: $0.tab, url: $0.url)
+    }
+}
+
+func mainWindowSelectedBrowserLink(in links: [MainWindowBrowserLink], selectedTab: MainWindowLinkTab?) -> MainWindowBrowserLink? {
+    if let selectedTab {
+        return links.first { $0.tab == selectedTab } ?? links.first
+    }
+    return links.first
 }
 
 private func mainWindowVersionText(_ package: ManagedPackage, section: MainWindowSection? = nil) -> String {
@@ -329,7 +323,6 @@ private func mainWindowHomeRelativePath(_ path: String?) -> String {
     return path
 }
 
-private var hairline: some View { Rectangle().fill(AVGlassPalette.hairline).frame(height: 1) }
 private var columnBorder: some View {
     Rectangle()
         .fill(AVGlassPalette.sidebarBorder)
@@ -349,6 +342,62 @@ private extension MainWindowSidebarView {
         .padding(.horizontal, 12)
         .frame(height: 34)
         .background(AVGlassPalette.searchFill, in: Capsule(style: .continuous))
+    }
+}
+
+private struct PackageLinkStack: View {
+    @ObservedObject var model: MainWindowModel
+
+    var body: some View {
+        let links = mainWindowBrowserLinks(for: model.selectedPackage)
+        let selected = mainWindowSelectedBrowserLink(in: links, selectedTab: model.selectedLinkTab)
+
+        if !links.isEmpty {
+            VStack(spacing: 2) {
+                ForEach(links) { link in
+                    PackageLinkRow(
+                        link: link,
+                        selected: link.id == selected?.id
+                    ) {
+                        model.selectedLinkTab = link.tab
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct PackageLinkRow: View {
+    let link: MainWindowBrowserLink
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(link.title.uppercased())
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(0.7)
+                    .foregroundStyle(selected ? AVGlassPalette.primaryText : AVGlassPalette.quietText)
+                    .frame(width: 58, alignment: .leading)
+                Text(link.url.absoluteString)
+                    .font(.system(size: 12))
+                    .foregroundStyle(selected ? AVGlassPalette.secondaryText : AVGlassPalette.quietText)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, 12)
+            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .background {
+                if selected {
+                    Rectangle().fill(AVGlassPalette.packageSelectedFill)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -501,26 +550,6 @@ private struct PackageProgressView: View {
         .frame(width: 260)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: AVGlassPalette.windowTint))
         .preferredColorScheme(.dark)
-    }
-}
-
-private struct LinkURLBar: View {
-    let url: URL?
-    let action: () -> Void
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: "link")
-                if let url {
-                    Text(url.absoluteString).lineLimit(1).truncationMode(.middle)
-                }
-                Spacer(minLength: 0)
-            }
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(AVGlassPalette.secondaryText)
-        }
-        .buttonStyle(.plain)
-        .disabled(url == nil)
     }
 }
 
