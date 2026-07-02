@@ -17,6 +17,8 @@ final class MainWindowController: NSHostingController<MainWindowView> {
         super.viewDidAppear()
         model.reload()
         installToolbarIfNeeded()
+        positionTrafficLights()
+        DispatchQueue.main.async { [weak self] in self?.positionTrafficLights() }
     }
 
     private func installToolbarIfNeeded() {
@@ -25,6 +27,23 @@ final class MainWindowController: NSHostingController<MainWindowView> {
         toolbar.displayMode = .iconOnly
         toolbar.delegate = self
         view.window?.toolbar = toolbar
+    }
+
+    private func positionTrafficLights() {
+        guard
+            let window = view.window,
+            let close = window.standardWindowButton(.closeButton),
+            let miniaturize = window.standardWindowButton(.miniaturizeButton),
+            let zoom = window.standardWindowButton(.zoomButton),
+            let superview = close.superview
+        else { return }
+
+        let topInset: CGFloat = 24
+        let leftInset: CGFloat = 26
+        let y = max(superview.bounds.height - close.frame.height - topInset, 0)
+        close.setFrameOrigin(NSPoint(x: leftInset, y: y))
+        miniaturize.setFrameOrigin(NSPoint(x: leftInset + 20, y: y))
+        zoom.setFrameOrigin(NSPoint(x: leftInset + 40, y: y))
     }
 
     @objc private func refresh(_ sender: Any?) {
