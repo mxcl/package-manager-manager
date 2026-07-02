@@ -28,14 +28,15 @@ struct MainWindowView: View {
             let sidebarWidth = min(290, max(270, width * 0.20))
             let packageWidth = min(390, max(330, width * 0.30))
             let dossierWidth = min(360, max(310, width * 0.25))
-            HStack(spacing: 0) {
-                sidebar.frame(width: sidebarWidth)
-                packageList.frame(width: packageWidth)
-                verticalHairline
-                dossierPanel.frame(width: dossierWidth)
-                verticalHairline
-                linksPanel.frame(width: max(width - sidebarWidth - packageWidth - dossierWidth - 2, 300))
+            HStack(alignment: .top, spacing: 0) {
+                sidebar.frame(width: sidebarWidth).frame(maxHeight: .infinity)
+                packageList.frame(width: packageWidth).frame(maxHeight: .infinity, alignment: .top)
+                verticalHairline.frame(maxHeight: .infinity)
+                dossierPanel.frame(width: dossierWidth).frame(maxHeight: .infinity, alignment: .top)
+                verticalHairline.frame(maxHeight: .infinity)
+                linksPanel.frame(width: max(width - sidebarWidth - packageWidth - dossierWidth - 2, 300)).frame(maxHeight: .infinity)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .ignoresSafeArea(.container, edges: .top)
     }
