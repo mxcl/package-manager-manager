@@ -262,12 +262,13 @@ struct MainWindowBrowserLink: Equatable, Identifiable {
 }
 
 func mainWindowBrowserLinks(for package: ManagedPackage?) -> [MainWindowBrowserLink] {
-    if let releaseNotesURL = mainWindowReleaseNotesURL(for: package) {
-        return [MainWindowBrowserLink(title: "Releases", tab: nil, url: releaseNotesURL)]
-    }
-    return mainWindowLinks(for: package).map {
+    let links = mainWindowLinks(for: package).map {
         MainWindowBrowserLink(title: $0.tab.title, tab: $0.tab, url: $0.url)
     }
+    if let releaseNotesURL = mainWindowReleaseNotesURL(for: package) {
+        return [MainWindowBrowserLink(title: "Releases", tab: nil, url: releaseNotesURL)] + links
+    }
+    return links
 }
 
 func mainWindowSelectedBrowserLink(in links: [MainWindowBrowserLink], selectedTab: MainWindowLinkTab?) -> MainWindowBrowserLink? {
@@ -667,4 +668,3 @@ private enum AVGlassPalette {
     // We need MainWindowModel and MainWindowSection to construct the view.
     // Please provide these types or accessible fixtures/mocks to proceed.
 }
-
