@@ -54,5 +54,6 @@ struct MainWindowRootView: View {
             MainWindowLinksView(model: model)
                 .frame(minWidth: 350, maxWidth: .infinity)
         }
+        .ignoresSafeArea(.container, edges: .top)
     }
 }
