@@ -33,21 +33,6 @@ struct MainWindowSidebarView: View {
         }
         .scrollIndicators(.hidden)
         .ignoresSafeArea(.container, edges: .top)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(AVGlassPalette.sidebarTint)
-                }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AVGlassPalette.sidebarBorder)
-        }
-        .padding(.leading, 10)
-        .padding(.vertical, 10)
         .preferredColorScheme(.dark)
     }
 
