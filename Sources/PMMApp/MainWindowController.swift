@@ -19,9 +19,7 @@ final class MainWindowController: NSSplitViewController {
         splitView.isVertical = true
 
         addSplitViewItem(sidebarItem())
-        addSplitViewItem(contentItem(MainWindowPackageListView(model: model), width: 252, minimumWidth: 252, maximumWidth: 252))
-        addSplitViewItem(contentItem(MainWindowDossierView(model: model), width: 252, minimumWidth: 252, maximumWidth: 252))
-        addSplitViewItem(contentItem(MainWindowLinksView(model: model), width: 624, minimumWidth: 350))
+        addSplitViewItem(contentItem(MainWindowContentColumnsView(model: model), width: 1128, minimumWidth: 854))
     }
 
     override func viewDidAppear() {
@@ -71,6 +69,21 @@ final class MainWindowController: NSSplitViewController {
         widthConstraint.priority = maximumWidth == nil ? .defaultLow : .required
         widthConstraint.isActive = true
         return item
+    }
+}
+
+private struct MainWindowContentColumnsView: View {
+    @ObservedObject var model: MainWindowModel
+
+    var body: some View {
+        HStack(spacing: 0) {
+            MainWindowPackageListView(model: model)
+                .frame(width: 252)
+            MainWindowDossierView(model: model)
+                .frame(width: 252)
+            MainWindowLinksView(model: model)
+                .frame(minWidth: 350, maxWidth: .infinity)
+        }
     }
 }
 
