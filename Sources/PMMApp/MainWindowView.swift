@@ -610,23 +610,7 @@ private struct PackageWebView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> WKWebView {
-        let configuration = WKWebViewConfiguration()
-        configuration.userContentController.addUserScript(WKUserScript(
-            source: """
-            (() => {
-                const isTransparent = color => color === "transparent" || color === "rgba(0, 0, 0, 0)";
-                const root = document.documentElement;
-                const body = document.body;
-                if (body && isTransparent(getComputedStyle(root).backgroundColor) && isTransparent(getComputedStyle(body).backgroundColor)) {
-                    root.style.backgroundColor = "white";
-                    body.style.backgroundColor = "white";
-                }
-            })();
-            """,
-            injectionTime: .atDocumentEnd,
-            forMainFrameOnly: true
-        ))
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = WKWebView()
         webView.setValue(false, forKey: "drawsBackground")
         webView.underPageBackgroundColor = .white
         webView.navigationDelegate = context.coordinator
@@ -637,6 +621,7 @@ private struct PackageWebView: NSViewRepresentable {
         if context.coordinator.loadedURL != url {
             context.coordinator.loadedURL = url
             context.coordinator.allowsEmbeddedNavigation = true
+            webView.setValue(true, forKey: "drawsBackground")
             webView.load(URLRequest(url: initialBrowserURL(for: url)))
         }
     }
