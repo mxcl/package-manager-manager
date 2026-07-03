@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.contentViewController = controller
-        window.title = "Package Manager Manager"
+        window.title = "Package Middle Manager"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.titlebarSeparatorStyle = .none
@@ -57,7 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func launchMenuBarApp() {
         let helper = Bundle.main.bundleURL
-            .appendingPathComponent("Contents/Library/LoginItems/Package Manager Manager Menu.app", isDirectory: true)
+            .appendingPathComponent("Contents/Library/LoginItems/Package Middle Manager Menu.app", isDirectory: true)
         guard FileManager.default.fileExists(atPath: helper.path) else { return }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
@@ -67,8 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeAppMenuItem() -> NSMenuItem {
         let appItem = NSMenuItem()
-        let appMenu = NSMenu(title: L10n.string("Package Manager Manager"))
-        let appName = L10n.string("Package Manager Manager")
+        let appMenu = NSMenu(title: L10n.string("Package Middle Manager"))
+        let appName = L10n.string("Package Middle Manager")
 
         appMenu.addItem(withTitle: L10n.format("About %@", appName), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())

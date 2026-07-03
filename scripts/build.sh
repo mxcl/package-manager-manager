@@ -3,9 +3,9 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 configuration="${CONFIGURATION:-release}"
-app_name="Package Manager Manager"
+app_name="Package Middle Manager"
 executable="PMMApp"
-helper_app_name="Package Manager Manager Menu"
+helper_app_name="Package Middle Manager Menu"
 helper_executable="PMMMenuBar"
 identifier="${PRODUCT_BUNDLE_IDENTIFIER:-dev.mxcl.pmm}"
 helper_identifier="${HELPER_BUNDLE_IDENTIFIER:-$identifier.menu}"

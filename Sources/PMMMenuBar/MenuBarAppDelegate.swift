@@ -189,15 +189,15 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     private func configureStatusButton() {
         guard let button = statusItem.button else { return }
         button.imagePosition = .imageOnly
-        button.toolTip = "Package Manager Manager"
-        button.setAccessibilityLabel("Package Manager Manager")
+        button.toolTip = "Package Middle Manager"
+        button.setAccessibilityLabel("Package Middle Manager")
         updateStatusButton()
     }
 
     private func updateStatusButton() {
         guard let button = statusItem.button else { return }
-        let image = NSImage(systemSymbolName: state.statusSymbolName, accessibilityDescription: "Package Manager Manager")
-            ?? NSImage(systemSymbolName: "shippingbox.fill", accessibilityDescription: "Package Manager Manager")
+        let image = NSImage(systemSymbolName: state.statusSymbolName, accessibilityDescription: "Package Middle Manager")
+            ?? NSImage(systemSymbolName: "shippingbox.fill", accessibilityDescription: "Package Middle Manager")
         image?.isTemplate = true
         button.image = image
     }

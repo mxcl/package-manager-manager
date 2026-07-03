@@ -128,7 +128,7 @@ struct MainWindowPackageListView: View {
         }
         .safeAreaBar(edge: .top, alignment: .leading, spacing: 0) {
             HStack {
-                Text("Package Manager Manager")
+                Text("Package Middle Manager")
                 Spacer()
                 if model.isReloading { ProgressView().controlSize(.small) }
             }

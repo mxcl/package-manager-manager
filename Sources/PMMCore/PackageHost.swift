@@ -68,7 +68,7 @@ public struct PackageHostStore: Sendable {
 
     public static func defaultDirectory() -> URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Package Manager Manager", isDirectory: true)
+            .appendingPathComponent("Package Middle Manager", isDirectory: true)
     }
 }
 
