@@ -167,7 +167,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         let refreshItem = menu.addItem(withTitle: "Refresh Now", action: #selector(refreshNow(_:)), keyEquivalent: "")
         refreshItem.target = self
-        refreshItem.isEnabled = !state.isRefreshing
+        refreshItem.isEnabled = !state.isRefreshing && snapshot.runningAction == nil
 
         let openItem = menu.addItem(withTitle: "Open Main Window", action: #selector(openMainWindow(_:)), keyEquivalent: "")
         openItem.target = self

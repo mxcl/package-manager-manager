@@ -40,8 +40,6 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         self.errorMessage = errorMessage
         self.lastBrewUpdateAt = lastBrewUpdateAt
     }
-
-    public var menuState: PackageInventory? { inventory }
 }
 
 public struct PackageHostStore: Sendable {
