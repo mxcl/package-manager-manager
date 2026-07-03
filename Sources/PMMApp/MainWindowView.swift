@@ -159,17 +159,8 @@ struct MainWindowDossierView: View {
             }
             ScrollView {
                 if let package = model.selectedPackage {
-                    VStack(alignment: .leading, spacing: 18) {
-                        Text(package.displayName)
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(AVGlassPalette.primaryText)
-                            .lineLimit(3)
-                        if let summary = package.summary {
-                            Text(summary)
-                                .font(.system(size: 14))
-                                .foregroundStyle(AVGlassPalette.secondaryText)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+                    VStack(alignment: .leading, spacing: 20) {
+                        DossierHeader(package: package)
                         if package.isOutdated {
                             PackageBadgeBanner(text: "Outdated \(mainWindowVersionText(package))", color: AVGlassPalette.orange)
                             if PackageUpdater.supports(package) {
@@ -184,17 +175,16 @@ struct MainWindowDossierView: View {
                             }
                         }
                         InfoSection(title: "Package") {
-                            PermissionRow(label: "Manager", value: package.manager.title)
-                            PermissionRow(label: "Installed", value: package.installedVersion ?? "unknown")
+                            InfoRow(label: "Installed", value: package.installedVersion ?? "unknown")
                             if !package.otherInstalledVersions.isEmpty {
-                                PermissionRow(label: "Other", value: package.otherInstalledVersions.joined(separator: ", "))
+                                InfoRow(label: "Other", value: package.otherInstalledVersions.joined(separator: ", "))
                             }
-                            PermissionRow(label: "Latest", value: package.latestVersion ?? "unknown")
-                            PermissionRow(label: "Category", value: package.category ?? "uncategorized")
+                            InfoRow(label: "Latest", value: package.latestVersion ?? "unknown")
+                            InfoRow(label: "Category", value: package.category ?? "uncategorized")
                         }
                         InfoSection(title: "Location") {
-                            PermissionRow(label: "Install Root", value: mainWindowHomeRelativePath(package.installLocation))
-                            PermissionRow(label: "Binary", value: mainWindowHomeRelativePath(package.binaryPath))
+                            InfoRow(label: "Install Root", value: mainWindowHomeRelativePath(package.installLocation))
+                            InfoRow(label: "Binary", value: mainWindowHomeRelativePath(package.binaryPath))
                         }
                         if package.installedVersion != nil {
                             Button { model.uninstall(package) } label: {
@@ -209,13 +199,12 @@ struct MainWindowDossierView: View {
                         if !mainWindowBrowserLinks(for: package).isEmpty {
                             InfoSection(title: "External URLs") {
                                 PackageLinkStack(model: model)
-                                    .padding(.horizontal, -22)
                             }
                         }
                     }
-                    .padding(.horizontal, 22)
-                    .padding(.top, 32)
-                    .padding(.bottom, 28)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 28)
+                    .padding(.bottom, 32)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -401,12 +390,11 @@ private struct PackageLinkRow: View {
                     .truncationMode(.middle)
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 22)
-            .padding(.trailing, 12)
-            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
             .background {
                 if selected {
-                    Rectangle().fill(AVGlassPalette.linkSelectedFill)
+                    RoundedRectangle(cornerRadius: 7, style: .continuous).fill(AVGlassPalette.linkSelectedFill)
                 }
             }
             .contentShape(Rectangle())
@@ -524,9 +512,35 @@ private struct PackageBadgeBanner: View {
         Text(text)
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(color)
-            .padding(10)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private struct DossierHeader: View {
+    let package: ManagedPackage
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(package.displayName)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(AVGlassPalette.primaryText)
+                .lineLimit(4)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(package.manager.title.uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(AVGlassPalette.quietText)
+                .tracking(0.8)
+            if let summary = package.summary {
+                Text(summary)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AVGlassPalette.secondaryText)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 
@@ -534,21 +548,36 @@ private struct InfoSection<Content: View>: View {
     let title: String
     @ViewBuilder let content: Content
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title.uppercased()).font(.system(size: 11, weight: .bold)).foregroundStyle(AVGlassPalette.quietText).tracking(0.7)
+        VStack(alignment: .leading, spacing: 11) {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(title.uppercased())
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(AVGlassPalette.quietText)
+                    .tracking(0.8)
+                Rectangle()
+                    .fill(AVGlassPalette.hairline)
+                    .frame(height: 1)
+            }
             content
         }
     }
 }
 
-private struct PermissionRow: View {
+private struct InfoRow: View {
     let label: String
     let value: String
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(label).font(.system(size: 12, weight: .medium)).foregroundStyle(AVGlassPalette.quietText).frame(width: 82, alignment: .leading)
-            Text(value).font(.system(size: 12)).foregroundStyle(AVGlassPalette.secondaryText).lineLimit(3).textSelection(.enabled)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(AVGlassPalette.quietText)
+            Text(value)
+                .font(.system(size: 12))
+                .foregroundStyle(AVGlassPalette.secondaryText)
+                .lineLimit(5)
+                .textSelection(.enabled)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
