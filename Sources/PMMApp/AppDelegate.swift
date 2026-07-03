@@ -1,5 +1,4 @@
 import AppKit
-import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -37,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.titleVisibility = .hidden
         window.titlebarSeparatorStyle = .none
         window.toolbarStyle = .automatic
+        let toolbar = NSToolbar(identifier: "PMMToolbar")
+        toolbar.displayMode = .iconOnly
+        window.toolbar = toolbar
         installSidebarToggleAccessory(in: window, target: controller)
         window.isMovableByWindowBackground = true
         window.minSize = NSSize(width: 1104, height: 680)
@@ -121,12 +123,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func installSidebarToggleAccessory(in window: NSWindow, target: NSSplitViewController) {
         let width: CGFloat = 170
         let height: CGFloat = 52
-        let container = TitlebarAccessoryHostingView(
-            size: NSSize(width: width, height: height),
-            rootView: SidebarToggleAccessoryButton {
-                target.toggleSidebar(nil)
-            }
-        )
+        let container = TitlebarAccessoryView(size: NSSize(width: width, height: height))
+        let title = L10n.string("Toggle Sidebar")
+        let button = NSButton(image: NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: title) ?? NSImage(), target: target, action: #selector(NSSplitViewController.toggleSidebar(_:)))
+        button.bezelStyle = .texturedRounded
+        button.imagePosition = .imageOnly
+        button.toolTip = title
+        button.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(button)
+        NSLayoutConstraint.activate([
+            button.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
+            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
 
         let accessory = NSTitlebarAccessoryViewController()
         accessory.layoutAttribute = .left
@@ -136,63 +144,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-private struct SidebarToggleAccessoryButton: View {
-    var action: () -> Void
-
-    var body: some View {
-        HStack {
-            Spacer()
-            Button(action: action) {
-                SidebarToggleGlyph()
-                    .frame(width: 30, height: 26)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(.white.opacity(0.22), lineWidth: 1)
-                    }
-            }
-            .buttonStyle(.plain)
-            .tint(.white)
-            .help(L10n.string("Toggle Sidebar"))
-            .accessibilityLabel(L10n.string("Toggle Sidebar"))
-            .padding(.trailing, 10)
-        }
-    }
-}
-
-private struct SidebarToggleGlyph: View {
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .stroke(.white.opacity(0.9), lineWidth: 1.5)
-                .frame(width: 17, height: 14)
-            Rectangle()
-                .fill(.white.opacity(0.9))
-                .frame(width: 1.5, height: 14)
-                .offset(x: -5)
-            VStack(spacing: 2) {
-                Capsule().frame(width: 2.5, height: 1.2)
-                Capsule().frame(width: 2.5, height: 1.2)
-                Capsule().frame(width: 2.5, height: 1.2)
-            }
-            .foregroundStyle(.white.opacity(0.9))
-            .offset(x: -8)
-        }
-    }
-}
-
-private final class TitlebarAccessoryHostingView<Content: View>: NSHostingView<Content> {
+private final class TitlebarAccessoryView: NSView {
     private let size: NSSize
 
-    init(size: NSSize, rootView: Content) {
+    init(size: NSSize) {
         self.size = size
-        super.init(rootView: rootView)
-        frame = NSRect(origin: .zero, size: size)
-    }
-
-    required init(rootView: Content) {
-        self.size = .zero
-        super.init(rootView: rootView)
+        super.init(frame: NSRect(origin: .zero, size: size))
     }
 
     @available(*, unavailable)
@@ -201,11 +158,6 @@ private final class TitlebarAccessoryHostingView<Content: View>: NSHostingView<C
     }
 
     override var intrinsicContentSize: NSSize { size }
-
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        let hitView = super.hitTest(point)
-        return hitView === self ? nil : hitView
-    }
 }
 
 private final class PMMWindow: NSWindow {

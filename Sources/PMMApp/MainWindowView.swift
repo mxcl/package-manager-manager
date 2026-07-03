@@ -33,11 +33,6 @@ struct MainWindowSidebarView: View {
         }
         .scrollIndicators(.hidden)
         .ignoresSafeArea(.container, edges: .top)
-        .overlay(alignment: .top) {
-            LiquidGlassSurface(material: .bar, tint: .clear)
-                .frame(height: 52)
-                .allowsHitTesting(false)
-        }
         .preferredColorScheme(.dark)
     }
 
@@ -660,10 +655,7 @@ private struct LiquidGlassSurface: View {
     let material: Material
     let tint: Color
     var body: some View {
-        Rectangle()
-            .fill(material)
-            .overlay(tint)
-            .backgroundExtensionEffect()
+        Rectangle().fill(material).overlay(tint)
     }
 }
 
