@@ -33,3 +33,25 @@ import Testing
         .package(MenuBarPackageRow(managerTitle: "npm", name: "zeta", installedVersion: "1.0.0", latestVersion: "2.0.0")),
     ])
 }
+
+@Test func menuBarCommandValidationAcceptsSupportedActions() throws {
+    let outdated = ManagedPackage(manager: .homebrew, name: "git", installedVersion: "1.0.0", latestVersion: "2.0.0")
+    let snapshot = PackageHostSnapshot(inventory: PackageInventory(packages: [outdated]))
+
+    #expect(menuBarCommandPackage(id: outdated.id, kind: .update, snapshot: snapshot) == outdated)
+    #expect(menuBarCommandPackage(id: outdated.id, kind: .uninstall, snapshot: snapshot) == outdated)
+}
+
+@Test func menuBarCommandValidationRejectsUnsupportedActions() {
+    let current = ManagedPackage(manager: .homebrew, name: "git", installedVersion: "2.0.0", latestVersion: "2.0.0")
+    let catalogOnly = ManagedPackage(manager: .homebrew, name: "curl", installedVersion: nil, latestVersion: "8.0.0")
+    let busy = PackageHostSnapshot(
+        inventory: PackageInventory(packages: [current]),
+        runningAction: PackageHostRunningAction(kind: .update, packageID: current.id, displayName: "git")
+    )
+    let snapshot = PackageHostSnapshot(inventory: PackageInventory(packages: [current, catalogOnly]))
+
+    #expect(menuBarCommandPackage(id: current.id, kind: .update, snapshot: snapshot) == nil)
+    #expect(menuBarCommandPackage(id: catalogOnly.id, kind: .uninstall, snapshot: snapshot) == nil)
+    #expect(menuBarCommandPackage(id: current.id, kind: .uninstall, snapshot: busy) == nil)
+}

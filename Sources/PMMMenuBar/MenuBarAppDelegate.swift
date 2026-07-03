@@ -5,14 +5,19 @@ import ServiceManagement
 @MainActor
 final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    private let store = PackageHostStore()
+    private let notificationCenter = DistributedNotificationCenter.default()
     private var state = MenuBarMenuState()
+    private var snapshot = PackageHostSnapshot()
     private var timer: Timer?
     private var refreshTask: Task<Void, Never>?
+    private var actionTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        loadSnapshot()
+        observeCommands()
         configureStatusButton()
         rebuildMenu()
-        refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 3300, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -21,37 +26,125 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         timer?.invalidate()
         refreshTask?.cancel()
+        actionTask?.cancel()
+        notificationCenter.removeObserver(self)
     }
 
     private func refresh() {
-        guard refreshTask == nil else { return }
-        state.isRefreshing = true
-        rebuildMenu()
+        guard refreshTask == nil, actionTask == nil else { return }
+        snapshot.isRefreshing = true
+        snapshot.errorMessage = nil
+        publishSnapshot()
+        let previousLastBrewUpdateAt = snapshot.lastBrewUpdateAt
 
         refreshTask = Task { [weak self] in
-            let result = await Task.detached(priority: .background) {
+            let next = await Task.detached(priority: .background) {
+                let lastBrewUpdateAt: Date?
+                let brewError: String?
                 do {
                     try HomebrewMaintenance().update()
-                    let database = await PackageDatabase.load()
-                    let inventory = await PackageScanner().inventory(database: database)
-                    return Result<PackageInventory, Error>.success(inventory)
+                    lastBrewUpdateAt = Date()
+                    brewError = nil
                 } catch {
-                    return .failure(error)
+                    lastBrewUpdateAt = nil
+                    brewError = error.localizedDescription
                 }
+                return await Self.scanSnapshot(errorMessage: brewError, lastBrewUpdateAt: lastBrewUpdateAt)
             }.value
 
             guard let self, !Task.isCancelled else { return }
             self.refreshTask = nil
-            self.state.isRefreshing = false
-            switch result {
-            case .success(let inventory):
-                self.state.inventory = inventory
-                self.state.errorMessage = inventory.errors.first
-            case .failure(let error):
-                self.state.errorMessage = error.localizedDescription
+            self.snapshot = next
+            if self.snapshot.lastBrewUpdateAt == nil {
+                self.snapshot.lastBrewUpdateAt = previousLastBrewUpdateAt
             }
-            self.rebuildMenu()
+            self.publishSnapshot()
         }
+    }
+
+    private func rescanAfterAction(errorMessage: String? = nil) {
+        let lastBrewUpdateAt = snapshot.lastBrewUpdateAt
+        actionTask = Task { [weak self] in
+            let next = await Task.detached(priority: .background) {
+                await Self.scanSnapshot(errorMessage: errorMessage, lastBrewUpdateAt: lastBrewUpdateAt)
+            }.value
+
+            guard let self, !Task.isCancelled else { return }
+            self.actionTask = nil
+            self.snapshot = next
+            self.publishSnapshot()
+        }
+    }
+
+    private func runAction(kind: PackageHostActionKind, packageID: String) {
+        guard refreshTask == nil, actionTask == nil,
+              let package = menuBarCommandPackage(id: packageID, kind: kind, snapshot: snapshot) else { return }
+        snapshot.runningAction = PackageHostRunningAction(kind: kind, packageID: package.id, displayName: package.displayName)
+        snapshot.errorMessage = nil
+        publishSnapshot()
+
+        actionTask = Task { [weak self] in
+            let result = await Task.detached(priority: .background) {
+                Result {
+                    switch kind {
+                    case .update:
+                        try PackageUpdater().update(package)
+                    case .uninstall:
+                        try PackageUninstaller().uninstall(package)
+                    }
+                }
+            }.value
+
+            guard let self, !Task.isCancelled else { return }
+            self.snapshot.runningAction = nil
+            self.publishSnapshot()
+            switch result {
+            case .success:
+                self.rescanAfterAction()
+            case .failure(let error):
+                self.rescanAfterAction(errorMessage: error.localizedDescription)
+            }
+        }
+    }
+
+    private func loadSnapshot() {
+        if var saved = try? store.load() {
+            saved.isRefreshing = false
+            saved.runningAction = nil
+            snapshot = saved
+        }
+        publishSnapshot()
+    }
+
+    private func publishSnapshot() {
+        state = MenuBarMenuState(
+            inventory: snapshot.inventory,
+            isRefreshing: snapshot.isRefreshing,
+            errorMessage: snapshot.errorMessage ?? snapshot.inventory?.errors.first
+        )
+        try? store.save(snapshot)
+        PackageHostNotifications.postSnapshotChanged()
+        rebuildMenu()
+    }
+
+    private nonisolated static func scanSnapshot(errorMessage: String?, lastBrewUpdateAt: Date?) async -> PackageHostSnapshot {
+        let database = await PackageDatabase.load()
+        let inventory = await PackageScanner().inventory(database: database)
+        let errors = [errorMessage].compactMap { $0 } + inventory.errors
+        return PackageHostSnapshot(
+            inventory: PackageInventory(packages: inventory.packages, errors: errors),
+            catalogPackages: database.catalogPackages,
+            isRefreshing: false,
+            runningAction: nil,
+            errorMessage: errorMessage ?? inventory.errors.first,
+            lastBrewUpdateAt: lastBrewUpdateAt
+        )
+    }
+
+    private func observeCommands() {
+        notificationCenter.addObserver(self, selector: #selector(refreshRequested(_:)), name: PackageHostNotifications.refreshRequested, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(updateRequested(_:)), name: PackageHostNotifications.updateRequested, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(uninstallRequested(_:)), name: PackageHostNotifications.uninstallRequested, object: nil)
     }
 
     private func rebuildMenu() {
@@ -131,6 +224,20 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         refresh()
     }
 
+    @objc private func refreshRequested(_ notification: Notification) {
+        refresh()
+    }
+
+    @objc private func updateRequested(_ notification: Notification) {
+        guard let packageID = PackageHostNotifications.packageID(from: notification) else { return }
+        runAction(kind: .update, packageID: packageID)
+    }
+
+    @objc private func uninstallRequested(_ notification: Notification) {
+        guard let packageID = PackageHostNotifications.packageID(from: notification) else { return }
+        runAction(kind: .uninstall, packageID: packageID)
+    }
+
     @objc private func openMainWindow(_ sender: Any?) {
         let mainApp = Bundle.main.bundleURL
             .deletingLastPathComponent()
@@ -151,8 +258,8 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
                 try SMAppService.mainApp.register()
             }
         } catch {
-            state.errorMessage = error.localizedDescription
+            snapshot.errorMessage = error.localizedDescription
         }
-        rebuildMenu()
+        publishSnapshot()
     }
 }
