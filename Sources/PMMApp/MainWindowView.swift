@@ -28,11 +28,10 @@ struct MainWindowSidebarView: View {
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .safeAreaBar(edge: .top, spacing: 0) {
+        .safeAreaInset(edge: .top, spacing: 0) {
             Color.clear.frame(height: 44)
         }
         .scrollIndicators(.hidden)
-        .scrollEdgeEffectStyle(.soft, for: .top)
         .ignoresSafeArea(.container, edges: .top)
         .preferredColorScheme(.dark)
     }
