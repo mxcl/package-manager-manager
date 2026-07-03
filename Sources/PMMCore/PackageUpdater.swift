@@ -2,13 +2,16 @@ import Foundation
 
 public struct PackageUpdater: Sendable {
     private let runner: CommandRunning
+    private let homeDirectory: URL
     private let toolPaths: [String: String]
 
     public init(
         runner: CommandRunning = SystemCommandRunner(),
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         toolPaths: [String: String] = [:]
     ) {
         self.runner = runner
+        self.homeDirectory = homeDirectory
         self.toolPaths = toolPaths
     }
 
@@ -23,6 +26,9 @@ public struct PackageUpdater: Sendable {
             try run("npm", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"], ["install", "-g", "\(package.packageToken)@latest"])
         case .npx:
             try run("npm", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"], ["exec", "--yes", "--package", "\(package.packageToken)@\(package.latestVersion ?? "latest")", "--", "true"])
+            if let path = package.installLocation {
+                try removeNpxCacheEntry(at: path, root: homeDirectory.appendingPathComponent(".npm/_npx", isDirectory: true))
+            }
         case .uv:
             if package.summary == "uv-managed Python", let latestVersion = package.latestVersion {
                 try run("uv", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"], ["python", "install", latestVersion, "--color", "never"])

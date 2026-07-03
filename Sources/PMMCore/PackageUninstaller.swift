@@ -25,7 +25,8 @@ public struct PackageUninstaller: Sendable {
         case .npm:
             try run("npm", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"], ["uninstall", "-g", package.packageToken])
         case .npx:
-            try removeCachedPackage(package, root: homeDirectory.appendingPathComponent(".npm/_npx", isDirectory: true))
+            guard let path = package.installLocation else { throw PackageUninstallError.missingInstallLocation(package.displayName) }
+            try removeNpxCacheEntry(at: path, root: homeDirectory.appendingPathComponent(".npm/_npx", isDirectory: true))
         case .uv:
             let arguments = package.summary == "uv-managed Python"
                 ? ["python", "uninstall", package.installedVersion ?? package.packageToken, "--color", "never"]
@@ -46,24 +47,23 @@ public struct PackageUninstaller: Sendable {
         }
     }
 
-    private func removeCachedPackage(_ package: ManagedPackage, root: URL) throws {
-        guard let path = package.installLocation else { throw PackageUninstallError.missingInstallLocation(package.displayName) }
-        let rootPath = root.standardizedFileURL.path
-        var url = URL(fileURLWithPath: path).standardizedFileURL
-        while url.path != "/" {
-            if url.deletingLastPathComponent().path == rootPath {
-                try FileManager.default.removeItem(at: url)
-                return
-            }
-            url.deleteLastPathComponent()
-        }
-        try FileManager.default.removeItem(atPath: path)
-    }
-
     private func removeInstallLocation(_ package: ManagedPackage) throws {
         guard let path = package.installLocation else { throw PackageUninstallError.missingInstallLocation(package.displayName) }
         try FileManager.default.removeItem(atPath: path)
     }
+}
+
+func removeNpxCacheEntry(at path: String, root: URL, fileManager: FileManager = .default) throws {
+    let rootPath = root.standardizedFileURL.path
+    var url = URL(fileURLWithPath: path).standardizedFileURL
+    while url.path != "/" {
+        if url.deletingLastPathComponent().path == rootPath {
+            try fileManager.removeItem(at: url)
+            return
+        }
+        url.deleteLastPathComponent()
+    }
+    try fileManager.removeItem(atPath: path)
 }
 
 public enum PackageUninstallError: LocalizedError, Equatable {

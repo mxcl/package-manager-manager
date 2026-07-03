@@ -46,6 +46,21 @@ private final class RecordingRunner: CommandRunning, @unchecked Sendable {
     }
 }
 
+@Test func packageUpdaterRemovesOldNpxCacheEntryAfterSuccessfulUpdate() throws {
+    let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let packageURL = home.appendingPathComponent(".npm/_npx/cache-id/node_modules/hyperframes", isDirectory: true)
+    try FileManager.default.createDirectory(at: packageURL, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: home) }
+
+    let runner = RecordingRunner()
+    let updater = PackageUpdater(runner: runner, homeDirectory: home, toolPaths: ["npm": "/fake/npm"])
+
+    try updater.update(package(.npx, "npx:hyperframes", installLocation: packageURL.path))
+
+    #expect(runner.commands == ["/fake/npm exec --yes --package hyperframes@2.0.0 -- true"])
+    #expect(!FileManager.default.fileExists(atPath: home.appendingPathComponent(".npm/_npx/cache-id").path))
+}
+
 @Test func packageUpdaterThrowsOnUnsupportedManagers() throws {
     let updater = PackageUpdater()
 
@@ -60,7 +75,8 @@ private func package(
     displayName: String? = nil,
     latestVersion: String = "2.0.0",
     summary: String? = nil,
-    category: String? = nil
+    category: String? = nil,
+    installLocation: String? = nil
 ) -> ManagedPackage {
     ManagedPackage(
         manager: manager,
@@ -69,6 +85,7 @@ private func package(
         installedVersion: "1.0.0",
         latestVersion: latestVersion,
         summary: summary,
-        category: category
+        category: category,
+        installLocation: installLocation
     )
 }
