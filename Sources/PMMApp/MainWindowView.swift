@@ -26,8 +26,10 @@ struct MainWindowSidebarView: View {
                 ForEach(MainWindowSection.utilitySections) { sidebarRow($0) }
             }
             .padding(.horizontal, 12)
-            .safeAreaPadding(.top, 8)
             .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            Color.clear.frame(height: 44)
         }
         .scrollIndicators(.hidden)
         .ignoresSafeArea(.container, edges: .top)
