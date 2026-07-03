@@ -40,7 +40,7 @@ enum MainWindowSection: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .installed: "Installed"
         case .outdated: "Outdated"
-        case .newUpdated: "New / Updated"
+        case .newUpdated: "new"
         case .rust: "Rust"
         case .homebrew: "Homebrew"
         case .casks: "Casks"
