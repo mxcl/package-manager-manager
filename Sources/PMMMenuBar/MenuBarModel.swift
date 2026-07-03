@@ -71,3 +71,7 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
         return package.installedVersion == nil ? nil : package
     }
 }
+
+func menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot) -> Bool {
+    snapshot.inventory == nil
+}

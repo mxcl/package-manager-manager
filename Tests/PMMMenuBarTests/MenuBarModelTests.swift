@@ -55,3 +55,8 @@ import Testing
     #expect(menuBarCommandPackage(id: catalogOnly.id, kind: .uninstall, snapshot: snapshot) == nil)
     #expect(menuBarCommandPackage(id: current.id, kind: .uninstall, snapshot: busy) == nil)
 }
+
+@Test func menuBarRefreshesOnLaunchOnlyWhenInventoryIsMissing() {
+    #expect(menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot()))
+    #expect(!menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: []))))
+}

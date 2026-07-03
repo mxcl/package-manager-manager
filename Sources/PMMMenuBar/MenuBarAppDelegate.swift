@@ -21,6 +21,9 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         timer = Timer.scheduledTimer(withTimeInterval: 3300, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
+        if menuBarShouldRefreshOnLaunch(snapshot: snapshot) {
+            refresh()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
