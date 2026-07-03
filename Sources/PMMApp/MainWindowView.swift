@@ -28,6 +28,23 @@ struct MainWindowSidebarView: View {
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
+        .scrollIndicators(.hidden)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(AVGlassPalette.sidebarTint)
+                }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AVGlassPalette.sidebarBorder)
+        }
+        .padding(.leading, 10)
+        .padding(.vertical, 10)
+        .preferredColorScheme(.dark)
     }
 
     private func sidebarHeader(_ text: String) -> some View {
