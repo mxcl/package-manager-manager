@@ -165,14 +165,6 @@ struct MainWindowDossierView: View {
                                 .disabled(isPackageActionRunning)
                             }
                         }
-                        InfoSection(title: "Package") {
-                            InfoRow(label: "Installed", value: package.installedVersion ?? "unknown")
-                            if !package.otherInstalledVersions.isEmpty {
-                                InfoRow(label: "Other", value: package.otherInstalledVersions.joined(separator: ", "))
-                            }
-                            InfoRow(label: "Latest", value: package.latestVersion ?? "unknown")
-                            InfoRow(label: "Category", value: package.category ?? "uncategorized")
-                        }
                         PackagePageSection(model: model)
                         PackageConfigurationSection(locations: model.selectedPackageConfigurationLocations)
                         PackageLocationSection(package: package)
@@ -436,6 +428,16 @@ private func mainWindowHomeRelativePath(_ path: String?) -> String {
     return path
 }
 
+func mainWindowCategoryTitle(_ category: String?) -> String? {
+    guard let category, !category.isEmpty else { return nil }
+    if let section = MainWindowSection.categorySections.first(where: { $0.categoryIdentifier == category }) {
+        return section.title
+    }
+    return category.split(separator: "-").map { word in
+        word.prefix(1).uppercased() + word.dropFirst()
+    }.joined(separator: " ")
+}
+
 private extension MainWindowSidebarView {
     var searchField: some View {
         HStack(spacing: 8) {
@@ -600,13 +602,11 @@ private struct PackagePageSection: View {
 
     var body: some View {
         if model.isLoadingSelectedPackageMetadata {
-            InfoSection(title: "Automic Vault") {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
-            }
+            ProgressView()
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
         } else if let dossier = model.selectedPackageDossier {
-            InfoSection(title: "Automic Vault") {
+            VStack(alignment: .leading, spacing: 12) {
                 if let license = nonEmpty(dossier.license) {
                     InfoRow(label: "License", value: license)
                 }
@@ -627,9 +627,7 @@ private struct PackagePageSection: View {
                 }
             }
         } else if let error = model.selectedPackageDossierError {
-            InfoSection(title: "Automic Vault") {
-                InfoRow(label: "Package Page", value: error)
-            }
+            InfoRow(label: "Package Page", value: error)
         }
     }
 
@@ -779,15 +777,33 @@ private struct DossierHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(package.displayName)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(AVGlassPalette.primaryText)
-                .lineLimit(4)
-                .fixedSize(horizontal: false, vertical: true)
-            Text(package.manager.title.uppercased())
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(AVGlassPalette.quietText)
-                .tracking(0.8)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(package.displayName)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(AVGlassPalette.primaryText)
+                    .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let version = package.installedVersion ?? package.latestVersion {
+                    Text(version)
+                        .font(.system(size: 14, weight: .thin))
+                        .foregroundStyle(AVGlassPalette.secondaryText)
+                        .fixedSize()
+                }
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(package.manager.title.uppercased())
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(AVGlassPalette.quietText)
+                    .tracking(0.8)
+                if let category = mainWindowCategoryTitle(package.category) {
+                    Text("·")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(AVGlassPalette.tertiaryText)
+                    Text(category)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(AVGlassPalette.tertiaryText)
+                }
+            }
             if let summary = package.summary {
                 Text(summary)
                     .font(.system(size: 13))
@@ -927,6 +943,7 @@ private enum AVGlassPalette {
     static let sidebarTint = Color(red: 0.06, green: 0.07, blue: 0.07).opacity(0.72)
     static let primaryText = Color.white.opacity(0.92)
     static let secondaryText = Color.white.opacity(0.72)
+    static let tertiaryText = Color.white.opacity(0.30)
     static let quietText = Color.white.opacity(0.42)
     static let hairline = Color.white.opacity(0.07)
     static let sidebarBorder = Color.white.opacity(0.14)

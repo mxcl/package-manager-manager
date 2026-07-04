@@ -399,6 +399,12 @@ import Testing
     #expect(!mainWindowReferencesUnsetEnvironmentVariable("${XDG_CONFIG_HOME:-$HOME/.config}/direnv/direnv.toml", environment: environment))
 }
 
+@Test func categoryTitleHumanizesPackageCategories() {
+    #expect(mainWindowCategoryTitle("developer-tools") == "Developer Tools")
+    #expect(mainWindowCategoryTitle("custom-category") == "Custom Category")
+    #expect(mainWindowCategoryTitle(nil) == nil)
+}
+
 @Test func shellPathResolutionKeepsTildeFallbackWhenSimpleVariableIsUnset() {
     let home = NSHomeDirectory()
 
