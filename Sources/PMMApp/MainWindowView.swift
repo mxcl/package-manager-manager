@@ -798,10 +798,10 @@ private struct DossierHeader: View {
                 if let category = mainWindowCategoryTitle(package.category) {
                     Text("·")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(AVGlassPalette.tertiaryText)
+                        .foregroundStyle(.tertiary)
                     Text(category)
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(AVGlassPalette.tertiaryText)
+                        .foregroundStyle(.tertiary)
                 }
             }
             if let summary = package.summary {
@@ -943,7 +943,6 @@ private enum AVGlassPalette {
     static let sidebarTint = Color(red: 0.06, green: 0.07, blue: 0.07).opacity(0.72)
     static let primaryText = Color.white.opacity(0.92)
     static let secondaryText = Color.white.opacity(0.72)
-    static let tertiaryText = Color.white.opacity(0.30)
     static let quietText = Color.white.opacity(0.42)
     static let hairline = Color.white.opacity(0.07)
     static let sidebarBorder = Color.white.opacity(0.14)
