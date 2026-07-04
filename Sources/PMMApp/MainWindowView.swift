@@ -152,6 +152,16 @@ struct MainWindowDossierView: View {
                 if let package = model.selectedPackage {
                     VStack(alignment: .leading, spacing: 20) {
                         DossierHeader(package: package)
+                        if package.installedVersion != nil {
+                            Button { model.uninstall(package) } label: {
+                                Label("Uninstall", systemImage: "trash")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                            .tint(.red)
+                            .disabled(isPackageActionRunning)
+                        }
                         if package.isOutdated {
                             PackageBadgeBanner(text: "Outdated \(mainWindowVersionText(package))", color: AVGlassPalette.orange)
                             if PackageUpdater.supports(package) {
@@ -168,16 +178,6 @@ struct MainWindowDossierView: View {
                         PackagePageSection(model: model)
                         PackageConfigurationSection(locations: model.selectedPackageConfigurationLocations)
                         PackageLocationSection(package: package)
-                        if package.installedVersion != nil {
-                            Button { model.uninstall(package) } label: {
-                                Label("Uninstall", systemImage: "trash")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.large)
-                            .tint(.red)
-                            .disabled(isPackageActionRunning)
-                        }
                         if !mainWindowBrowserLinks(for: package).isEmpty {
                             InfoSection(title: "External URLs") {
                                 PackageLinkStack(model: model)
