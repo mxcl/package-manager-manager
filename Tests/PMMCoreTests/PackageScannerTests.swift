@@ -101,9 +101,22 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages.last?.binaryPath == nil)
 }
 
-@Test func rustupScannerAddsRustupWhenExecutableExists() throws {
+@Test func rustupScannerAddsInstalledToolchains() throws {
+    let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let stable = home.appendingPathComponent(".rustup/toolchains/stable-aarch64-apple-darwin", isDirectory: true)
+    let pinned = home.appendingPathComponent(".rustup/toolchains/1.92.0-aarch64-apple-darwin", isDirectory: true)
+    try FileManager.default.createDirectory(at: stable.appendingPathComponent("bin", isDirectory: true), withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: pinned, withIntermediateDirectories: true)
+    FileManager.default.createFile(atPath: stable.appendingPathComponent("bin/rustc").path, contents: Data())
+    defer { try? FileManager.default.removeItem(at: home) }
+
     let runner = FakeRunner(responses: [
-        "/fake/rustup --version": CommandResult(stdout: "rustup 1.28.2 (e4f3ad6f8 2025-04-28)\n", stderr: "", status: 0),
+        "/fake/rustup toolchain list -v": CommandResult(stdout: """
+        stable-aarch64-apple-darwin (active, default) \(stable.path)
+        1.92.0-aarch64-apple-darwin \(pinned.path)
+        """, stderr: "", status: 0),
+        "/fake/rustup run stable-aarch64-apple-darwin rustc --version": CommandResult(stdout: "rustc 1.96.1 (31fca3adb 2026-06-26)\n", stderr: "", status: 0),
+        "/fake/rustup run 1.92.0-aarch64-apple-darwin rustc --version": CommandResult(stdout: "rustc 1.92.0 (abcd 2026-01-01)\n", stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["rustup": "/fake/rustup"])
 
@@ -112,17 +125,31 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages == [
         ManagedPackage(
             manager: .rustup,
-            identifier: "rustup:rustup",
-            displayName: "rustup",
-            installedVersion: "1.28.2",
+            identifier: "rustup:toolchain:stable-aarch64-apple-darwin",
+            displayName: "stable-aarch64-apple-darwin",
+            installedVersion: "1.96.1",
             latestVersion: nil,
-            summary: "Rust toolchain installer",
-            category: "developer-tools",
+            summary: "Rust toolchain (active, default)",
+            category: "language-runtime",
             homepage: "https://rustup.rs/",
             docs: "https://rust-lang.github.io/rustup/",
             repo: "https://github.com/rust-lang/rustup",
-            installLocation: "/fake",
-            binaryPath: "/fake/rustup"
+            installLocation: stable.path,
+            binaryPath: stable.appendingPathComponent("bin/rustc").path
+        ),
+        ManagedPackage(
+            manager: .rustup,
+            identifier: "rustup:toolchain:1.92.0-aarch64-apple-darwin",
+            displayName: "1.92.0-aarch64-apple-darwin",
+            installedVersion: "1.92.0",
+            latestVersion: nil,
+            summary: "Rust toolchain",
+            category: "language-runtime",
+            homepage: "https://rustup.rs/",
+            docs: "https://rust-lang.github.io/rustup/",
+            repo: "https://github.com/rust-lang/rustup",
+            installLocation: pinned.path,
+            binaryPath: nil
         )
     ])
 }

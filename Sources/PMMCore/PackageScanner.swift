@@ -51,22 +51,11 @@ public struct PackageScanner {
 
     public func scanRustup(database: PackageDatabase) throws -> [ManagedPackage] {
         guard let rustup = executable(named: "rustup", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]) else { return [] }
-        let version = (try? runner.run(rustup, ["--version"]))
-            .flatMap { $0.status == 0 ? rustupVersion($0.stdout) : nil }
-        return [ManagedPackage(
-            manager: .rustup,
-            identifier: "rustup:rustup",
-            displayName: "rustup",
-            installedVersion: version,
-            latestVersion: nil,
-            summary: "Rust toolchain installer",
-            category: "developer-tools",
-            homepage: "https://rustup.rs/",
-            docs: "https://rust-lang.github.io/rustup/",
-            repo: "https://github.com/rust-lang/rustup",
-            installLocation: URL(fileURLWithPath: rustup).deletingLastPathComponent().path,
-            binaryPath: rustup
-        )]
+        let result = try runner.run(rustup, ["toolchain", "list", "-v"])
+        guard result.status == 0 else { return [] }
+        return result.stdout.split(whereSeparator: \.isNewline).compactMap { line in
+            rustupToolchain(String(line), rustup: rustup)
+        }
     }
 
     public func scanHomebrew(database: PackageDatabase) throws -> [ManagedPackage] {
@@ -246,9 +235,39 @@ public struct PackageScanner {
         return (parts.dropLast().joined(separator: " "), String(version.dropFirst()))
     }
 
-    private func rustupVersion(_ output: String) -> String? {
-        let parts = output.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
-        guard parts.first == "rustup", parts.count > 1 else { return nil }
+    private func rustupToolchain(_ line: String, rustup: String) -> ManagedPackage? {
+        let parts = line.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        guard let name = parts.first else { return nil }
+        let installLocation = parts.last?.hasPrefix("/") == true ? parts.last : nil
+        let rustc = rustupRustcVersion(rustup: rustup, toolchain: name)
+        let states = ["active", "default"].filter { line.contains("(\($0)") || line.contains(", \($0)") }
+        let state = states.isEmpty ? "" : " (\(states.joined(separator: ", ")))"
+        return ManagedPackage(
+            manager: .rustup,
+            identifier: "rustup:toolchain:\(name)",
+            displayName: name,
+            installedVersion: rustc,
+            latestVersion: nil,
+            summary: "Rust toolchain\(state)",
+            category: "language-runtime",
+            homepage: "https://rustup.rs/",
+            docs: "https://rust-lang.github.io/rustup/",
+            repo: "https://github.com/rust-lang/rustup",
+            installLocation: installLocation,
+            binaryPath: installLocation.flatMap { rustcBinaryPath(in: $0) }
+        )
+    }
+
+    private func rustcBinaryPath(in toolchainPath: String) -> String? {
+        let path = "\(toolchainPath)/bin/rustc"
+        return fileManager.fileExists(atPath: path) ? path : nil
+    }
+
+    private func rustupRustcVersion(rustup: String, toolchain: String) -> String? {
+        guard let result = try? runner.run(rustup, ["run", toolchain, "rustc", "--version"]),
+              result.status == 0 else { return nil }
+        let parts = result.stdout.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        guard parts.first == "rustc", parts.count > 1 else { return nil }
         return parts[1]
     }
 
