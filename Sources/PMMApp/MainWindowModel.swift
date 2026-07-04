@@ -399,7 +399,7 @@ final class MainWindowModel: NSObject, ObservableObject {
                 if selectedPackage?.id == packageID {
                     selectedPackageDossier = dossier
                     selectedPackageConfigurationLocations = configurationLocations
-                    selectedPackageDossierError = dossier == nil ? "No package page found." : nil
+                    selectedPackageDossierError = nil
                     isLoadingSelectedPackageMetadata = false
                 }
             } catch is CancellationError {

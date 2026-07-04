@@ -788,13 +788,15 @@ private struct DossierHeader: View {
                 Text(package.displayName)
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(AVGlassPalette.primaryText)
-                    .lineLimit(4)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
                 if let version = package.installedVersion ?? package.latestVersion {
                     Text(version)
                         .font(.system(size: 14, weight: .thin))
                         .foregroundStyle(AVGlassPalette.secondaryText)
-                        .fixedSize()
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
