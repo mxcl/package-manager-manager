@@ -568,11 +568,21 @@ private struct PackageConfigurationSection: View {
     }
 
     private func openConfigurationFile(at path: String) {
-        let expandedPath = NSString(string: path).expandingTildeInPath
         Task.detached {
+            let expandedPath = (try? mainWindowPrepareEditableFile(at: path)) ?? NSString(string: path).expandingTildeInPath
             _ = try? Process.run(URL(fileURLWithPath: "/usr/bin/open"), arguments: ["-t", expandedPath])
         }
     }
+}
+
+func mainWindowPrepareEditableFile(at path: String) throws -> String {
+    let expandedPath = NSString(string: path).expandingTildeInPath
+    let url = URL(fileURLWithPath: expandedPath)
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    if !FileManager.default.fileExists(atPath: expandedPath) {
+        _ = FileManager.default.createFile(atPath: expandedPath, contents: Data())
+    }
+    return expandedPath
 }
 
 private struct ConfigurationLocationRow: View {

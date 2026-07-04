@@ -405,6 +405,16 @@ import Testing
     #expect(mainWindowCategoryTitle(nil) == nil)
 }
 
+@Test func prepareEditableFileCreatesMissingConfigFile() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let path = root.appendingPathComponent("direnv/direnv.toml").path
+
+    #expect(try mainWindowPrepareEditableFile(at: path) == path)
+    #expect(FileManager.default.fileExists(atPath: path))
+}
+
 @Test func shellPathResolutionKeepsTildeFallbackWhenSimpleVariableIsUnset() {
     let home = NSHomeDirectory()
 
