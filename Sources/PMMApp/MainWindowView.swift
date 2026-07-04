@@ -1,4 +1,3 @@
-import AppKit
 import PMMCore
 import Foundation
 import SwiftUI
@@ -265,24 +264,20 @@ struct MainWindowBrowserLink: Equatable, Identifiable {
 }
 
 struct MainWindowConfigurationLocation: Equatable, Identifiable {
-    let platform: String
     let path: String
 
-    var id: String { "\(platform):\(path)" }
-    var title: String {
-        switch platform {
-        case "macos": "macOS"
-        case "unix": "Unix"
-        default: platform
-        }
-    }
+    var id: String { path }
 }
 
 func mainWindowConfigurationLocations(for dossier: PackageDossierPage?) -> [MainWindowConfigurationLocation] {
-    guard let locations = dossier?.configFileLocations else { return [] }
-    return ["macos", "unix"].flatMap { platform in
-        (locations[platform] ?? []).map { MainWindowConfigurationLocation(platform: platform, path: $0) }
+    guard let dossier else { return [] }
+    let paths = [dossier.configFileLocations, dossier.credentialsFileLocations].flatMap { locations in
+        ["macos", "unix"].flatMap { platform in
+            locations[platform] ?? []
+        }
     }
+    var seen = Set<String>()
+    return paths.filter { seen.insert($0).inserted }.map { MainWindowConfigurationLocation(path: $0) }
 }
 
 func mainWindowBrowserLinks(for package: ManagedPackage?) -> [MainWindowBrowserLink] {
@@ -430,7 +425,9 @@ private struct PackageConfigurationSection: View {
 
     private func openConfigurationFile(at path: String) {
         let expandedPath = NSString(string: path).expandingTildeInPath
-        NSWorkspace.shared.open(URL(fileURLWithPath: expandedPath))
+        Task.detached {
+            _ = try? Process.run(URL(fileURLWithPath: "/usr/bin/open"), arguments: ["-t", expandedPath])
+        }
     }
 }
 
@@ -441,11 +438,6 @@ private struct ConfigurationLocationRow: View {
     var body: some View {
         Button(action: action) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(location.title.uppercased())
-                    .font(.system(size: 9, weight: .medium))
-                    .tracking(1)
-                    .foregroundStyle(AVGlassPalette.quietText)
-                    .fixedSize(horizontal: true, vertical: false)
                 Text(location.path)
                     .font(.system(size: 12))
                     .foregroundStyle(AVGlassPalette.quietText)

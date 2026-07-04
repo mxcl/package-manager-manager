@@ -349,15 +349,22 @@ import Testing
           "unix": ["~/.toolrc", "/etc/toolrc"],
           "linux": "/etc/linux-only",
           "windows": "C:\\\\Users\\\\user\\\\toolrc"
+        },
+        "credentialsFileLocations": {
+          "macos": "~/Library/Application Support/Tool/credentials",
+          "unix": ["~/.toolrc", "~/.tool-credentials"],
+          "linux": "/etc/linux-secret"
         }
       }
     }
     """.utf8))
 
     #expect(mainWindowConfigurationLocations(for: dossier) == [
-        MainWindowConfigurationLocation(platform: "macos", path: "~/Library/Application Support/Tool/config"),
-        MainWindowConfigurationLocation(platform: "unix", path: "~/.toolrc"),
-        MainWindowConfigurationLocation(platform: "unix", path: "/etc/toolrc"),
+        MainWindowConfigurationLocation(path: "~/Library/Application Support/Tool/config"),
+        MainWindowConfigurationLocation(path: "~/.toolrc"),
+        MainWindowConfigurationLocation(path: "/etc/toolrc"),
+        MainWindowConfigurationLocation(path: "~/Library/Application Support/Tool/credentials"),
+        MainWindowConfigurationLocation(path: "~/.tool-credentials"),
     ])
 }
 
