@@ -196,6 +196,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var loadingManagers = Set(PackageManagerKind.allCases)
     @Published private(set) var errors: [String] = []
     @Published private(set) var isLoadingSelectedPackageMetadata = false
+    @Published private(set) var selectedPackageDossier: PackageDossierPage?
+    @Published private(set) var selectedPackageDossierError: String?
     @Published private(set) var uninstallingPackageName: String?
     @Published private(set) var updatingPackageName: String?
     @Published var searchText = ""
@@ -208,21 +210,26 @@ final class MainWindowModel: NSObject, ObservableObject {
     private var newUpdatedSelectionDisplayCount: Int?
     private let userDefaults: UserDefaults
     private let store: PackageHostStore
+    private let dossierClient: PackageDossierClient?
+    private var dossierTask: Task<Void, Never>?
     private let notificationCenter = DistributedNotificationCenter.default()
 
     init(
         userDefaults: UserDefaults = .standard,
-        store: PackageHostStore = PackageHostStore()
+        store: PackageHostStore = PackageHostStore(),
+        dossierClient: PackageDossierClient? = nil
     ) {
         self.userDefaults = userDefaults
         newUpdatedLastClickedAt = userDefaults.object(forKey: Self.newUpdatedLastClickedAtDefaultsKey) as? Date
         self.store = store
+        self.dossierClient = dossierClient
         super.init()
         syncFromHost()
         notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
     }
 
     deinit {
+        dossierTask?.cancel()
         notificationCenter.removeObserver(self)
     }
 
@@ -262,11 +269,13 @@ final class MainWindowModel: NSObject, ObservableObject {
         selectedSection = section
         selectedPackage = nil
         selectedLinkTab = nil
+        clearDossier()
     }
 
     func select(_ package: ManagedPackage) {
         selectedPackage = package
         selectedLinkTab = nil
+        loadDossier(for: package)
     }
 
     func selectAdjacentPackage(offset: Int) -> Bool {
@@ -320,6 +329,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         packages = next.packages
         errors = next.errors
         selectedPackage = selectedPackage.flatMap { selected in displayedPackages.first { $0.id == selected.id } }
+        if selectedPackage == nil { clearDossier() }
     }
 
     func syncFromHost() {
@@ -360,11 +370,44 @@ final class MainWindowModel: NSObject, ObservableObject {
         )
         uninstallingPackageName = snapshot.runningAction?.kind == .uninstall ? snapshot.runningAction?.displayName : nil
         updatingPackageName = snapshot.runningAction?.kind == .update ? snapshot.runningAction?.displayName : nil
-        isLoadingSelectedPackageMetadata = false
     }
 
     @objc private func hostSnapshotChanged(_ notification: Notification) {
         syncFromHost()
+    }
+
+    private func clearDossier() {
+        dossierTask?.cancel()
+        dossierTask = nil
+        isLoadingSelectedPackageMetadata = false
+        selectedPackageDossier = nil
+        selectedPackageDossierError = nil
+    }
+
+    private func loadDossier(for package: ManagedPackage) {
+        clearDossier()
+        guard let dossierClient else { return }
+        let packageID = package.id
+        isLoadingSelectedPackageMetadata = true
+        dossierTask = Task { [dossierClient] in
+            do {
+                let dossier = try await dossierClient.dossier(for: package)
+                guard !Task.isCancelled else { return }
+                if selectedPackage?.id == packageID {
+                    selectedPackageDossier = dossier
+                    selectedPackageDossierError = dossier == nil ? "No package page found." : nil
+                    isLoadingSelectedPackageMetadata = false
+                }
+            } catch is CancellationError {
+            } catch {
+                guard !Task.isCancelled else { return }
+                if selectedPackage?.id == packageID {
+                    selectedPackageDossier = nil
+                    selectedPackageDossierError = error.localizedDescription
+                    isLoadingSelectedPackageMetadata = false
+                }
+            }
+        }
     }
 }
 

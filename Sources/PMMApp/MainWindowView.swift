@@ -172,6 +172,7 @@ struct MainWindowDossierView: View {
                             InfoRow(label: "Latest", value: package.latestVersion ?? "unknown")
                             InfoRow(label: "Category", value: package.category ?? "uncategorized")
                         }
+                        PackagePageSection(model: model)
                         InfoSection(title: "Location") {
                             InfoRow(label: "Install Root", value: mainWindowHomeRelativePath(package.installLocation))
                             InfoRow(label: "Binary", value: mainWindowHomeRelativePath(package.binaryPath))
@@ -382,6 +383,89 @@ private struct PackageLinkRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct PackagePageSection: View {
+    @ObservedObject var model: MainWindowModel
+
+    var body: some View {
+        if model.isLoadingSelectedPackageMetadata {
+            InfoSection(title: "Automic Vault") {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+            }
+        } else if let dossier = model.selectedPackageDossier {
+            InfoSection(title: "Automic Vault") {
+                if let license = nonEmpty(dossier.license) {
+                    InfoRow(label: "License", value: license)
+                }
+                if !dossier.executables.isEmpty {
+                    InfoRow(label: "Executables", value: dossier.executables.joined(separator: ", "))
+                }
+                if !dossier.dependencies.isEmpty {
+                    InfoRow(label: "Dependencies", value: dossier.dependencies.prefix(12).joined(separator: ", "))
+                }
+                if !dossier.buildDependencies.isEmpty {
+                    InfoRow(label: "Build Dependencies", value: dossier.buildDependencies.prefix(12).joined(separator: ", "))
+                }
+                if !dossier.configFileLocations.isEmpty {
+                    InfoRow(label: "Config", value: formatMap(dossier.configFileLocations))
+                }
+                if !dossier.credentialsFileLocations.isEmpty {
+                    InfoRow(label: "Credentials", value: formatMap(dossier.credentialsFileLocations))
+                }
+                if !dossier.alsoAvailableVia.isEmpty {
+                    InfoRow(label: "Also Available", value: dossier.alsoAvailableVia.prefix(5).compactMap(formatRelatedPackage).joined(separator: "\n"))
+                }
+                if !dossier.externalPackageManagerMatches.isEmpty {
+                    InfoRow(label: "Other Managers", value: dossier.externalPackageManagerMatches.prefix(5).compactMap(formatExternalMatch).joined(separator: "\n"))
+                }
+                if let registry = dossier.registryInsights, let text = formatRegistryInsights(registry) {
+                    InfoRow(label: "Registry", value: text)
+                }
+            }
+        } else if let error = model.selectedPackageDossierError {
+            InfoSection(title: "Automic Vault") {
+                InfoRow(label: "Package Page", value: error)
+            }
+        }
+    }
+
+    private func nonEmpty(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    private func formatMap(_ values: [String: String]) -> String {
+        values.keys.sorted().compactMap { key in
+            nonEmpty(values[key]).map { "\(key): \($0)" }
+        }.joined(separator: "\n")
+    }
+
+    private func formatRelatedPackage(_ package: PackageDossierRelatedPackage) -> String? {
+        let label = nonEmpty(package.label) ?? nonEmpty(package.name)
+        guard let label else { return nil }
+        return [nonEmpty(package.provider), label].compactMap { $0 }.joined(separator: ": ")
+    }
+
+    private func formatExternalMatch(_ match: PackageDossierExternalMatch) -> String? {
+        if let command = nonEmpty(match.command) { return command }
+        return [nonEmpty(match.displayName), nonEmpty(match.platform)].compactMap { $0 }.joined(separator: " ")
+    }
+
+    private func formatRegistryInsights(_ registry: PackageDossierRegistryInsights) -> String? {
+        var rows = [String]()
+        if let source = nonEmpty(registry.sourceDatabase) { rows.append(source) }
+        if let publisher = nonEmpty(registry.publisher) { rows.append("publisher: \(publisher)") }
+        if let versionCount = registry.versionCount { rows.append("\(versionCount) versions") }
+        if let latestPublishedAt = nonEmpty(registry.latestPublishedAt) { rows.append("latest: \(latestPublishedAt)") }
+        if let maintainers = registry.maintainers?.prefix(4).joined(separator: ", "), !maintainers.isEmpty {
+            rows.append("maintainers: \(maintainers)")
+        }
+        let text = rows.joined(separator: "\n")
+        return text.isEmpty ? nil : text
     }
 }
 

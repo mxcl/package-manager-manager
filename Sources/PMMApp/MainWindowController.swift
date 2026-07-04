@@ -1,9 +1,10 @@
 import AppKit
+import PMMCore
 import SwiftUI
 
 @MainActor
 final class MainWindowController: NSSplitViewController {
-    private let model = MainWindowModel()
+    private let model = MainWindowModel(dossierClient: PackageDossierClient())
 
     init() {
         super.init(nibName: nil, bundle: nil)
