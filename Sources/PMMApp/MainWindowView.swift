@@ -152,6 +152,16 @@ struct MainWindowDossierView: View {
                 if let package = model.selectedPackage {
                     VStack(alignment: .leading, spacing: 20) {
                         DossierHeader(package: package)
+                        if package.isOutdated {
+                            if PackageUpdater.supports(package) {
+                                PackageUpdateAction(
+                                    versionText: mainWindowVersionText(package),
+                                    isDisabled: isPackageActionRunning
+                                ) {
+                                    model.update(package)
+                                }
+                            }
+                        }
                         if PackageUninstaller.supports(package) {
                             Button { model.uninstall(package) } label: {
                                 Label("Uninstall", systemImage: "trash")
@@ -161,19 +171,6 @@ struct MainWindowDossierView: View {
                             .controlSize(.large)
                             .tint(.red)
                             .disabled(isPackageActionRunning)
-                        }
-                        if package.isOutdated {
-                            PackageBadgeBanner(text: "Outdated \(mainWindowVersionText(package))", color: AVGlassPalette.orange)
-                            if PackageUpdater.supports(package) {
-                                Button { model.update(package) } label: {
-                                    Label("Update", systemImage: "arrow.down.circle")
-                                        .frame(maxWidth: .infinity)
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.large)
-                                .tint(AVGlassPalette.orange)
-                                .disabled(isPackageActionRunning)
-                            }
                         }
                         PackagePageSection(model: model)
                         PackageConfigurationSection(locations: model.selectedPackageConfigurationLocations)
@@ -380,7 +377,7 @@ func mainWindowBrowserLinks(for package: ManagedPackage?) -> [MainWindowBrowserL
         MainWindowBrowserLink(title: $0.tab.title, tab: $0.tab, url: $0.url)
     }
     if let releaseNotesURL = mainWindowReleaseNotesURL(for: package) {
-        return [MainWindowBrowserLink(title: "Releases", tab: nil, url: releaseNotesURL)] + links
+        return links + [MainWindowBrowserLink(title: MainWindowLinkTab.releases.title, tab: .releases, url: releaseNotesURL)]
     }
     return links
 }
@@ -765,17 +762,39 @@ struct PackageBadgePill: View {
     }
 }
 
-private struct PackageBadgeBanner: View {
-    let text: String
-    let color: Color
+private struct PackageUpdateAction: View {
+    let versionText: String
+    let isDisabled: Bool
+    let action: () -> Void
+
     var body: some View {
-        Text(text)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(color)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Outdated")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(AVGlassPalette.quietText)
+                Text(versionText)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AVGlassPalette.orange)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer(minLength: 8)
+            Button(action: action) {
+                Label("Update", systemImage: "arrow.down.circle")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(AVGlassPalette.orange)
+            .disabled(isDisabled)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AVGlassPalette.cardFill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(AVGlassPalette.controlBorder, lineWidth: 1)
+        }
     }
 }
 

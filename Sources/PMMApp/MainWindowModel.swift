@@ -127,6 +127,7 @@ enum MainWindowLinkTab: String, CaseIterable, Identifiable {
     case homepage
     case repo
     case docs
+    case releases
 
     var id: String { rawValue }
     var title: String {
@@ -134,6 +135,7 @@ enum MainWindowLinkTab: String, CaseIterable, Identifiable {
         case .homepage: "Home"
         case .docs: "Docs"
         case .repo: "Repo"
+        case .releases: "Releases"
         }
     }
 
@@ -142,6 +144,7 @@ enum MainWindowLinkTab: String, CaseIterable, Identifiable {
         case .homepage: package.homepage
         case .docs: package.docs
         case .repo: package.repo
+        case .releases: nil
         }
     }
 }

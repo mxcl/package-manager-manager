@@ -396,7 +396,7 @@ import Testing
     #expect(mainWindowSelectedBrowserLink(in: links, selectedTab: nil)?.tab == .repo)
 }
 
-@Test func outdatedBrowserLinksKeepExternalURLsAfterReleases() {
+@Test func outdatedBrowserLinksShowReleasesAfterExternalURLs() {
     let links = mainWindowBrowserLinks(for: ManagedPackage(
         manager: .homebrew,
         name: "pkg",
@@ -407,7 +407,8 @@ import Testing
         repo: "https://github.com/foo/bar"
     ))
 
-    #expect(links.map(\.title) == ["Releases", "Home", "Repo", "Docs"])
+    #expect(links.map(\.title) == ["Home", "Repo", "Docs", "Releases"])
+    #expect(mainWindowSelectedBrowserLink(in: links, selectedTab: .releases)?.title == "Releases")
 }
 
 @Test func selectedBrowserLinkFallsBackToFirstAvailableLink() {
