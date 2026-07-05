@@ -170,12 +170,16 @@ struct MainWindowDossierView: View {
                         DossierHeader(package: package)
                         if package.isOutdated {
                             if PackageUpdater.supports(package) {
-                                PackageUpdateAction(
-                                    versionText: mainWindowVersionText(package),
-                                    isDisabled: isPackageActionRunning
-                                ) {
+                                Button {
                                     model.update(package)
+                                } label: {
+                                    Label(updateButtonTitle(for: package), systemImage: "arrow.down.circle")
+                                        .frame(maxWidth: .infinity)
                                 }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.large)
+                                .tint(AVGlassPalette.orange)
+                                .disabled(isPackageActionRunning)
                             }
                         }
                         if PackageUninstaller.supports(package) {
@@ -227,6 +231,10 @@ struct MainWindowDossierView: View {
 
     private var updateModalBinding: Binding<Bool> {
         Binding(get: { model.updatingPackageName != nil }, set: { _ in })
+    }
+
+    private func updateButtonTitle(for package: ManagedPackage) -> String {
+        package.latestVersion.map { "Update → \($0)" } ?? "Update"
     }
 }
 
@@ -775,45 +783,6 @@ struct PackageBadgePill: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(color.opacity(0.12), in: Capsule())
-    }
-}
-
-private struct PackageUpdateAction: View {
-    let versionText: String
-    let isDisabled: Bool
-    let action: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Outdated")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(AVGlassPalette.quietText)
-                Text(versionText)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AVGlassPalette.orange)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)
-            Button(action: action) {
-                Label("Update", systemImage: "arrow.down.circle")
-                    .padding(.trailing, 6)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(AVGlassPalette.orange)
-            .fixedSize(horizontal: true, vertical: false)
-            .disabled(isDisabled)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AVGlassPalette.cardFill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(AVGlassPalette.controlBorder, lineWidth: 1)
-        }
     }
 }
 
