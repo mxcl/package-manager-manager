@@ -252,16 +252,11 @@ struct MainWindowDashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 dashboardStats
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: 16) {
-                        dashboardMainColumn
-                        dashboardSideColumn
-                            .frame(width: 310)
-                    }
-                    VStack(alignment: .leading, spacing: 16) {
-                        dashboardMainColumn
-                        dashboardSideColumn
-                    }
+                HStack(alignment: .top, spacing: 16) {
+                    dashboardMainColumn
+                        .frame(minWidth: 0, maxWidth: .infinity)
+                    dashboardSideColumn
+                        .frame(width: 310)
                 }
                 DashboardProBanner()
             }
