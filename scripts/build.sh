@@ -19,10 +19,11 @@ run=false
 install=false
 dmg=false
 notarize=false
+publish=false
 mount=""
 
 usage() {
-  printf 'Usage: %s [--install] [--run] [--dmg] [--notarize]\n' "${0##*/}"
+  printf 'Usage: %s [--install] [--run] [--dmg] [--notarize] [--publish]\n' "${0##*/}"
 }
 
 while (($#)); do
@@ -31,11 +32,17 @@ while (($#)); do
     --run) run=true ;;
     --dmg) dmg=true ;;
     --notarize) dmg=true; notarize=true ;;
+    --publish) dmg=true; publish=true ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 64 ;;
   esac
   shift
 done
+
+if $publish && ! command -v gh >/dev/null; then
+  printf '%s\n' 'gh is required for --publish' >&2
+  exit 64
+fi
 
 if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
   sign_identity="$CODESIGN_IDENTITY"
@@ -214,6 +221,11 @@ fi
 if $notarize; then
   "$root/scripts/build-notarize-dmg.sh" "$dmg_path"
   xcrun stapler staple "$dmg_path"
+fi
+
+if $publish; then
+  tag="${RELEASE_TAG:-v$version}"
+  gh release create "$tag" "$dmg_path" --title "$app_name $version" --notes ""
 fi
 
 final_app="$app"
