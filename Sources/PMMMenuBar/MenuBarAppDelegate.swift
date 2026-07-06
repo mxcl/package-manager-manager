@@ -1,23 +1,33 @@
 import AppKit
+import AppUpdater
 import PMMCore
 import ServiceManagement
 
 @MainActor
 final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
+    private let appUpdater = AppUpdater(owner: "mxcl", repo: "pmm")
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let store = PackageHostStore()
     private let notificationCenter = DistributedNotificationCenter.default()
+    private var availableUpdate: Update?
     private var state = MenuBarMenuState()
     private var snapshot = PackageHostSnapshot()
     private var timer: Timer?
     private var refreshTask: Task<Void, Never>?
     private var actionTask: Task<Void, Never>?
+    private lazy var updateActivity: NSBackgroundActivityScheduler = {
+        let activity = NSBackgroundActivityScheduler(identifier: "dev.mxcl.pmm.app-update-check")
+        activity.repeats = true
+        activity.interval = 24 * 60 * 60
+        return activity
+    }()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         loadSnapshot()
         observeCommands()
         configureStatusButton()
         rebuildMenu()
+        scheduleAppUpdateChecks()
         timer = Timer.scheduledTimer(withTimeInterval: 3300, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -30,6 +40,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         timer?.invalidate()
         refreshTask?.cancel()
         actionTask?.cancel()
+        updateActivity.invalidate()
         notificationCenter.removeObserver(self)
     }
 
@@ -168,6 +179,11 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         }
 
         menu.addItem(.separator())
+        if availableUpdate != nil {
+            let updatePMMItem = menu.addItem(withTitle: "Update PM²", action: #selector(updatePMM(_:)), keyEquivalent: "")
+            updatePMMItem.target = self
+        }
+
         let refreshItem = menu.addItem(withTitle: "Refresh Now", action: #selector(refreshNow(_:)), keyEquivalent: "")
         refreshItem.target = self
         refreshItem.isEnabled = !state.isRefreshing && snapshot.runningAction == nil
@@ -223,8 +239,45 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
+    private func scheduleAppUpdateChecks() {
+        updateActivity.schedule { [weak self] completion in
+            Task { @MainActor in
+                guard let self else {
+                    completion(.finished)
+                    return
+                }
+                guard !self.updateActivity.shouldDefer else {
+                    completion(.deferred)
+                    return
+                }
+                do {
+                    self.availableUpdate = try await self.appUpdater.check()
+                    self.rebuildMenu()
+                } catch {
+                    // Background update checks are best-effort; keep any staged update visible.
+                }
+                completion(.finished)
+            }
+        }
+    }
+
     @objc private func refreshNow(_ sender: Any?) {
         refresh()
+    }
+
+    @objc private func updatePMM(_ sender: Any?) {
+        guard let update = availableUpdate else { return }
+        availableUpdate = nil
+        rebuildMenu()
+        Task { @MainActor in
+            do {
+                try await update.installAndRelaunch()
+            } catch {
+                self.availableUpdate = update
+                self.snapshot.errorMessage = error.localizedDescription
+                self.publishSnapshot()
+            }
+        }
     }
 
     @objc private func refreshRequested(_ notification: Notification) {
