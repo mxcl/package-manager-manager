@@ -37,7 +37,26 @@ while (($#)); do
   shift
 done
 
-sign_identity="${CODESIGN_IDENTITY:--}"
+if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
+  sign_identity="$CODESIGN_IDENTITY"
+else
+  sign_identity="$(
+    security find-identity -v -p codesigning |
+      awk -F '"' '/Developer ID Application/ { print $2; exit }'
+  )"
+  if [[ -z "$sign_identity" ]]; then
+    sign_identity="$(
+      security find-identity -v -p codesigning |
+        awk -F '"' '/Apple Development/ { print $2; exit }'
+    )"
+  fi
+  if [[ -z "$sign_identity" ]]; then
+    sign_identity="-"
+  fi
+fi
+if [[ -z "${APPLE_TEAM_ID:-}" && "$sign_identity" =~ \(([A-Z0-9]+)\)$ ]]; then
+  export APPLE_TEAM_ID="${BASH_REMATCH[1]}"
+fi
 if $notarize; then
   export APPLE_TEAM_ID="${APPLE_TEAM_ID:-${DEVELOPMENT_TEAM:-}}"
   if [[ -z "$APPLE_TEAM_ID" ]]; then
