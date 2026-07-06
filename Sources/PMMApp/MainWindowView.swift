@@ -127,11 +127,9 @@ struct MainWindowPackageListView: View {
                     }
                 }
             }
-            .onChange(of: model.selectedPackage?.id) { _, id in
+            .onChange(of: model.packageIDToScrollIntoView) { _, id in
                 scrollToSelectedPackage(id, proxy: proxy)
-            }
-            .onChange(of: model.selectedSection) { _, _ in
-                scrollToSelectedPackage(model.selectedPackage?.id, proxy: proxy)
+                model.consumePackageScrollRequest()
             }
         }
         .safeAreaBar(edge: .top, alignment: .leading, spacing: 0) {

@@ -207,6 +207,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var selectedPackageConfigurationLocations: [MainWindowConfigurationLocation] = []
     @Published private(set) var uninstallingPackageName: String?
     @Published private(set) var updatingPackageName: String?
+    @Published private(set) var packageIDToScrollIntoView: String?
     @Published var searchText = ""
 
     nonisolated private static let newUpdatedLastClickedAtDefaultsKey = "MainWindowModel.newUpdatedLastClickedAt"
@@ -299,6 +300,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func selectSection(_ section: MainWindowSection) {
+        packageIDToScrollIntoView = nil
         if section == .newUpdated {
             newUpdatedSelectionDisplayCount = newUpdatedUnreadCount
             recordNewUpdatedSidebarClick()
@@ -320,7 +322,13 @@ final class MainWindowModel: NSObject, ObservableObject {
     func openDashboardPackage(_ package: ManagedPackage) {
         let section = MainWindowSection.categorySections.first { $0.categoryIdentifier == package.category } ?? .newUpdated
         selectSection(section)
-        select(packageIndex.packagesBySection[section]?.first { $0.id == package.id } ?? package)
+        let package = packageIndex.packagesBySection[section]?.first { $0.id == package.id } ?? package
+        select(package)
+        packageIDToScrollIntoView = package.id
+    }
+
+    func consumePackageScrollRequest() {
+        packageIDToScrollIntoView = nil
     }
 
     func selectAdjacentPackage(offset: Int) -> Bool {

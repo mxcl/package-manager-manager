@@ -140,6 +140,7 @@ import Testing
     model.select(second)
 
     #expect(model.selectedLinkTab == nil)
+    #expect(model.packageIDToScrollIntoView == nil)
 }
 
 @Test func installedSectionSortsPackagesAlphabetically() {
@@ -291,6 +292,11 @@ import Testing
     #expect(model.selectedSection == .developerTools)
     #expect(model.selectedPackage == package)
     #expect(model.displayedPackages == [package])
+    #expect(model.packageIDToScrollIntoView == package.id)
+
+    model.consumePackageScrollRequest()
+
+    #expect(model.packageIDToScrollIntoView == nil)
 }
 
 @MainActor
