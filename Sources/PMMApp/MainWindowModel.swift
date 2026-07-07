@@ -214,6 +214,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     private var inventory = PackageInventory(packages: [])
     private var packageIndex = PackageIndex.empty
+    private var installedPackageFirstSeenAtByID: [String: Date]?
     private var hasInventory = false
     private var newUpdatedLastClickedAt: Date?
     private var newUpdatedSelectionDisplayCount: Int?
@@ -250,6 +251,15 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     var dashboardInstalledCount: Int? {
         hasInventory ? packages.count : nil
+    }
+
+    var dashboardInstalledThisWeekText: String? {
+        guard hasInventory, let installedPackageFirstSeenAtByID else { return nil }
+        guard let week = Calendar.current.dateInterval(of: .weekOfYear, for: Date()) else { return nil }
+        let count = packages.filter { package in
+            installedPackageFirstSeenAtByID[package.id].map(week.contains) == true
+        }.count
+        return "+\(count) this week"
     }
 
     var dashboardOutdatedCount: Int? {
@@ -376,9 +386,10 @@ final class MainWindowModel: NSObject, ObservableObject {
         userDefaults.set(clickedAt, forKey: Self.newUpdatedLastClickedAtDefaultsKey)
     }
 
-    func apply(inventory next: PackageInventory, index: PackageIndex) {
+    func apply(inventory next: PackageInventory, index: PackageIndex, installedPackageFirstSeenAtByID: [String: Date]? = nil) {
         inventory = next
         packageIndex = index
+        self.installedPackageFirstSeenAtByID = installedPackageFirstSeenAtByID
         hasInventory = true
         packages = next.packages
         errors = next.errors
@@ -389,6 +400,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     func syncFromHost() {
         guard let snapshot = try? store.load(), let inventory = snapshot.inventory else {
             hasInventory = false
+            installedPackageFirstSeenAtByID = nil
             isReloading = true
             loadingManagers = Set(PackageManagerKind.allCases)
             return
@@ -399,6 +411,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     func apply(snapshot: PackageHostSnapshot) {
         guard let inventory = snapshot.inventory else {
             hasInventory = false
+            installedPackageFirstSeenAtByID = nil
             isReloading = true
             loadingManagers = Set(PackageManagerKind.allCases)
             uninstallingPackageName = nil
@@ -422,7 +435,8 @@ final class MainWindowModel: NSObject, ObservableObject {
                 packages: nextInventory.packages,
                 catalogPackages: snapshot.catalogPackages,
                 newUpdatedLastClickedAt: newUpdatedLastClickedAt
-            )
+            ),
+            installedPackageFirstSeenAtByID: snapshot.installedPackageFirstSeenAtByID
         )
         uninstallingPackageName = snapshot.runningAction?.kind == .uninstall ? snapshot.runningAction?.displayName : nil
         updatingPackageName = snapshot.runningAction?.kind == .update ? snapshot.runningAction?.displayName : nil

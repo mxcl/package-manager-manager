@@ -39,6 +39,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         snapshot.errorMessage = nil
         publishSnapshot()
         let previousLastBrewUpdateAt = snapshot.lastBrewUpdateAt
+        let previousFirstSeen = snapshot.installedPackageFirstSeenAtByID
 
         refreshTask = Task { [weak self] in
             let next = await Task.detached(priority: .background) {
@@ -58,6 +59,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             guard let self, !Task.isCancelled else { return }
             self.refreshTask = nil
             self.snapshot = next
+            self.snapshot.installedPackageFirstSeenAtByID = previousFirstSeen
             if self.snapshot.lastBrewUpdateAt == nil {
                 self.snapshot.lastBrewUpdateAt = previousLastBrewUpdateAt
             }
@@ -67,6 +69,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
 
     private func rescanAfterAction(errorMessage: String? = nil) {
         let lastBrewUpdateAt = snapshot.lastBrewUpdateAt
+        let previousFirstSeen = snapshot.installedPackageFirstSeenAtByID
         actionTask = Task { [weak self] in
             let next = await Task.detached(priority: .background) {
                 await Self.scanSnapshot(errorMessage: errorMessage, lastBrewUpdateAt: lastBrewUpdateAt)
@@ -75,6 +78,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             guard let self, !Task.isCancelled else { return }
             self.actionTask = nil
             self.snapshot = next
+            self.snapshot.installedPackageFirstSeenAtByID = previousFirstSeen
             self.publishSnapshot()
         }
     }
@@ -120,6 +124,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func publishSnapshot() {
+        snapshot.updateInstalledPackageFirstSeenAtByID()
         state = MenuBarMenuState(
             inventory: snapshot.inventory,
             isRefreshing: snapshot.isRefreshing,

@@ -263,9 +263,45 @@ import Testing
     #expect(model.dashboardInstalledCount == 3)
     #expect(model.dashboardOutdatedCount == 1)
     #expect(model.dashboardActiveEcosystemCount == 3)
+    #expect(model.dashboardInstalledThisWeekText == nil)
     #expect(model.dashboardLastUpdatedText?.hasPrefix("Last updated: ") == true)
     #expect(model.dashboardWhatsNewPackages.map(\.displayName) == ["mise"])
     #expect(model.dashboardRecommendedPackages.map(\.displayName) == ["ripgrep"])
+}
+
+@MainActor
+@Test func dashboardInstalledThisWeekCountsOnlyCurrentInstalledPackages() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let week = Calendar.current.dateInterval(of: .weekOfYear, for: Date())!
+    let thisWeek = week.start.addingTimeInterval(60)
+    let beforeThisWeek = week.start.addingTimeInterval(-60)
+    let fresh = package(.homebrew, "fresh")
+    let old = package(.npm, "old")
+    let removed = package(.uv, "removed")
+
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: [fresh, old]),
+        installedPackageFirstSeenAtByID: [
+            fresh.id: thisWeek,
+            old.id: beforeThisWeek,
+            removed.id: thisWeek,
+        ]
+    ))
+
+    #expect(model.dashboardInstalledThisWeekText == "+1 this week")
+}
+
+@MainActor
+@Test func dashboardInstalledThisWeekShowsZeroWithBaselineHistory() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let installed = package(.homebrew, "git")
+
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: [installed]),
+        installedPackageFirstSeenAtByID: [installed.id: Date(timeIntervalSince1970: 0)]
+    ))
+
+    #expect(model.dashboardInstalledThisWeekText == "+0 this week")
 }
 
 @MainActor
@@ -314,6 +350,7 @@ import Testing
     #expect(model.dashboardInstalledCount == nil)
     #expect(model.dashboardOutdatedCount == nil)
     #expect(model.dashboardActiveEcosystemCount == nil)
+    #expect(model.dashboardInstalledThisWeekText == nil)
     #expect(model.dashboardLastUpdatedText == nil)
 }
 

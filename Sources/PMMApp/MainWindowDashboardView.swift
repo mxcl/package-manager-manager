@@ -26,7 +26,7 @@ struct MainWindowDashboardView: View {
 
     private var dashboardStats: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 110), spacing: 14), count: 4), spacing: 14) {
-            DashboardMetricCard(title: "Installed packages", value: model.dashboardInstalledCount, detail: "+12 this week", isLoading: model.dashboardIsLoadingData, tint: .green) {
+            DashboardMetricCard(title: "Installed packages", value: model.dashboardInstalledCount, detail: model.dashboardInstalledThisWeekText, isLoading: model.dashboardIsLoadingData, tint: .green) {
                 model.selectSection(.installed)
             }
             DashboardMetricCard(title: "Outdated", value: model.dashboardOutdatedCount, detail: "View updates", isLoading: model.dashboardIsLoadingData, tint: Color.accentColor) {
@@ -91,7 +91,7 @@ private struct DashboardCard<Content: View>: View {
 private struct DashboardMetricCard: View {
     let title: String
     let value: Int?
-    let detail: String
+    let detail: String?
     let isLoading: Bool
     let tint: Color
     var action: (() -> Void)?
@@ -125,10 +125,12 @@ private struct DashboardMetricCard: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(SystemColor.secondaryText)
                     .lineLimit(1)
-                Text(detail)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(tint)
-                    .lineLimit(1)
+                if let detail {
+                    Text(detail)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(tint)
+                        .lineLimit(1)
+                }
             }
             .padding(14)
             .frame(maxWidth: .infinity, minHeight: 104, alignment: .leading)

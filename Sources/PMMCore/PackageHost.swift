@@ -24,6 +24,7 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
     public var runningAction: PackageHostRunningAction?
     public var errorMessage: String?
     public var lastBrewUpdateAt: Date?
+    public var installedPackageFirstSeenAtByID: [String: Date]?
 
     public init(
         inventory: PackageInventory? = nil,
@@ -31,7 +32,8 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         isRefreshing: Bool = false,
         runningAction: PackageHostRunningAction? = nil,
         errorMessage: String? = nil,
-        lastBrewUpdateAt: Date? = nil
+        lastBrewUpdateAt: Date? = nil,
+        installedPackageFirstSeenAtByID: [String: Date]? = nil
     ) {
         self.inventory = inventory
         self.catalogPackages = catalogPackages
@@ -39,6 +41,17 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         self.runningAction = runningAction
         self.errorMessage = errorMessage
         self.lastBrewUpdateAt = lastBrewUpdateAt
+        self.installedPackageFirstSeenAtByID = installedPackageFirstSeenAtByID
+    }
+
+    public mutating func updateInstalledPackageFirstSeenAtByID() {
+        guard let inventory else { return }
+        let firstSeenDate = installedPackageFirstSeenAtByID == nil ? Date(timeIntervalSince1970: 0) : inventory.generatedAt
+        var firstSeen = installedPackageFirstSeenAtByID ?? [:]
+        for package in inventory.packages where firstSeen[package.id] == nil {
+            firstSeen[package.id] = firstSeenDate
+        }
+        installedPackageFirstSeenAtByID = firstSeen
     }
 }
 
