@@ -1,4 +1,4 @@
-![Package Manager Manager screenshot](docs/pmm-promo.png)
+![Package Manager Manager screenshot](docs/pmm-promo-1.png)
 
 # Package Manager Manager
 
@@ -9,28 +9,13 @@ have, what’s outdated, and what’s taking up space.
 Use whatever you want without compromising visibility into what’s going on.
 
 > [!TIP]
-> We even manage `npx foo`—no longer must you remember to do `npx foo@latest`
-> every no and again to get the latest version of `foo`.
+> No need to remember to `npx ***@latest` anymore. We update `npx`’d stuff too.
+
+![Package Manager Manager screenshot](docs/pmm-promo-2.png)
 
 ## Quickstart
 
-```sh
-$ scripts/build.sh --run
-Built /Users/you/src/pmm/dist/Package Manager Manager.app
-# ^^ builds the app, signs it ad-hoc, then opens it
-```
-
-Install it into `/Applications`:
-
-```sh
-$ scripts/build.sh --install --run
-Built /Applications/Package Manager Manager.app
-```
-
-The app bundles a menu bar helper. The helper does the slow work in the
-background, writes a snapshot to Application Support, and the main window reads
-that. The UI should stay usable while your package managers do package manager
-things.
+[Download the .DMG](https://github.com/mxcl/pmm/releases/latest).
 
 ## What It Finds
 
@@ -48,7 +33,7 @@ It also pulls package summaries, categories, URLs, and latest-version metadata
 where the project has a source for it. If metadata is missing, the package still
 shows up. It just looks less informed. Fair.
 
-## Updating and Removing
+## Supported Package Managers
 
 The detail pane offers update and uninstall actions when PM² knows the native
 command to run.
@@ -76,33 +61,7 @@ Supported uninstall paths:
 > `rustup` is inventory-only for now. PM² will show `rustup` and toolchains,
 > but it will not update or uninstall them.
 
-## CLI
-
-There is a small CLI for the same inventory scan:
-
-```sh
-$ swift run pmmctl --help
-Usage: pmmctl [--json] [--outdated]
-```
-
-Use `--json` when you want the app's package model instead of tab-separated
-rows.
-
-## Development
-
-```sh
-$ swift test
-
-$ scripts/build.sh --run
-```
-
-The package exports three products:
-
-- `PMMApp`, the main window
-- `PMMMenuBar`, the helper/menu bar app
-- `pmmctl`, the CLI
-
-### Adding Package Managers
+### Adding New Package Managers
 
 Keep new manager support boring and off the main thread. The menu bar helper
 runs `PackageScanner.inventory(database:)` in the background, writes a
@@ -140,10 +99,3 @@ their data perfectly, or pretend their caches are a coherent database.
 Homebrew metadata requires `brew update` in the helper refresh path. Network
 metadata is best-effort; local inventory should still work when that data is
 unavailable.
-
-For everything else:
-
-```sh
-$ scripts/build.sh --help
-$ swift run pmmctl --help
-```
