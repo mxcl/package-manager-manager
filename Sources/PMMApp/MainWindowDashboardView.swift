@@ -126,12 +126,10 @@ private struct DashboardMetricCard: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(SystemColor.secondaryText)
                     .lineLimit(1)
-                if let detail {
-                    Text(detail)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(tint)
-                        .lineLimit(1)
-                }
+                Text(detail ?? "")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(tint)
+                    .lineLimit(1)
             }
             .padding(14)
             .frame(maxWidth: .infinity, minHeight: 104, alignment: .leading)
