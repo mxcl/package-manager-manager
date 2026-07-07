@@ -1,8 +1,8 @@
 import PMMCore
 import SwiftUI
 
-private let dashboardItemCornerRadius: CGFloat = 18
-private let dashboardCardSpacing: CGFloat = 9.5
+private let dashboardItemCornerRadius: CGFloat = 17.5
+private let dashboardCardSpacing: CGFloat = 8.5
 
 struct MainWindowDashboardView: View {
     @ObservedObject var model: MainWindowModel
