@@ -259,7 +259,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         let count = packages.filter { package in
             installedPackageFirstSeenAtByID[package.id].map(week.contains) == true
         }.count
-        return "+\(count) this week"
+        return count > 0 ? "+\(count) this week" : nil
     }
 
     var dashboardOutdatedCount: Int? {

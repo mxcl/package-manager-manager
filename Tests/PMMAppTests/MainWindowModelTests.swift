@@ -292,7 +292,7 @@ import Testing
 }
 
 @MainActor
-@Test func dashboardInstalledThisWeekShowsZeroWithBaselineHistory() {
+@Test func dashboardInstalledThisWeekHidesZeroWithBaselineHistory() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let installed = package(.homebrew, "git")
 
@@ -301,7 +301,7 @@ import Testing
         installedPackageFirstSeenAtByID: [installed.id: Date(timeIntervalSince1970: 0)]
     ))
 
-    #expect(model.dashboardInstalledThisWeekText == "+0 this week")
+    #expect(model.dashboardInstalledThisWeekText == nil)
 }
 
 @MainActor
