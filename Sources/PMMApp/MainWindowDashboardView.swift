@@ -17,9 +17,9 @@ struct MainWindowDashboardView: View {
                         .frame(width: 310)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 18)
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
         }
         .scrollEdgeEffectStyle(.soft, for: .top)
         .ignoresSafeArea(.container, edges: .top)
@@ -138,7 +138,7 @@ private struct DashboardMetricCard: View {
                     .foregroundStyle(tint)
                     .lineLimit(1)
             }
-            .padding(14)
+            .padding(18)
             .frame(maxWidth: .infinity, minHeight: 104, alignment: .leading)
             .contentShape(Rectangle())
         }
@@ -215,8 +215,8 @@ private struct DashboardSectionHeader: View {
                     .foregroundStyle(Color.accentColor)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
     }
 }
 
@@ -273,8 +273,8 @@ private struct DashboardPackageRow: View {
                         .stroke(SystemColor.controlBorder, lineWidth: 1)
                 }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
         .frame(minHeight: 62)
     }
 }
@@ -304,8 +304,7 @@ private struct DashboardRecommendationSection: View {
                         }
                     }
                 }
-                // .padding(.horizontal, 14)
-                .padding(.bottom, 14)
+                .padding(.bottom, 18)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -348,7 +347,7 @@ private struct DashboardRecommendationCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
-        .padding(12)
+        .padding(16)
         .frame(minHeight: 150, alignment: .topLeading)
         .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: dashboardItemCornerRadius, style: .continuous))
         .overlay {
@@ -389,7 +388,7 @@ private struct DashboardSponsoredCard: View {
                         .foregroundStyle(.white.opacity(0.7))
                 }
             }
-            .padding(16)
+            .padding(20)
             .frame(maxWidth: .infinity, minHeight: 200, alignment: .leading)
             .background {
                 LinearGradient(
@@ -443,8 +442,8 @@ private struct DashboardUpdatesCard: View {
                     }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 14)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 18)
         }
     }
 }
@@ -484,8 +483,8 @@ private struct DashboardInstallPacksCard: View {
                             .frame(width: 58, height: 30)
                             .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
                     if pack.0 != packs.last?.0 {
                         Divider().overlay(SystemColor.hairline)
                     }
