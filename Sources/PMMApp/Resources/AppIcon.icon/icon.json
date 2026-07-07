@@ -17,6 +17,10 @@
           }
         },
         {
+          "image-name" : "shadow.png",
+          "name" : "shadow"
+        },
+        {
           "image-name" : "background.png",
           "name" : "background"
         }
