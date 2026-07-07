@@ -2,15 +2,13 @@ import AppKit
 import AppUpdater
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
     private let appUpdater = AppUpdater(owner: "mxcl", repo: "package-manager-manager")
     private var checkForUpdatesItem: NSMenuItem?
     private var updateButton: NSButton?
     private var availableUpdate: Update? {
         didSet {
-            let isHidden = availableUpdate == nil
-            updateButton?.isHidden = isHidden
-            updateButton?.superview?.isHidden = isHidden
+            syncUpdateToolbarItem()
         }
     }
     private var window: NSWindow?
@@ -53,9 +51,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.titlebarSeparatorStyle = .none
         window.toolbarStyle = .automatic
         let toolbar = NSToolbar(identifier: "PMMToolbar")
-        toolbar.displayMode = .iconOnly
+        toolbar.delegate = self
         window.toolbar = toolbar
-        addUpdateButton(to: window)
         window.isMovableByWindowBackground = true
         window.minSize = NSSize(width: 1104, height: 680)
         window.setContentSize(initialContentSize)
@@ -135,6 +132,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return windowItem
     }
 
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.flexibleSpace, .updatePMM]
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        availableUpdate == nil ? [] : [.flexibleSpace, .updatePMM]
+    }
+
+    func toolbar(
+        _ toolbar: NSToolbar,
+        itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+        willBeInsertedIntoToolbar flag: Bool
+    ) -> NSToolbarItem? {
+        guard itemIdentifier == .updatePMM else { return nil }
+        let button = NSButton(title: "Update PM²", target: self, action: #selector(updatePMM(_:)))
+        button.bezelStyle = .toolbar
+        button.controlSize = .small
+        button.image = NSImage(systemSymbolName: "arrow.down.app", accessibilityDescription: "Update PM²")
+        button.imagePosition = .imageLeading
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.label = "Update PM²"
+        item.paletteLabel = "Update PM²"
+        item.view = button
+        updateButton = button
+        return item
+    }
+
     @objc private func refreshPackages(_ sender: Any?) {
         (window?.contentViewController as? MainWindowController)?.refresh(sender)
     }
@@ -161,23 +185,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func addUpdateButton(to window: NSWindow) {
-        let button = NSButton(title: "Update PM²", target: self, action: #selector(updatePMM(_:)))
-        button.bezelStyle = .rounded
-        button.controlSize = .small
-        button.isHidden = availableUpdate == nil
-        let controller = NSTitlebarAccessoryViewController()
-        controller.layoutAttribute = .right
-        controller.view = TitlebarAccessoryView(size: NSSize(width: 96, height: 28))
-        controller.view.isHidden = availableUpdate == nil
-        controller.view.addSubview(button)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            button.centerYAnchor.constraint(equalTo: controller.view.centerYAnchor),
-            button.trailingAnchor.constraint(equalTo: controller.view.trailingAnchor),
-        ])
-        window.addTitlebarAccessoryViewController(controller)
-        updateButton = button
+    private func syncUpdateToolbarItem() {
+        guard let toolbar = window?.toolbar else { return }
+        let ids = toolbar.items.map(\.itemIdentifier)
+        let hasUpdateItem = ids.contains(.updatePMM)
+        if availableUpdate != nil, !hasUpdateItem {
+            toolbar.insertItem(withItemIdentifier: .flexibleSpace, at: 0)
+            toolbar.insertItem(withItemIdentifier: .updatePMM, at: 1)
+        } else if availableUpdate == nil, hasUpdateItem {
+            for index in toolbar.items.indices.reversed()
+            where [.flexibleSpace, .updatePMM].contains(toolbar.items[index].itemIdentifier) {
+                toolbar.removeItem(at: index)
+            }
+            updateButton = nil
+        }
     }
 
     @objc private func updatePMM(_ sender: Any?) {
@@ -201,20 +222,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-private final class TitlebarAccessoryView: NSView {
-    private let size: NSSize
-
-    init(size: NSSize) {
-        self.size = size
-        super.init(frame: NSRect(origin: .zero, size: size))
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        nil
-    }
-
-    override var intrinsicContentSize: NSSize { size }
+private extension NSToolbarItem.Identifier {
+    static let updatePMM = NSToolbarItem.Identifier("UpdatePMM")
 }
 
 private final class PMMWindow: NSWindow {
