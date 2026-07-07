@@ -102,6 +102,36 @@ The package exports three products:
 - `PMMMenuBar`, the helper/menu bar app
 - `pmmctl`, the CLI
 
+### Adding Package Managers
+
+Keep new manager support boring and off the main thread. The menu bar helper
+runs `PackageScanner.inventory(database:)` in the background, writes a
+`PackageHostSnapshot`, and the main app renders that snapshot. Do not add package
+manager scans, network loads, or shell commands to SwiftUI views or main-window
+models.
+
+Checklist:
+
+- Add the manager to `PackageManagerKind` in `Sources/PMMCore/Models.swift`.
+- Add one `scanX(database:)` method to `Sources/PMMCore/PackageScanner.swift`
+  and call it from `inventory(database:)`. Return `[]` when the tool is missing
+  or the manager has no local state.
+- Build `ManagedPackage` values with stable `identifier` prefixes, readable
+  `displayName`, `installedVersion`, optional `latestVersion`, and install or
+  binary paths when cheap to find.
+- Wire update/uninstall only when the native command is obvious:
+  `PackageUpdater`, `PackageUninstaller`, and their `supports(_:)` methods.
+  Inventory-only support is fine.
+- Put the manager in a sidebar group in `MainWindowModel.swift` and give it a
+  dashboard SF Symbol in `MainWindowDashboardView.swift`.
+- Map it in `PackageDossierClient.provider(for:)` only if AutomIC Vault has a
+  matching provider.
+- Update the README lists under "What It Finds" and "Updating and Removing".
+- Add focused tests beside the touched code: scanner parsing in
+  `PackageScannerTests`, action commands in `PackageUpdaterTests` or
+  `PackageUninstallerTests`, and UI grouping in `MainWindowModelTests` when a
+  new section changes.
+
 ## Caveats
 
 PM² shells out to your package managers. It does not replace them, normalize
