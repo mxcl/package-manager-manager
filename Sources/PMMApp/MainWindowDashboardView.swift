@@ -17,9 +17,7 @@ struct MainWindowDashboardView: View {
                         .frame(width: 310)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
-            .padding(.bottom, 12)
+            .padding(8.5)
         }
         .scrollEdgeEffectStyle(.soft, for: .top)
         .ignoresSafeArea(.container, edges: .top)
