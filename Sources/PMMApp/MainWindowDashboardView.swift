@@ -25,18 +25,18 @@ struct MainWindowDashboardView: View {
 
     private var dashboardStats: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 110), spacing: 14), count: 4), spacing: 14) {
-            DashboardMetricCard(title: "Installed packages", value: model.dashboardInstalledCount, detail: model.dashboardInstalledThisWeekText, isLoading: model.dashboardIsLoadingData, tint: .green) {
+            DashboardMetricCard(title: "Installed packages", value: model.dashboardInstalledCount, detail: model.dashboardInstalledThisWeekText, isLoading: model.dashboardIsLoadingData, tint: AnyShapeStyle(.tertiary)) {
                 model.selectSection(.installed)
             }
-            DashboardMetricCard(title: "Outdated", value: model.dashboardOutdatedCount, detail: "View updates", isLoading: model.dashboardIsLoadingData, tint: Color.accentColor) {
+            DashboardMetricCard(title: "Outdated", value: model.dashboardOutdatedCount, detail: "View updates", isLoading: model.dashboardIsLoadingData, tint: AnyShapeStyle(Color.accentColor)) {
                 model.selectSection(.outdated)
             }
-            DashboardMetricCard(title: "Ecosystems", value: model.dashboardActiveEcosystemCount, detail: "Active", isLoading: model.dashboardIsLoadingData, tint: SystemColor.secondaryText) {
+            DashboardMetricCard(title: "Ecosystems", value: model.dashboardActiveEcosystemCount, detail: "Active", isLoading: model.dashboardIsLoadingData, tint: AnyShapeStyle(SystemColor.secondaryText)) {
                 if let section = model.visibleManagerSections.first {
                     model.selectSection(section)
                 }
             }
-            DashboardMetricCard(title: "Install packs", value: 3, detail: "1 update available", isLoading: false, tint: Color.accentColor)
+            DashboardMetricCard(title: "Install packs", value: 3, detail: "1 update available", isLoading: false, tint: AnyShapeStyle(Color.accentColor))
         }
     }
 
@@ -92,7 +92,7 @@ private struct DashboardMetricCard: View {
     let value: Int?
     let detail: String?
     let isLoading: Bool
-    let tint: Color
+    let tint: AnyShapeStyle
     var action: (() -> Void)?
 
     @ViewBuilder
