@@ -50,6 +50,8 @@ struct MainWindowDashboardView: View {
                 emptyText: "No new packages yet"
             ) {
                 model.openDashboardPackage($0)
+            } viewAllAction: {
+                model.selectSection(.newUpdated)
             }
             DashboardRecommendationSection(
                 packages: model.dashboardRecommendedPackages,
@@ -148,10 +150,11 @@ private struct DashboardPackageSection: View {
     let isLoading: Bool
     let emptyText: String
     let action: (ManagedPackage) -> Void
+    let viewAllAction: () -> Void
 
     var body: some View {
         DashboardCard {
-            DashboardSectionHeader(title: title, systemImage: systemImage)
+            DashboardSectionHeader(title: title, systemImage: systemImage, viewAllAction: viewAllAction)
             if isLoading {
                 ProgressView()
                     .controlSize(.small)
@@ -180,10 +183,12 @@ private struct DashboardPackageSection: View {
 private struct DashboardSectionHeader: View {
     let title: String
     let systemImage: String?
+    let viewAllAction: (() -> Void)?
 
-    init(title: String, systemImage: String? = nil) {
+    init(title: String, systemImage: String? = nil, viewAllAction: (() -> Void)? = nil) {
         self.title = title
         self.systemImage = systemImage
+        self.viewAllAction = viewAllAction
     }
 
     var body: some View {
@@ -197,9 +202,16 @@ private struct DashboardSectionHeader: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(SystemColor.primaryText)
             Spacer()
-            Text("View all")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.accentColor)
+            if let viewAllAction {
+                Button("View all", action: viewAllAction)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.accentColor)
+            } else {
+                Text("View all")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.accentColor)
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
