@@ -253,7 +253,7 @@ if $publish; then
   push_current_branch
 fi
 
-dmg_path="${DMG_PATH:-$root/dist/$app_name-$version.dmg}"
+dmg_path="${DMG_PATH:-$root/dist/package-manager-manager-$version.dmg}"
 
 if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
   sign_identity="$CODESIGN_IDENTITY"

@@ -5,7 +5,7 @@ import ServiceManagement
 
 @MainActor
 final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
-    private let appUpdater = AppUpdater(owner: "mxcl", repo: "pmm")
+    private let appUpdater = AppUpdater(owner: "mxcl", repo: "package-manager-manager")
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let store = PackageHostStore()
     private let notificationCenter = DistributedNotificationCenter.default()

@@ -3,7 +3,7 @@ import AppUpdater
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let appUpdater = AppUpdater(owner: "mxcl", repo: "pmm")
+    private let appUpdater = AppUpdater(owner: "mxcl", repo: "package-manager-manager")
     private var checkForUpdatesItem: NSMenuItem?
     private var window: NSWindow?
     private var isCheckingForUpdates = false {
