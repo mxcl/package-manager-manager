@@ -54,7 +54,9 @@ struct MainWindowDashboardView: View {
             DashboardRecommendationSection(
                 packages: model.dashboardRecommendedPackages,
                 isLoading: model.dashboardIsLoadingData
-            )
+            ) {
+                model.openDashboardPackage($0)
+            }
         }
     }
 
@@ -265,6 +267,7 @@ private struct DashboardPackageRow: View {
 private struct DashboardRecommendationSection: View {
     let packages: [ManagedPackage]
     let isLoading: Bool
+    let action: (ManagedPackage) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -281,7 +284,9 @@ private struct DashboardRecommendationSection: View {
             } else {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 130), spacing: 12), count: 3), spacing: 12) {
                     ForEach(packages) { package in
-                        DashboardRecommendationCard(package: package)
+                        DashboardRecommendationCard(package: package) {
+                            action(package)
+                        }
                     }
                 }
                 // .padding(.horizontal, 14)
@@ -294,6 +299,7 @@ private struct DashboardRecommendationSection: View {
 
 private struct DashboardRecommendationCard: View {
     let package: ManagedPackage
+    let action: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -314,11 +320,18 @@ private struct DashboardRecommendationCard: View {
                 .lineLimit(2)
                 .frame(minHeight: 28, alignment: .topLeading)
             Spacer(minLength: 0)
-            Text("Install")
+            Button("View Package Details", action: action)
+                .buttonStyle(.plain)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Color.accentColor)
                 .frame(maxWidth: .infinity, minHeight: 30)
                 .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(SystemColor.controlBorder, lineWidth: 1)
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .padding(12)
         .frame(minHeight: 150, alignment: .topLeading)
