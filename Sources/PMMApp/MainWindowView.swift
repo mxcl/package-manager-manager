@@ -971,7 +971,7 @@ enum SystemColor {
     static let quietText = Color(nsColor: .tertiaryLabelColor)
     static let hairline = Color(nsColor: .separatorColor)
     static let controlFill = Color(nsColor: .controlBackgroundColor)
-    static let cardTint = Color(nsColor: .controlBackgroundColor).opacity(0.28)
+    static let cardTint = Color(nsColor: .controlBackgroundColor).opacity(0.5)
     static let searchFill = Color(nsColor: .controlBackgroundColor)
     static let controlBorder = Color(nsColor: .separatorColor)
     static let orange = Color.orange
