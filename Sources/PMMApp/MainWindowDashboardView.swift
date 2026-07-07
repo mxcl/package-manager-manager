@@ -388,7 +388,7 @@ private struct DashboardSponsoredCard: View {
                         .foregroundStyle(.white.opacity(0.7))
                 }
             }
-            .padding(20)
+            .padding(16)
             .frame(maxWidth: .infinity, minHeight: 200, alignment: .leading)
             .background {
                 LinearGradient(
