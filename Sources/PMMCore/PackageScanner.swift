@@ -70,6 +70,11 @@ public struct PackageScanner {
         return formulae + casks
     }
 
+    public func homebrewPrefix() -> String? {
+        guard let brew = executable(named: "brew", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin"]) else { return nil }
+        return successfulLine(brew, ["--prefix"])
+    }
+
     public func scanNPM(database: PackageDatabase) throws -> [ManagedPackage] {
         guard let npm = executable(named: "npm", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]) else { return [] }
         let root = successfulLine(npm, ["root", "-g"])

@@ -139,11 +139,12 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
 
     private nonisolated static func scanSnapshot(errorMessage: String?, lastBrewUpdateAt: Date?) async -> PackageHostSnapshot {
         let database = await PackageDatabase.load()
-        let inventory = await PackageScanner().inventory(database: database)
+        let scanner = PackageScanner()
+        let inventory = await scanner.inventory(database: database)
         let errors = [errorMessage].compactMap { $0 } + inventory.errors
         return PackageHostSnapshot(
             inventory: PackageInventory(packages: inventory.packages, errors: errors),
-            catalogPackages: database.catalogPackages,
+            catalogPackages: database.catalogPackages(homebrewPrefix: scanner.homebrewPrefix()),
             isRefreshing: false,
             runningAction: nil,
             errorMessage: errorMessage ?? inventory.errors.first,

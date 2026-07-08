@@ -40,9 +40,13 @@ public struct PackageDatabase: Sendable {
     }
 
     public var catalogPackages: [ManagedPackage] {
+        catalogPackages(homebrewPrefix: nil)
+    }
+
+    public func catalogPackages(homebrewPrefix: String?) -> [ManagedPackage] {
         let packages = (
-            managedPackages(for: .homebrew, identifierPrefix: "brew", metadata: formulas) +
-            managedPackages(for: .homebrew, identifierPrefix: "brew:cask", metadata: casks) +
+            managedPackages(for: .homebrew, identifierPrefix: "brew", metadata: formulas, homebrewPrefix: homebrewPrefix) +
+            managedPackages(for: .homebrew, identifierPrefix: "brew:cask", metadata: casks, homebrewPrefix: homebrewPrefix) +
             managedPackages(for: .npm, identifierPrefix: "npm", metadata: npms)
         )
         return Dictionary(grouping: packages, by: \.id).compactMap { $0.value.first }
@@ -84,7 +88,12 @@ public struct PackageDatabase: Sendable {
         }
     }
 
-    private func managedPackages(for manager: PackageManagerKind, identifierPrefix: String, metadata: [String: PackageMetadata]) -> [ManagedPackage] {
+    private func managedPackages(
+        for manager: PackageManagerKind,
+        identifierPrefix: String,
+        metadata: [String: PackageMetadata],
+        homebrewPrefix: String? = nil
+    ) -> [ManagedPackage] {
         metadata.map { name, metadata in
             ManagedPackage(
                 manager: manager,
@@ -98,10 +107,19 @@ public struct PackageDatabase: Sendable {
                 docs: metadata.docs,
                 repo: metadata.repo,
                 lastUpdatedAt: metadata.lastUpdatedAt,
-                pulseKind: metadata.pulseKind
+                pulseKind: metadata.pulseKind,
+                installLocation: homebrewInstallLocation(prefix: homebrewPrefix, identifierPrefix: identifierPrefix, name: name, version: metadata.version)
             )
         }
     }
+}
+
+private func homebrewInstallLocation(prefix: String?, identifierPrefix: String, name: String, version: String?) -> String? {
+    guard let prefix, identifierPrefix.hasPrefix("brew") else { return nil }
+    if identifierPrefix == "brew:cask" {
+        return [prefix, "Caskroom", name, version].compactMap { $0 }.joined(separator: "/")
+    }
+    return "\(prefix)/opt/\(name)"
 }
 
 private func nonEmptyString(_ value: Any?) -> String? {

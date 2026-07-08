@@ -65,6 +65,18 @@ import Testing
     #expect(Set(db.catalogPackages.compactMap(\.category)) == ["developer-tools", "language-runtime", "productivity"])
 }
 
+@Test func catalogPackagesCanIncludeKnownHomebrewInstallLocations() {
+    let db = PackageDatabase(
+        formulas: ["git": PackageMetadata(summary: nil, category: nil, homepage: nil, version: "2.50.0")],
+        casks: ["visual-studio-code": PackageMetadata(summary: nil, category: nil, homepage: nil, version: "1.101.2")]
+    )
+
+    let packages = db.catalogPackages(homebrewPrefix: "/opt/homebrew")
+
+    #expect(packages.first { $0.identifier == "brew:git" }?.installLocation == "/opt/homebrew/opt/git")
+    #expect(packages.first { $0.identifier == "brew:cask:visual-studio-code" }?.installLocation == "/opt/homebrew/Caskroom/visual-studio-code/1.101.2")
+}
+
 @Test func loadsCachedDatabaseResponse() throws {
     let url = URL(string: "https://example.com/db.json")!
     let data = """
