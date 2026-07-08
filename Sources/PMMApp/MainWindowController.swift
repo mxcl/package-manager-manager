@@ -87,10 +87,11 @@ struct MainWindowRootView: View {
                 } detail: {
                     MainWindowDashboardView(model: model)
                         .navigationSplitViewColumnWidth(min: 602, ideal: 1128)
+                        .toolbar { appUpdateToolbarItem }
                 }
                 .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
                 .toolbar(removing: .title)
-                .toolbar { appUpdateToolbarItem }
+                
             } else {
                 NavigationSplitView {
                     sidebar
@@ -105,10 +106,10 @@ struct MainWindowRootView: View {
                             .frame(minWidth: 350, maxWidth: .infinity)
                     }
                     .navigationSplitViewColumnWidth(min: 602, ideal: 876)
+                    .toolbar { appUpdateToolbarItem }
                 }
                 .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
                 .toolbar(removing: .title)
-                .toolbar { appUpdateToolbarItem }
             }
         }
     }
