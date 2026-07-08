@@ -245,6 +245,7 @@ import Testing
     let packages = [
         ManagedPackage(manager: .uv, identifier: "uv:cpython:3.13", displayName: "uv Managed Python 3.13", installedVersion: "3.13.12", latestVersion: nil, summary: "runtime"),
         ManagedPackage(manager: .npm, identifier: "npm:@scope/tool", displayName: "@scope/tool", installedVersion: "1.0.0", latestVersion: nil, summary: "A scoped CLI"),
+        ManagedPackage(manager: .homebrew, identifier: "brew:findutils", displayName: "findutils", installedVersion: "4.10.0", latestVersion: nil, executableNames: ["gfind"]),
     ]
 
     model.apply(
@@ -259,6 +260,8 @@ import Testing
     #expect(model.displayedPackages.map(\.identifier) == ["npm:@scope/tool"])
     model.searchText = "scoped"
     #expect(model.displayedPackages.map(\.identifier) == ["npm:@scope/tool"])
+    model.searchText = "gfind"
+    #expect(model.displayedPackages.map(\.identifier) == ["brew:findutils"])
 }
 
 @MainActor

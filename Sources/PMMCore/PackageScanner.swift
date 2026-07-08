@@ -334,6 +334,7 @@ public struct PackageScanner {
         }
         let formulaBinaries = kindFlag == "--formula" ? homebrewFormulaBinaryPaths(brew, names: rows.map(\.name)) : [:]
         return rows.map { name, version in
+            let binaryPaths = formulaBinaries[name] ?? []
             let curation = database.metadata(for: .homebrew, name: name)
             let info = installedMetadata[name]
             let metadata = info?.metadata ?? homebrewCachedMetadata(name: name, kindFlag: kindFlag)
@@ -352,7 +353,8 @@ public struct PackageScanner {
                 lastUpdatedAt: curation?.lastUpdatedAt,
                 pulseKind: curation?.pulseKind,
                 installLocation: installLocation,
-                binaryPath: info?.binaryPath ?? formulaBinaries[name] ?? homebrewBinaryPath(prefix: prefix, name: name)
+                binaryPath: info?.binaryPath ?? binaryPaths.first ?? homebrewBinaryPath(prefix: prefix, name: name),
+                executableNames: binaryPaths.map { URL(fileURLWithPath: $0).lastPathComponent }
             )
         }
     }
@@ -417,7 +419,7 @@ public struct PackageScanner {
         }
     }
 
-    private func homebrewFormulaBinaryPaths(_ brew: String, names: [String]) -> [String: String] {
+    private func homebrewFormulaBinaryPaths(_ brew: String, names: [String]) -> [String: [String]] {
         guard !names.isEmpty,
               let result = try? runner.run(brew, ["list", "--formula"] + names),
               result.status == 0 else { return [:] }
@@ -425,7 +427,7 @@ public struct PackageScanner {
             let path = String(line)
             guard path.contains("/bin/"),
                   let name = homebrewFormulaName(in: path) else { return }
-            paths[name] = paths[name] ?? path
+            paths[name, default: []].append(path)
         }
     }
 

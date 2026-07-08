@@ -40,6 +40,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
     public let pulseKind: String?
     public let installLocation: String?
     public let binaryPath: String?
+    public let executableNames: [String]
 
     public var name: String { identifier }
 
@@ -58,7 +59,8 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         lastUpdatedAt: String? = nil,
         pulseKind: String? = nil,
         installLocation: String? = nil,
-        binaryPath: String? = nil
+        binaryPath: String? = nil,
+        executableNames: [String] = []
     ) {
         self.init(
             manager: manager,
@@ -75,7 +77,8 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
             lastUpdatedAt: lastUpdatedAt,
             pulseKind: pulseKind,
             installLocation: installLocation,
-            binaryPath: binaryPath
+            binaryPath: binaryPath,
+            executableNames: executableNames
         )
     }
 
@@ -94,7 +97,8 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         lastUpdatedAt: String? = nil,
         pulseKind: String? = nil,
         installLocation: String? = nil,
-        binaryPath: String? = nil
+        binaryPath: String? = nil,
+        executableNames: [String] = []
     ) {
         self.manager = manager
         self.identifier = identifier
@@ -111,6 +115,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         self.pulseKind = pulseKind
         self.installLocation = installLocation
         self.binaryPath = binaryPath
+        self.executableNames = Self.normalizedExecutableNames(executableNames, binaryPath: binaryPath)
     }
 
     public init(from decoder: Decoder) throws {
@@ -137,7 +142,8 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
             lastUpdatedAt: try container.decodeIfPresent(String.self, forKey: .lastUpdatedAt),
             pulseKind: try container.decodeIfPresent(String.self, forKey: .pulseKind),
             installLocation: try container.decodeIfPresent(String.self, forKey: .installLocation),
-            binaryPath: try container.decodeIfPresent(String.self, forKey: .binaryPath)
+            binaryPath: try container.decodeIfPresent(String.self, forKey: .binaryPath),
+            executableNames: try container.decodeIfPresent([String].self, forKey: .executableNames) ?? []
         )
     }
 
@@ -159,6 +165,9 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         try container.encodeIfPresent(pulseKind, forKey: .pulseKind)
         try container.encodeIfPresent(installLocation, forKey: .installLocation)
         try container.encodeIfPresent(binaryPath, forKey: .binaryPath)
+        if !executableNames.isEmpty {
+            try container.encode(executableNames, forKey: .executableNames)
+        }
     }
 
     public var isOutdated: Bool {
@@ -187,7 +196,8 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
             lastUpdatedAt: metadata.lastUpdatedAt ?? lastUpdatedAt,
             pulseKind: metadata.pulseKind ?? pulseKind,
             installLocation: installLocation,
-            binaryPath: binaryPath
+            binaryPath: binaryPath,
+            executableNames: executableNames
         )
     }
 
@@ -209,7 +219,8 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
                 lastUpdatedAt: newest.lastUpdatedAt,
                 pulseKind: newest.pulseKind,
                 installLocation: newest.installLocation,
-                binaryPath: newest.binaryPath
+                binaryPath: newest.binaryPath,
+                executableNames: newest.executableNames
             )
         }
         .sorted {
@@ -227,6 +238,12 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
     private static func normalizedVersions(_ versions: [String], including installedVersion: String?) -> [String] {
         Array(Set(versions + [installedVersion].compactMap { $0 }.filter { !$0.isEmpty }))
             .sorted { $0.localizedStandardCompare($1) == .orderedDescending }
+    }
+
+    private static func normalizedExecutableNames(_ names: [String], binaryPath: String?) -> [String] {
+        var seen = Set<String>()
+        return (names + [binaryPath.map { URL(fileURLWithPath: $0).lastPathComponent }].compactMap { $0 })
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
     }
 
     private static func normalizedDisplayName(_ displayName: String, manager: PackageManagerKind, identifier: String) -> String {
@@ -254,6 +271,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         case pulseKind
         case installLocation
         case binaryPath
+        case executableNames
     }
 }
 

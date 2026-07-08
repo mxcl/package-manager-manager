@@ -494,6 +494,8 @@ final class MainWindowModel: NSObject, ObservableObject {
         package.displayName.localizedCaseInsensitiveContains(query)
             || package.identifier.localizedCaseInsensitiveContains(query)
             || (package.summary?.localizedCaseInsensitiveContains(query) == true)
+            || package.executableNames.contains { $0.localizedCaseInsensitiveContains(query) }
+            || (package.binaryPath?.localizedCaseInsensitiveContains(query) == true)
     }
 
     @discardableResult

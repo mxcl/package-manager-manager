@@ -326,6 +326,28 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages.first?.binaryPath == "/fake/homebrew/Cellar/create-dmg/1.3.0/bin/create-dmg")
 }
 
+@Test func homebrewScannerRecordsFormulaExecutableNames() throws {
+    let runner = FakeRunner(responses: [
+        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "findutils\n", stderr: "", status: 0),
+        "/fake/brew --prefix": CommandResult(stdout: "/fake/homebrew\n", stderr: "", status: 0),
+        "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/brew list --versions --formula": CommandResult(stdout: "findutils 4.10.0\n", stderr: "", status: 0),
+        "/fake/brew list --versions --cask": CommandResult(stdout: "", stderr: "", status: 0),
+        "/fake/brew list --formula findutils": CommandResult(stdout: """
+        /fake/homebrew/Cellar/findutils/4.10.0/bin/gbase32
+        /fake/homebrew/Cellar/findutils/4.10.0/bin/gfind
+        """, stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"])
+
+    let package = try #require(scanner.scanHomebrew(database: PackageDatabase()).first)
+
+    #expect(package.identifier == "brew:findutils")
+    #expect(package.binaryPath == "/fake/homebrew/Cellar/findutils/4.10.0/bin/gbase32")
+    #expect(package.executableNames == ["gbase32", "gfind"])
+}
+
 @Test func homebrewScannerUsesCaskLocationMetadata() throws {
     let runner = FakeRunner(responses: [
         "/fake/brew leaves --installed-on-request": CommandResult(stdout: "", stderr: "", status: 0),
