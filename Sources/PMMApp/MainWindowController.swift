@@ -99,6 +99,7 @@ struct MainWindowRootView: View {
                     Label("Update All", systemImage: "arrow.down.circle")
                 }
                 .disabled(!model.canUpdateAllOutdatedPackages)
+                .labelStyle(.titleAndIcon)
             }
         }
     }
@@ -109,11 +110,8 @@ struct MainWindowRootView: View {
             ToolbarSpacer(.flexible)
             ToolbarItem(placement: .primaryAction) {
                 Button(action: updateApp) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.down.app")
-                        Text("Update pkg⋅mgr²")
-                    }
-                }
+                    Label("Update pkg⋅mgr²", systemImage: "arrow.down.app")
+                }.labelStyle(.titleAndIcon)
             }
         }
     }
