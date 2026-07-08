@@ -444,7 +444,7 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 @Test func homebrewScannerKeepsTappedRequestedFormulae() throws {
     let runner = FakeRunner(responses: [
         "/fake/brew leaves --installed-on-request": CommandResult(stdout: "automic-vault/isotopes/gh-cli\n", stderr: "", status: 0),
-        "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[{"name":"automic-vault/isotopes/gh-cli","installed_versions":["2.94.0"],"current_version":"2.96.0"}],"casks":[]}"#, stderr: "", status: 0),
         "/fake/brew list --versions --formula": CommandResult(stdout: "gh-cli 2.94.0\nopenssl@3 3.5.0\n", stderr: "", status: 0),
         "/fake/brew info --installed --cask --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
     ])
@@ -454,6 +454,7 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 
     #expect(packages.map(\.identifier) == ["brew:gh-cli"])
     #expect(packages.first?.displayName == "gh-cli")
+    #expect(packages.first?.latestVersion == "2.96.0")
 }
 
 @Test func npxScannerShowsNewestPackageVersionAndKeepsOtherVersions() throws {

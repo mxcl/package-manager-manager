@@ -951,11 +951,10 @@ private func packageDisplayOrder(_ lhs: ManagedPackage, _ rhs: ManagedPackage) -
 private func outdatedMap(_ value: Any?) -> [String: String] {
     guard let array = value as? [[String: Any]] else { return [:] }
     return array.reduce(into: [:]) { result, item in
-        guard let name = item["name"] as? String else { return }
-        if let newest = item["current_version"] as? String, let installed = item["installed_versions"] as? [String], newest != installed.last {
-            result[name] = newest
-        } else if let newest = item["current_version"] as? String {
-            result[name] = newest
+        guard let name = item["name"] as? String,
+              let newest = item["current_version"] as? String else { return }
+        for key in [name, name.split(separator: "/").last.map(String.init)].compactMap({ $0 }) {
+            result[key] = newest
         }
     }
 }
