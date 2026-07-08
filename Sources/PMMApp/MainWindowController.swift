@@ -100,8 +100,6 @@ struct MainWindowRootView: View {
                 .toolbar(removing: .title)
             }
         }
-//        .accentColor(SystemColor.packageBrown)
-//        .tint(SystemColor.packageBrown)
     }
 
     private var sidebar: some View {

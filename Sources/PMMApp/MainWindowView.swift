@@ -41,6 +41,7 @@ struct MainWindowSidebarView: View {
             sidebarIcon(section)
             Text(section.title)
                 .lineLimit(1)
+                .foregroundStyle(model.activeSidebarSection == section ? Color.accentColor : .primary)
             Spacer(minLength: 6)
             if model.isLoadingCount(for: section) {
                 ProgressView()

@@ -75,7 +75,7 @@ enum MainWindowSection: String, CaseIterable, Identifiable, Sendable {
         case .homebrew: "mug"
         case .casks: "macwindow"
         case .javascript: "curlybraces"
-        case .python: "shippingbox.circle"
+        case .python: "arrow.forward.to.line"
         case .developerTools: "chevron.left.forwardslash.chevron.right"
         case .cloudInfrastructure: "cloud"
         case .networking: "network"
