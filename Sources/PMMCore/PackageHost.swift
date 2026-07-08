@@ -91,6 +91,7 @@ public enum PackageHostNotifications {
     public static let refreshRequested = Notification.Name("dev.mxcl.pmm.packageHost.refreshRequested")
     public static let installRequested = Notification.Name("dev.mxcl.pmm.packageHost.installRequested")
     public static let updateRequested = Notification.Name("dev.mxcl.pmm.packageHost.updateRequested")
+    public static let updateAllRequested = Notification.Name("dev.mxcl.pmm.packageHost.updateAllRequested")
     public static let uninstallRequested = Notification.Name("dev.mxcl.pmm.packageHost.uninstallRequested")
 
     public static let packageIDKey = "packageID"
@@ -109,6 +110,10 @@ public enum PackageHostNotifications {
 
     public static func postUpdateRequested(packageID: String) {
         postPackageCommand(updateRequested, packageID: packageID)
+    }
+
+    public static func postUpdateAllRequested() {
+        DistributedNotificationCenter.default().postNotificationName(updateAllRequested, object: nil, deliverImmediately: true)
     }
 
     public static func postUninstallRequested(packageID: String) {

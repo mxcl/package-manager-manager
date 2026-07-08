@@ -59,6 +59,20 @@ import Testing
     #expect(menuBarCommandPackage(id: current.id, kind: .uninstall, snapshot: busy) == nil)
 }
 
+@Test func menuBarUpdateAllOnlyIncludesSupportedOutdatedPackagesWhenIdle() {
+    let supported = ManagedPackage(manager: .homebrew, name: "git", installedVersion: "1.0.0", latestVersion: "2.0.0")
+    let unsupported = ManagedPackage(manager: .rustup, name: "rustup", installedVersion: "1.0.0", latestVersion: "2.0.0")
+    let current = ManagedPackage(manager: .npm, name: "eslint", installedVersion: "9.0.0", latestVersion: "9.0.0")
+    let snapshot = PackageHostSnapshot(inventory: PackageInventory(packages: [supported, unsupported, current]))
+    let busy = PackageHostSnapshot(
+        inventory: PackageInventory(packages: [supported]),
+        runningAction: PackageHostRunningAction(kind: .update, packageID: supported.id, displayName: "git")
+    )
+
+    #expect(menuBarCommandUpdateAllPackages(snapshot: snapshot) == [supported])
+    #expect(menuBarCommandUpdateAllPackages(snapshot: busy).isEmpty)
+}
+
 @Test func menuBarRefreshesOnLaunchOnlyWhenInventoryIsMissing() {
     #expect(menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot()))
     #expect(!menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: []))))

@@ -156,6 +156,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         notificationCenter.addObserver(self, selector: #selector(refreshRequested(_:)), name: PackageHostNotifications.refreshRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(installRequested(_:)), name: PackageHostNotifications.installRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(updateRequested(_:)), name: PackageHostNotifications.updateRequested, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(updateAllRequested(_:)), name: PackageHostNotifications.updateAllRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(uninstallRequested(_:)), name: PackageHostNotifications.uninstallRequested, object: nil)
     }
 
@@ -211,6 +212,37 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         button.image = image
     }
 
+    private func runUpdateAll() {
+        guard refreshTask == nil, actionTask == nil else { return }
+        let packages = menuBarCommandUpdateAllPackages(snapshot: snapshot)
+        guard !packages.isEmpty else { return }
+        snapshot.errorMessage = nil
+        publishSnapshot()
+
+        actionTask = Task { [weak self] in
+            var errors: [String] = []
+            for package in packages {
+                guard let self, !Task.isCancelled else { return }
+                self.snapshot.runningAction = PackageHostRunningAction(kind: .update, packageID: package.id, displayName: package.displayName)
+                self.publishSnapshot()
+
+                let result = await Task.detached(priority: .background) {
+                    Result {
+                        try PackageUpdater().update(package)
+                    }
+                }.value
+                if case .failure(let error) = result {
+                    errors.append(error.localizedDescription)
+                }
+            }
+
+            guard let self, !Task.isCancelled else { return }
+            self.snapshot.runningAction = nil
+            self.publishSnapshot()
+            self.rescanAfterAction(errorMessage: errors.isEmpty ? nil : errors.joined(separator: "\n"))
+        }
+    }
+
     private func disabledItem(_ title: String) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
@@ -248,6 +280,10 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     @objc private func updateRequested(_ notification: Notification) {
         guard let packageID = PackageHostNotifications.packageID(from: notification) else { return }
         runAction(kind: .update, packageID: packageID)
+    }
+
+    @objc private func updateAllRequested(_ notification: Notification) {
+        runUpdateAll()
     }
 
     @objc private func uninstallRequested(_ notification: Notification) {

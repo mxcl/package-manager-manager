@@ -1,10 +1,13 @@
 import AppKit
+import Combine
 import PMMCore
 import SwiftUI
 
 @MainActor
 final class MainWindowController: NSSplitViewController {
     private let model = MainWindowModel(dossierClient: PackageDossierClient())
+    private var toolbarStateCancellable: AnyCancellable?
+    var onToolbarStateChanged: (() -> Void)?
 
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -18,6 +21,11 @@ final class MainWindowController: NSSplitViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         splitView.isVertical = true
+        toolbarStateCancellable = model.objectWillChange.sink { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.onToolbarStateChanged?()
+            }
+        }
 
         addSplitViewItem(sidebarItem())
         addSplitViewItem(contentItem(MainWindowContentColumnsView(model: model), width: 1128, minimumWidth: 854))
@@ -33,6 +41,18 @@ final class MainWindowController: NSSplitViewController {
 
     @objc func refresh(_ sender: Any?) {
         model.reload()
+    }
+
+    var showsUpdateAllToolbarButton: Bool {
+        model.showsUpdateAllOutdatedPackages
+    }
+
+    var canUpdateAllPackages: Bool {
+        model.canUpdateAllOutdatedPackages
+    }
+
+    @objc func updateAllPackages(_ sender: Any?) {
+        model.updateAllOutdatedPackages()
     }
 
     override func moveUp(_ sender: Any?) {

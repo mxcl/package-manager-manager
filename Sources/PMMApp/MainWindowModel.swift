@@ -299,6 +299,14 @@ final class MainWindowModel: NSObject, ObservableObject {
         packages(in: selectedSection)
     }
 
+    var showsUpdateAllOutdatedPackages: Bool {
+        selectedSection == .outdated
+    }
+
+    var canUpdateAllOutdatedPackages: Bool {
+        showsUpdateAllOutdatedPackages && !isReloading && !isPackageActionRunning && !updatableOutdatedPackages.isEmpty
+    }
+
     func reload() {
         PackageHostNotifications.postRefreshRequested()
     }
@@ -376,6 +384,11 @@ final class MainWindowModel: NSObject, ObservableObject {
         PackageHostNotifications.postUpdateRequested(packageID: package.id)
     }
 
+    func updateAllOutdatedPackages() {
+        guard canUpdateAllOutdatedPackages else { return }
+        PackageHostNotifications.postUpdateAllRequested()
+    }
+
     func canInstall(_ package: ManagedPackage) -> Bool {
         PackageInstaller.supports(package) && !packages.contains { $0.identifier == package.identifier }
     }
@@ -386,6 +399,10 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     private var newUpdatedUnreadCount: Int? {
         packageIndex.newUpdatedUnreadCount
+    }
+
+    private var updatableOutdatedPackages: [ManagedPackage] {
+        (packageIndex.packagesBySection[.outdated] ?? []).filter(PackageUpdater.supports)
     }
 
     private var searchQuery: String {

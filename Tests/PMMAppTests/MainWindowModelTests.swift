@@ -108,6 +108,33 @@ import Testing
 }
 
 @MainActor
+@Test func updateAllToolbarStateOnlyEnablesForOutdatedSectionWithSupportedPackages() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let supported = ManagedPackage(manager: .homebrew, name: "git", installedVersion: "1", latestVersion: "2")
+    let unsupported = ManagedPackage(manager: .rustup, name: "rustup", installedVersion: "1", latestVersion: "2")
+
+    model.apply(
+        inventory: PackageInventory(packages: [supported, unsupported]),
+        index: PackageIndex(packages: [supported, unsupported], catalogPackages: [], newUpdatedLastClickedAt: nil)
+    )
+
+    #expect(!model.showsUpdateAllOutdatedPackages)
+    #expect(!model.canUpdateAllOutdatedPackages)
+
+    model.selectSection(.outdated)
+
+    #expect(model.showsUpdateAllOutdatedPackages)
+    #expect(model.canUpdateAllOutdatedPackages)
+
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: [supported, unsupported]),
+        runningAction: PackageHostRunningAction(kind: .update, packageID: supported.id, displayName: "git")
+    ))
+
+    #expect(!model.canUpdateAllOutdatedPackages)
+}
+
+@MainActor
 @Test func homeSelectionClearsPackageSelection() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let package = ManagedPackage(manager: .homebrew, name: "pkg", installedVersion: "1", latestVersion: "2")

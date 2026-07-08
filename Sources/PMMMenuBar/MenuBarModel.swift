@@ -79,6 +79,11 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
     }
 }
 
+func menuBarCommandUpdateAllPackages(snapshot: PackageHostSnapshot) -> [ManagedPackage] {
+    guard snapshot.runningAction == nil else { return [] }
+    return (snapshot.inventory?.outdatedPackages ?? []).filter(PackageUpdater.supports)
+}
+
 func menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot) -> Bool {
     snapshot.inventory == nil
 }
