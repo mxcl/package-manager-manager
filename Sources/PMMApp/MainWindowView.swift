@@ -8,88 +8,56 @@ struct MainWindowSidebarView: View {
     @ObservedObject var model: MainWindowModel
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                searchField
-                    .padding(.bottom, 18)
+        List(selection: sidebarSelection) {
+            Section {
                 ForEach(MainWindowSection.librarySections) { sidebarRow($0) }
-                if !model.visibleManagerSections.isEmpty {
-                    Spacer(minLength: 18)
-                    Section("Ecosystems") {
-                        ForEach(model.visibleManagerSections) { sidebarRow($0) }
-                    }
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                }
-                if !model.visibleCategorySections.isEmpty {
-                    Spacer(minLength: 18)
-                    Section("Categories") {
-                        ForEach(model.visibleCategorySections) { sidebarRow($0) }
-                    }
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            }
+            if !model.visibleManagerSections.isEmpty {
+                Section("Ecosystems") {
+                    ForEach(model.visibleManagerSections) { sidebarRow($0) }
                 }
             }
-            .padding(.horizontal, 12)
+            if !model.visibleCategorySections.isEmpty {
+                Section("Categories") {
+                    ForEach(model.visibleCategorySections) { sidebarRow($0) }
+                }
+            }
         }
-        .scrollEdgeEffectStyle(.soft, for: .top)
+        .listStyle(.sidebar)
+        .searchable(text: $model.searchText, prompt: "Search")
     }
 
-    private func sidebarHeader(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(SystemColor.quietText)
-            .tracking(0.5)
-            .padding(.horizontal, 8)
-            .padding(.bottom, 6)
-    }
-
-    private var sidebarDivider: some View {
-        Rectangle()
-            .frame(height: 1)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 6)
+    private var sidebarSelection: Binding<MainWindowSection?> {
+        Binding {
+            model.selectedSection
+        } set: { section in
+            if let section {
+                model.selectSection(section)
+            }
+        }
     }
 
     private func sidebarRow(_ section: MainWindowSection) -> some View {
-        Button { model.selectSection(section) } label: {
-            HStack(spacing: 8) {
-                sidebarIcon(section)
-                Text(section.title)
-                    .font(.system(size: 14, weight: .regular))
-                    .lineLimit(1)
-                Spacer(minLength: 6)
-                if model.isLoadingCount(for: section) {
-                    ProgressView()
-                        .controlSize(.small)
+        HStack(spacing: 8) {
+            sidebarIcon(section)
+            Text(section.title)
+                .lineLimit(1)
+            Spacer(minLength: 6)
+            if model.isLoadingCount(for: section) {
+                ProgressView()
+                    .controlSize(.small)
+                    .fixedSize()
+            } else if let count = model.count(for: section), count > 0 {
+                if section == .newUpdated {
+                    CountPill(count: count)
                         .fixedSize()
-                } else if let count = model.count(for: section), count > 0 {
-                    if section == .newUpdated {
-                        CountPill(count: count)
-                            .fixedSize()
-                    } else {
-                        SidebarCountText(count: count)
-                            .fixedSize()
-                    }
-                }
-            }
-            .padding(.horizontal, 6)
-            .foregroundStyle(model.activeSidebarSection == section ? Color.accentColor : .primary)
-            .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-            .contentShape(Rectangle())
-            .background {
-                if model.activeSidebarSection == section {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(.selection.opacity(0.22))
-                        .background {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(.ultraThinMaterial)
-                        }
+                } else {
+                    SidebarCountText(count: count)
+                        .fixedSize()
                 }
             }
         }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
+        .tag(section)
     }
 
     private func sidebarIcon(_ section: MainWindowSection) -> some View {
@@ -475,21 +443,6 @@ func mainWindowCategoryTitle(_ category: String?) -> String? {
     return category.split(separator: "-").map { word in
         word.prefix(1).uppercased() + word.dropFirst()
     }.joined(separator: " ")
-}
-
-private extension MainWindowSidebarView {
-    var searchField: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-            TextField("Search", text: $model.searchText)
-                .textFieldStyle(.plain)
-        }
-        .font(.system(size: 13))
-        .foregroundStyle(SystemColor.secondaryText)
-        .padding(.horizontal, 12)
-        .frame(height: 34)
-        .background(SystemColor.searchFill, in: Capsule(style: .continuous))
-    }
 }
 
 private struct PackageLinkStack: View {
@@ -995,7 +948,6 @@ enum SystemColor {
     static let hairline = Color(nsColor: .separatorColor)
     static let controlFill = Color(nsColor: .controlBackgroundColor)
     static let cardTint = Color(nsColor: .controlBackgroundColor).opacity(0.5)
-    static let searchFill = Color(nsColor: .controlBackgroundColor)
     static let controlBorder = Color(nsColor: .separatorColor)
     static let orange = Color.orange
 }
