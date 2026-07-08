@@ -43,6 +43,10 @@ final class MainWindowController: NSSplitViewController {
         model.reload()
     }
 
+    func openPackageURL(_ url: URL) {
+        model.openPackageURL(url)
+    }
+
     var showsUpdateAllToolbarButton: Bool {
         model.showsUpdateAllOutdatedPackages
     }

@@ -189,6 +189,45 @@ import Testing
     #expect(model.packageIDToScrollIntoView == nil)
 }
 
+@MainActor
+@Test func packageURLSelectsBrewPackage() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, store: PackageHostStore(directory: root))
+    let zsh = ManagedPackage(manager: .homebrew, identifier: "brew:zsh", displayName: "zsh", installedVersion: "1", latestVersion: "1")
+
+    model.apply(
+        inventory: PackageInventory(packages: [zsh]),
+        index: PackageIndex(packages: [zsh], catalogPackages: [], newUpdatedLastClickedAt: nil)
+    )
+
+    #expect(model.openPackageURL(URL(string: "pkgmgrmgr://brew/zsh")!))
+    #expect(model.selectedSection == .homebrew)
+    #expect(model.selectedPackage == zsh)
+    #expect(model.packageIDToScrollIntoView == zsh.id)
+}
+
+@MainActor
+@Test func packageURLSelectionWaitsForInventory() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, store: PackageHostStore(directory: root))
+    let zsh = ManagedPackage(manager: .homebrew, identifier: "brew:zsh", displayName: "zsh", installedVersion: "1", latestVersion: "1")
+
+    #expect(!model.openPackageURL(URL(string: "pkgmgrmgr://brew/zsh")!))
+    #expect(model.selectedSection == .homebrew)
+    #expect(model.selectedPackage == nil)
+
+    model.apply(
+        inventory: PackageInventory(packages: [zsh]),
+        index: PackageIndex(packages: [zsh], catalogPackages: [], newUpdatedLastClickedAt: nil)
+    )
+
+    #expect(model.selectedPackage == zsh)
+}
+
 @Test func installedSectionSortsPackagesAlphabetically() {
     let packages = [
         package(.npm, "zeta"),

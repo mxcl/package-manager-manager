@@ -156,6 +156,64 @@ struct MainWindowPackageLink: Equatable, Identifiable {
     var id: MainWindowLinkTab { tab }
 }
 
+struct MainWindowPackageURLRequest: Equatable {
+    let manager: PackageManagerKind
+    let name: String
+    let identifier: String
+
+    init?(url: URL) {
+        guard url.scheme?.lowercased() == "pkgmgrmgr", let host = url.host()?.lowercased() else { return nil }
+        let name = url.path(percentEncoded: false).trimmingPrefix("/").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+
+        switch host {
+        case "brew", "homebrew":
+            manager = .homebrew
+            if name.hasPrefix("cask/") {
+                identifier = "brew:cask:\(name.trimmingPrefix("cask/"))"
+            } else {
+                identifier = "brew:\(name)"
+            }
+        case "cargo", "cargo-install":
+            manager = .cargoInstall
+            identifier = "cargo:\(name)"
+        case "rustup":
+            manager = .rustup
+            identifier = "rustup:\(name.replacingOccurrences(of: "/", with: ":"))"
+        case "npm":
+            manager = .npm
+            identifier = "npm:\(name)"
+        case "npx":
+            manager = .npx
+            identifier = "npx:\(name)"
+        case "uv":
+            manager = .uv
+            identifier = "uv:\(name.replacingOccurrences(of: "/", with: ":"))"
+        case "uvx":
+            manager = .uvx
+            identifier = "uvx:\(name)"
+        default:
+            return nil
+        }
+
+        self.name = name
+    }
+
+    var section: MainWindowSection {
+        if manager == .homebrew, name.hasPrefix("cask/") { return .casks }
+        return switch manager {
+        case .cargoInstall, .rustup: .rust
+        case .homebrew: .homebrew
+        case .npm, .npx: .javascript
+        case .uv, .uvx: .python
+        }
+    }
+
+    func matches(_ package: ManagedPackage) -> Bool {
+        package.manager == manager && (package.identifier == identifier || package.packageToken == name)
+    }
+}
+
 func mainWindowLinks(for package: ManagedPackage?) -> [MainWindowPackageLink] {
     guard let package else { return [] }
     let links = MainWindowLinkTab.allCases.compactMap { tab in
@@ -217,6 +275,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     private var packageIndex = PackageIndex.empty
     private var installedPackageFirstSeenAtByID: [String: Date]?
     private var hasInventory = false
+    private var pendingPackageURLRequest: MainWindowPackageURLRequest?
     private var newUpdatedLastClickedAt: Date?
     private var newUpdatedSelectionDisplayCount: Int?
     private let userDefaults: UserDefaults
@@ -339,6 +398,13 @@ final class MainWindowModel: NSObject, ObservableObject {
         packageIDToScrollIntoView = package.id
     }
 
+    @discardableResult
+    func openPackageURL(_ url: URL) -> Bool {
+        guard let request = MainWindowPackageURLRequest(url: url) else { return false }
+        pendingPackageURLRequest = request
+        return openPackage(request)
+    }
+
     func consumePackageScrollRequest() {
         packageIDToScrollIntoView = nil
     }
@@ -430,6 +496,33 @@ final class MainWindowModel: NSObject, ObservableObject {
             || (package.summary?.localizedCaseInsensitiveContains(query) == true)
     }
 
+    @discardableResult
+    private func openPackage(_ request: MainWindowPackageURLRequest) -> Bool {
+        guard let package = package(matching: request) else {
+            selectSection(request.section)
+            return false
+        }
+        let section = section(for: package, preferred: request.section)
+        selectSection(section)
+        let resolvedPackage = packageIndex.packagesBySection[section]?.first { $0.id == package.id } ?? package
+        select(resolvedPackage)
+        packageIDToScrollIntoView = resolvedPackage.id
+        pendingPackageURLRequest = nil
+        return true
+    }
+
+    private func package(matching request: MainWindowPackageURLRequest) -> ManagedPackage? {
+        (packageIndex.packagesBySection[request.section] ?? []).first(where: request.matches)
+            ?? packageIndex.packagesBySection.values.lazy.flatMap { $0 }.first(where: request.matches)
+    }
+
+    private func section(for package: ManagedPackage, preferred: MainWindowSection) -> MainWindowSection {
+        if packageIndex.packagesBySection[preferred]?.contains(where: { $0.id == package.id }) == true {
+            return preferred
+        }
+        return MainWindowSection.categorySections.first { $0.categoryIdentifier == package.category } ?? preferred
+    }
+
     private func recordNewUpdatedSidebarClick() {
         let clickedAt = Date()
         newUpdatedLastClickedAt = clickedAt
@@ -444,6 +537,9 @@ final class MainWindowModel: NSObject, ObservableObject {
         packages = next.packages
         errors = next.errors
         selectedPackage = selectedPackage.flatMap { selected in displayedPackages.first { $0.id == selected.id } }
+        if let pendingPackageURLRequest {
+            openPackage(pendingPackageURLRequest)
+        }
         if selectedPackage == nil { clearDossier() }
     }
 

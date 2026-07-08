@@ -19,6 +19,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
         }
     }
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.mainMenu = makeMainMenu()
         showMainWindow()
@@ -179,6 +188,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
 
     @objc private func refreshPackages(_ sender: Any?) {
         (window?.contentViewController as? MainWindowController)?.refresh(sender)
+    }
+
+    @objc private func handleGetURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent replyEvent: NSAppleEventDescriptor) {
+        guard
+            let string = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
+            let url = URL(string: string)
+        else { return }
+        showMainWindow()
+        mainWindowController?.openPackageURL(url)
     }
 
     @objc private func updateAllPackages(_ sender: Any?) {

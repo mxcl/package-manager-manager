@@ -351,6 +351,17 @@ cat > "$work/Info.plist.xml" <<EOF
   <string>AppIcon</string>
   <key>CFBundleIdentifier</key>
   <string>$identifier</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>$identifier</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>pkgmgrmgr</string>
+      </array>
+    </dict>
+  </array>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
