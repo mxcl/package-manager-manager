@@ -5,7 +5,6 @@ import AppUpdater
 final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
     private let appUpdater = AppUpdater(owner: "mxcl", repo: "package-manager-manager")
     private var checkForUpdatesItem: NSMenuItem?
-    private var updateButton: NSButton?
     private var updateAllButton: NSButton?
     private var availableUpdate: Update? {
         didSet {
@@ -155,7 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.flexibleSpace, .updateAllPackages, .updatePMM]
+        [.flexibleSpace, .updateAllPackages]
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -180,18 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
             updateAllButton = button
             return item
         }
-        guard itemIdentifier == .updatePMM else { return nil }
-        let button = NSButton(title: "Update pkg⋅mgr²", target: self, action: #selector(updatePMM(_:)))
-        button.bezelStyle = .toolbar
-        button.controlSize = .small
-        button.image = NSImage(systemSymbolName: "arrow.down.app", accessibilityDescription: "Update pkg⋅mgr²")
-        button.imagePosition = .imageLeading
-        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-        item.label = "Update pkg⋅mgr²"
-        item.paletteLabel = "Update pkg⋅mgr²"
-        item.view = button
-        updateButton = button
-        return item
+        return nil
     }
 
     @objc private func refreshPackages(_ sender: Any?) {
@@ -237,10 +225,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
     }
 
     private func syncToolbarItems() {
+        mainWindowController?.setAppUpdateButtonVisible(availableUpdate != nil) { [weak self] in
+            self?.updatePMM(nil)
+        }
         guard let toolbar = window?.toolbar else { return }
         let desired = toolbarItemIdentifiers()
         if toolbar.items.map(\.itemIdentifier) != desired {
-            updateButton = nil
             updateAllButton = nil
             for index in toolbar.items.indices.reversed() {
                 toolbar.removeItem(at: index)
@@ -257,9 +247,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
         if mainWindowController?.showsUpdateAllToolbarButton == true {
             identifiers.append(.updateAllPackages)
         }
-        if availableUpdate != nil {
-            identifiers.append(.updatePMM)
-        }
         if !identifiers.isEmpty {
             identifiers.insert(.flexibleSpace, at: 0)
         }
@@ -272,12 +259,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
 
     @objc private func updatePMM(_ sender: Any?) {
         guard let update = availableUpdate else { return }
-        updateButton?.isEnabled = false
+        availableUpdate = nil
         Task { @MainActor in
             do {
                 try await update.installAndRelaunch()
             } catch {
-                updateButton?.isEnabled = true
+                availableUpdate = update
                 showUpdateAlert(message: "Unable to install update.", informativeText: error.localizedDescription)
             }
         }
@@ -305,7 +292,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
 
 private extension NSToolbarItem.Identifier {
     static let updateAllPackages = NSToolbarItem.Identifier("UpdateAllPackages")
-    static let updatePMM = NSToolbarItem.Identifier("UpdatePMM")
 }
 
 private final class PMMWindow: NSWindow {

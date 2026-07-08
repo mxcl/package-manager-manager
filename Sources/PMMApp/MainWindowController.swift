@@ -7,10 +7,11 @@ import SwiftUI
 final class MainWindowController: NSHostingController<MainWindowRootView> {
     private let model = MainWindowModel(dossierClient: PackageDossierClient())
     private var toolbarStateCancellable: AnyCancellable?
+    private var showsAppUpdateButton = false
     var onToolbarStateChanged: (() -> Void)?
 
     init() {
-        super.init(rootView: MainWindowRootView(model: model))
+        super.init(rootView: MainWindowRootView(model: model, showsAppUpdateButton: false, updateApp: {}))
     }
 
     @MainActor @preconcurrency required dynamic init?(coder: NSCoder) {
@@ -50,6 +51,12 @@ final class MainWindowController: NSHostingController<MainWindowRootView> {
         model.canUpdateAllOutdatedPackages
     }
 
+    func setAppUpdateButtonVisible(_ isVisible: Bool, updateApp: @escaping () -> Void) {
+        guard showsAppUpdateButton != isVisible else { return }
+        showsAppUpdateButton = isVisible
+        rootView = MainWindowRootView(model: model, showsAppUpdateButton: isVisible, updateApp: updateApp)
+    }
+
     @objc func updateAllPackages(_ sender: Any?) {
         model.updateAllOutdatedPackages()
     }
@@ -69,6 +76,8 @@ final class MainWindowController: NSHostingController<MainWindowRootView> {
 
 struct MainWindowRootView: View {
     @ObservedObject var model: MainWindowModel
+    let showsAppUpdateButton: Bool
+    let updateApp: () -> Void
 
     var body: some View {
         Group {
@@ -81,6 +90,7 @@ struct MainWindowRootView: View {
                 }
                 .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
                 .toolbar(removing: .title)
+                .toolbar { appUpdateToolbarItem }
             } else {
                 NavigationSplitView {
                     sidebar
@@ -98,6 +108,18 @@ struct MainWindowRootView: View {
                 }
                 .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
                 .toolbar(removing: .title)
+                .toolbar { appUpdateToolbarItem }
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var appUpdateToolbarItem: some ToolbarContent {
+        if showsAppUpdateButton {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: updateApp) {
+                    Label("Update pkg⋅mgr²", systemImage: "arrow.down.app")
+                }
             }
         }
     }
