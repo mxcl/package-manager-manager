@@ -546,9 +546,15 @@ public struct PackageScanner {
 
     private func homebrewRequestedFormulae(_ brew: String) -> Set<String>? {
         if let lines = successfulLines(brew, ["leaves", "--installed-on-request"]) {
-            return Set(lines)
+            return homebrewRequestedFormulaNames(lines)
         }
-        return successfulLines(brew, ["leaves"]).map(Set.init)
+        return successfulLines(brew, ["leaves"]).map(homebrewRequestedFormulaNames)
+    }
+
+    private func homebrewRequestedFormulaNames(_ lines: [String]) -> Set<String> {
+        Set(lines.flatMap { line in
+            [line, line.split(separator: "/").last.map(String.init)].compactMap { $0 }
+        })
     }
 
     private func homebrewOutdated(_ brew: String) throws -> (formulae: [String: String], casks: [String: String]) {

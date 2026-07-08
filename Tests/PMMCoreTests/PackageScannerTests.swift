@@ -441,6 +441,21 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages.map(\.displayName) == ["git", "visual-studio-code"])
 }
 
+@Test func homebrewScannerKeepsTappedRequestedFormulae() throws {
+    let runner = FakeRunner(responses: [
+        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "automic-vault/isotopes/gh-cli\n", stderr: "", status: 0),
+        "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/brew list --versions --formula": CommandResult(stdout: "gh-cli 2.94.0\nopenssl@3 3.5.0\n", stderr: "", status: 0),
+        "/fake/brew info --installed --cask --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"])
+
+    let packages = try scanner.scanHomebrew(database: PackageDatabase())
+
+    #expect(packages.map(\.identifier) == ["brew:gh-cli"])
+    #expect(packages.first?.displayName == "gh-cli")
+}
+
 @Test func npxScannerShowsNewestPackageVersionAndKeepsOtherVersions() throws {
     let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: home) }
