@@ -71,29 +71,39 @@ struct MainWindowRootView: View {
     @ObservedObject var model: MainWindowModel
 
     var body: some View {
-        NavigationSplitView {
-            MainWindowSidebarView(model: model)
-                .navigationSplitViewColumnWidth(min: 250, ideal: 250, max: 250)
-        } content: {
-            MainWindowPackageListView(model: model)
-                .navigationSplitViewColumnWidth(min: 252, ideal: 252, max: 252)
-        } detail: {
-            Group {
-                if model.selectedSection == .home {
+        Group {
+            if model.selectedSection == .home {
+                NavigationSplitView {
+                    sidebar
+                } detail: {
                     MainWindowDashboardView(model: model)
-                } else {
+                        .navigationSplitViewColumnWidth(min: 602, ideal: 1128)
+                }
+                .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
+            } else {
+                NavigationSplitView {
+                    sidebar
+                } content: {
+                    MainWindowPackageListView(model: model)
+                        .navigationSplitViewColumnWidth(min: 252, ideal: 252, max: 252)
+                } detail: {
                     HStack(spacing: 0) {
                         MainWindowDossierView(model: model)
                             .frame(width: 252)
                         MainWindowLinksView(model: model)
                             .frame(minWidth: 350, maxWidth: .infinity)
                     }
+                    .navigationSplitViewColumnWidth(min: 602, ideal: 876)
                 }
+                .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
             }
-            .navigationSplitViewColumnWidth(min: 602, ideal: 876)
         }
         .accentColor(SystemColor.packageBrown)
         .tint(SystemColor.packageBrown)
-        .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
+    }
+
+    private var sidebar: some View {
+        MainWindowSidebarView(model: model)
+            .navigationSplitViewColumnWidth(min: 250, ideal: 250, max: 250)
     }
 }
