@@ -19,7 +19,10 @@ let package = Package(
         .executableTarget(
             name: "PMMApp",
             dependencies: ["PMMCore", "AppUpdater"],
-            resources: [.copy("Resources/AppIcon.icon")]
+            resources: [
+                .copy("Resources/AppIcon.icon"),
+                .process("Resources/Assets.xcassets"),
+            ]
         ),
         .executableTarget(
             name: "PMMMenuBar",

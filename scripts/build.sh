@@ -15,6 +15,7 @@ app="${APP_PATH:-$root/dist/$app_name.app}"
 helper_app="$root/dist/$helper_app_name.app"
 dmg_path=""
 icon="$root/Sources/PMMApp/Resources/AppIcon.icon"
+assets="$root/Sources/PMMApp/Resources/Assets.xcassets"
 run=false
 install=false
 dmg=false
@@ -324,7 +325,7 @@ work="$(mktemp -d)"
 trap cleanup EXIT
 mkdir -p "$work/assets"
 
-xcrun actool "$icon" \
+xcrun actool "$icon" "$assets" \
   --compile "$work/assets" \
   --platform macosx \
   --target-device mac \
@@ -349,6 +350,8 @@ cat > "$work/Info.plist.xml" <<EOF
   <string>$executable</string>
   <key>CFBundleIconName</key>
   <string>AppIcon</string>
+  <key>NSAccentColorName</key>
+  <string>AccentColor</string>
   <key>CFBundleIdentifier</key>
   <string>$identifier</string>
   <key>CFBundleURLTypes</key>
