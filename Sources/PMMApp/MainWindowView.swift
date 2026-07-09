@@ -420,7 +420,7 @@ func mainWindowSelectedBrowserLink(in links: [MainWindowBrowserLink], selectedTa
     if let selectedTab {
         return links.first { $0.tab == selectedTab } ?? links.first
     }
-    return links.first
+    return links.first { $0.tab == .releases } ?? links.first
 }
 
 func mainWindowBrowserDisplayURL(_ url: URL) -> String {

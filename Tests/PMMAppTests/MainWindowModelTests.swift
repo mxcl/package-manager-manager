@@ -620,6 +620,7 @@ import Testing
     ))
 
     #expect(links.map(\.title) == ["Home", "Repo", "Docs", "Registry", "Releases"])
+    #expect(mainWindowSelectedBrowserLink(in: links, selectedTab: nil)?.title == "Releases")
     #expect(mainWindowSelectedBrowserLink(in: links, selectedTab: .releases)?.title == "Releases")
 }
 
