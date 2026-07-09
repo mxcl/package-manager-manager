@@ -273,16 +273,19 @@ private struct DashboardPackageRow: View {
                 .foregroundStyle(SystemColor.quietText)
             }
             Spacer(minLength: 8)
-            Button("View Package", action: action)
-                .buttonStyle(.plain)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 98, height: 30)
-                .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .stroke(SystemColor.controlBorder, lineWidth: 1)
+            Button(action: action) {
+                Text("View Package")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 98, height: 30)
+                    .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(SystemColor.controlBorder, lineWidth: 1)
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
@@ -344,18 +347,21 @@ private struct DashboardRecommendationCard: View {
                     .lineLimit(2)
                     .frame(minHeight: 28, alignment: .topLeading)
                 Spacer(minLength: 0)
-                Button("View Package Details", action: action)
-                    .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-                    .frame(maxWidth: .infinity, minHeight: 30)
-                    .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .stroke(SystemColor.controlBorder, lineWidth: 1)
+                Button(action: action) {
+                    Text("View Package Details")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.accentColor)
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                        .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .stroke(SystemColor.controlBorder, lineWidth: 1)
+                        }
+                        .contentShape(Rectangle())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .buttonStyle(.plain)
             }
             .padding(16)
             .frame(minHeight: 150, alignment: .topLeading)
