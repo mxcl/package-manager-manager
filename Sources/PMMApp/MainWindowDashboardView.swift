@@ -3,6 +3,7 @@ import SwiftUI
 
 private let dashboardItemCornerRadius: CGFloat = 17.5
 private let dashboardCardSpacing: CGFloat = 8.5
+private let dashboardInstallPacksBlogURL = URL(string: "https://mxcl.dev/package-manager-manager/blog/")!
 private let dashboardInstallPacks = [
     DashboardInstallPack(
         title: "Agentic Toolkit",
@@ -478,9 +479,13 @@ private struct DashboardUpdatesCard: View {
 }
 
 private struct DashboardInstallPacksCard: View {
+    @Environment(\.openURL) private var openURL
+
     var body: some View {
         DashboardCard {
-            DashboardSectionHeader(title: "Install Packs")
+            DashboardSectionHeader(title: "Install Packs") {
+                openURL(dashboardInstallPacksBlogURL)
+            }
             VStack(spacing: 0) {
                 ForEach(dashboardInstallPacks) { pack in
                     Link(destination: pack.url) {
