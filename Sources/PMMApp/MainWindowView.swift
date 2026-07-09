@@ -86,7 +86,7 @@ struct MainWindowPackageListView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 let displayedPackages = model.displayedPackages
-                if model.isReloading && displayedPackages.isEmpty {
+                if model.activeSidebarSection.map(model.isLoadingCount(for:)) == true && displayedPackages.isEmpty {
                     ProgressView()
                         .controlSize(.small)
                         .frame(maxWidth: .infinity, minHeight: 180)

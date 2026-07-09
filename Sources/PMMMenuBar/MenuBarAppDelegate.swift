@@ -44,36 +44,150 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         guard refreshTask == nil, actionTask == nil else { return }
         rescanTask?.cancel()
         rescanTask = nil
+        let missingManagers = snapshot.inventory == nil
+            ? Set(PackageManagerKind.allCases)
+            : (snapshot.loadingManagers ?? [])
+        let generatedAt = Date()
         snapshot.isRefreshing = true
+        snapshot.loadingManagers = missingManagers
         snapshot.errorMessage = nil
-        publishSnapshot()
+        publishSnapshot(updateFirstSeen: false)
         let previousLastBrewUpdateAt = snapshot.lastBrewUpdateAt
         let previousFirstSeen = snapshot.installedPackageFirstSeenAtByID
+        let databaseTask = Task.detached(priority: .utility) {
+            await PackageDatabase.load()
+        }
 
         refreshTask = Task { [weak self] in
-            let next = await Task.detached(priority: .background) {
-                let lastBrewUpdateAt: Date?
-                let brewError: String?
+            guard let self else { return }
+            var errorsByManager: [PackageManagerKind: [String]] = [:]
+            let scanner = PackageScanner()
+            for await result in scanner.results(
+                for: Set(PackageManagerKind.allCases),
+                database: PackageDatabase(),
+                mode: .local
+            ) {
+                guard !Task.isCancelled else { return }
+                self.applyScanResult(result, generatedAt: generatedAt, errorsByManager: &errorsByManager)
+                self.snapshot.loadingManagers?.remove(result.manager)
+                self.publishSnapshot(updateFirstSeen: false)
+            }
+
+            guard !Task.isCancelled else { return }
+            self.refreshTask = nil
+            self.snapshot.installedPackageFirstSeenAtByID = previousFirstSeen
+            self.snapshot.loadingManagers = []
+            self.publishSnapshot()
+            self.startFreshness(
+                databaseTask: databaseTask,
+                generatedAt: generatedAt,
+                previousLastBrewUpdateAt: previousLastBrewUpdateAt,
+                errorsByManager: errorsByManager
+            )
+        }
+    }
+
+    private func startFreshness(
+        databaseTask: Task<PackageDatabase, Never>,
+        generatedAt: Date,
+        previousLastBrewUpdateAt: Date?,
+        errorsByManager initialErrors: [PackageManagerKind: [String]]
+    ) {
+        rescanTask?.cancel()
+        rescanTask = Task { [weak self] in
+            guard let self else { return }
+            var errorsByManager = initialErrors
+            let database = await databaseTask.value
+            guard !Task.isCancelled else { return }
+
+            let packages = self.snapshot.inventory?.packages ?? []
+            let enriched = await Task.detached(priority: .utility) {
+                let scanner = PackageScanner()
+                return (
+                    packages.map { package in
+                        package.applying(metadata: database.metadata(for: package.manager, name: package.packageToken))
+                    },
+                    database.catalogPackages(homebrewPrefix: scanner.homebrewPrefix())
+                )
+            }.value
+            guard !Task.isCancelled else { return }
+            self.snapshot.inventory = PackageInventory(
+                generatedAt: generatedAt,
+                packages: enriched.0,
+                errors: Self.scanErrors(errorsByManager)
+            )
+            self.snapshot.catalogPackages = enriched.1
+            self.publishSnapshot()
+
+            let brewUpdateTask = Task.detached(priority: .background) { () -> (Date?, String?) in
                 do {
                     try HomebrewMaintenance().update()
-                    lastBrewUpdateAt = Date()
-                    brewError = nil
+                    return (Date(), nil)
                 } catch {
-                    lastBrewUpdateAt = nil
-                    brewError = error.localizedDescription
+                    return (nil, error.localizedDescription)
                 }
-                return await Self.scanSnapshot(errorMessage: brewError, lastBrewUpdateAt: lastBrewUpdateAt)
-            }.value
-
-            guard let self, !Task.isCancelled else { return }
-            self.refreshTask = nil
-            self.snapshot = next
-            self.snapshot.installedPackageFirstSeenAtByID = previousFirstSeen
-            if self.snapshot.lastBrewUpdateAt == nil {
-                self.snapshot.lastBrewUpdateAt = previousLastBrewUpdateAt
             }
+            let scanner = PackageScanner()
+            for await result in scanner.results(for: [.npm, .uv], database: database, mode: .fresh) {
+                guard !Task.isCancelled else { return }
+                self.applyScanResult(
+                    result,
+                    generatedAt: generatedAt,
+                    errorsByManager: &errorsByManager,
+                    preserveExistingOnError: true
+                )
+                self.publishSnapshot()
+            }
+
+            let (lastBrewUpdateAt, brewError) = await brewUpdateTask.value
+            guard !Task.isCancelled else { return }
+            errorsByManager[.homebrew] = [brewError].compactMap { $0 }
+            for await result in scanner.results(for: [.homebrew], database: database, mode: .fresh) {
+                guard !Task.isCancelled else { return }
+                let result = PackageManagerScanResult(
+                    manager: result.manager,
+                    packages: result.packages,
+                    errors: (errorsByManager[.homebrew] ?? []) + result.errors
+                )
+                self.applyScanResult(
+                    result,
+                    generatedAt: generatedAt,
+                    errorsByManager: &errorsByManager,
+                    preserveExistingOnError: true
+                )
+            }
+
+            guard !Task.isCancelled else { return }
+            self.rescanTask = nil
+            self.snapshot.lastBrewUpdateAt = lastBrewUpdateAt ?? previousLastBrewUpdateAt
+            self.snapshot.isRefreshing = false
+            self.snapshot.errorMessage = Self.scanErrors(errorsByManager).first
             self.publishSnapshot()
         }
+    }
+
+    private func applyScanResult(
+        _ result: PackageManagerScanResult,
+        generatedAt: Date,
+        errorsByManager: inout [PackageManagerKind: [String]],
+        preserveExistingOnError: Bool = false
+    ) {
+        errorsByManager[result.manager] = result.errors
+        let errors = Self.scanErrors(errorsByManager)
+        if preserveExistingOnError, !result.errors.isEmpty {
+            snapshot.inventory = PackageInventory(
+                generatedAt: generatedAt,
+                packages: snapshot.inventory?.packages ?? [],
+                errors: errors
+            )
+        } else {
+            snapshot = menuBarSnapshot(snapshot, merging: result, generatedAt: generatedAt, errors: errors)
+        }
+        snapshot.errorMessage = errors.first
+    }
+
+    private nonisolated static func scanErrors(_ errorsByManager: [PackageManagerKind: [String]]) -> [String] {
+        PackageManagerKind.allCases.flatMap { errorsByManager[$0] ?? [] }
     }
 
     private func rescanAfterAction(errorMessage: String? = nil) {
@@ -96,8 +210,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     private func runAction(kind: PackageHostActionKind, packageID: String) {
         guard refreshTask == nil, actionTask == nil,
               let package = menuBarCommandPackage(id: packageID, kind: kind, snapshot: snapshot) else { return }
-        rescanTask?.cancel()
-        rescanTask = nil
+        cancelBackgroundRefresh()
         snapshot.runningAction = PackageHostRunningAction(kind: kind, packageID: package.id, displayName: package.displayName)
         snapshot.errorMessage = nil
         publishSnapshot()
@@ -136,14 +249,19 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     private func loadSnapshot() {
         if var saved = try? store.load() {
             saved.isRefreshing = false
+            if saved.loadingManagers == nil {
+                saved.loadingManagers = []
+            }
             saved.runningAction = nil
             snapshot = saved
         }
         publishSnapshot()
     }
 
-    private func publishSnapshot() {
-        snapshot.updateInstalledPackageFirstSeenAtByID()
+    private func publishSnapshot(updateFirstSeen: Bool = true) {
+        if updateFirstSeen {
+            snapshot.updateInstalledPackageFirstSeenAtByID()
+        }
         state = MenuBarMenuState(
             inventory: snapshot.inventory,
             isRefreshing: snapshot.isRefreshing,
@@ -163,6 +281,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             inventory: PackageInventory(packages: inventory.packages, errors: errors),
             catalogPackages: database.catalogPackages(homebrewPrefix: scanner.homebrewPrefix()),
             isRefreshing: false,
+            loadingManagers: [],
             runningAction: nil,
             errorMessage: errorMessage ?? inventory.errors.first,
             lastBrewUpdateAt: lastBrewUpdateAt
@@ -234,8 +353,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         guard refreshTask == nil, actionTask == nil else { return }
         let packages = menuBarCommandUpdateAllPackages(snapshot: snapshot)
         guard !packages.isEmpty else { return }
-        rescanTask?.cancel()
-        rescanTask = nil
+        cancelBackgroundRefresh()
         snapshot.errorMessage = nil
         publishSnapshot()
         let progressHandler = actionProgressHandler()
@@ -318,8 +436,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         guard refreshTask == nil, actionTask == nil else { return }
         let packages = menuBarCommandInstallPackages(ids: packageIDs, snapshot: snapshot)
         guard !packages.isEmpty else { return }
-        rescanTask?.cancel()
-        rescanTask = nil
+        cancelBackgroundRefresh()
         snapshot.errorMessage = nil
         publishSnapshot()
         let progressHandler = actionProgressHandler()
@@ -372,6 +489,13 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         stack.edgeInsets = NSEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
         item.view = stack
         return item
+    }
+
+    private func cancelBackgroundRefresh() {
+        rescanTask?.cancel()
+        rescanTask = nil
+        snapshot.isRefreshing = false
+        snapshot.loadingManagers = []
     }
 
     @objc private func refreshNow(_ sender: Any?) {

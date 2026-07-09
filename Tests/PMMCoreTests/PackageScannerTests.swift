@@ -65,6 +65,20 @@ private final class GatedRunner: CommandRunning, @unchecked Sendable {
     }
 }
 
+private struct ErrorRunner: CommandRunning {
+    struct Failure: LocalizedError {
+        var errorDescription: String? { "cargo failed" }
+    }
+
+    func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
+        if executable == "/fake/cargo" { throw Failure() }
+        if arguments == ["--version"] {
+            return CommandResult(stdout: "rustup 1.29.0\n", stderr: "", status: 0)
+        }
+        return CommandResult(stdout: "", stderr: "", status: 0)
+    }
+}
+
 private final class NPMResolveRunner: CommandRunning, @unchecked Sendable {
     let version: String?
     let status: Int32
@@ -176,6 +190,27 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     let second = await iterator.next()
     #expect(second?.manager == .cargoInstall)
     #expect(await iterator.next() == nil)
+}
+
+@Test func managerScanFailureDoesNotDiscardOtherResults() async {
+    let scanner = PackageScanner(
+        runner: ErrorRunner(),
+        toolPaths: ["cargo": "/fake/cargo", "rustup": "/fake/rustup"],
+        environment: [:]
+    )
+    var results: [PackageManagerKind: PackageManagerScanResult] = [:]
+    for await result in scanner.results(
+        for: [.cargoInstall, .rustup],
+        database: PackageDatabase(),
+        mode: .local
+    ) {
+        results[result.manager] = result
+    }
+
+    #expect(results[.cargoInstall]?.packages.isEmpty == true)
+    #expect(results[.cargoInstall]?.errors == ["cargo failed"])
+    #expect(results[.rustup]?.packages.first?.identifier == "rustup:rustup")
+    #expect(results[.rustup]?.errors.isEmpty == true)
 }
 
 @Test func localManagerScansSkipFreshnessCommands() async {

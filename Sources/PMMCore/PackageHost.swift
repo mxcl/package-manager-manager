@@ -32,6 +32,7 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
     public var inventory: PackageInventory?
     public var catalogPackages: [ManagedPackage]
     public var isRefreshing: Bool
+    public var loadingManagers: Set<PackageManagerKind>?
     public var runningAction: PackageHostRunningAction?
     public var errorMessage: String?
     public var lastBrewUpdateAt: Date?
@@ -41,6 +42,7 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         inventory: PackageInventory? = nil,
         catalogPackages: [ManagedPackage] = [],
         isRefreshing: Bool = false,
+        loadingManagers: Set<PackageManagerKind>? = nil,
         runningAction: PackageHostRunningAction? = nil,
         errorMessage: String? = nil,
         lastBrewUpdateAt: Date? = nil,
@@ -49,6 +51,7 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         self.inventory = inventory
         self.catalogPackages = catalogPackages
         self.isRefreshing = isRefreshing
+        self.loadingManagers = loadingManagers
         self.runningAction = runningAction
         self.errorMessage = errorMessage
         self.lastBrewUpdateAt = lastBrewUpdateAt

@@ -95,6 +95,29 @@ import Testing
 @Test func menuBarRefreshesOnLaunchOnlyWhenInventoryIsMissing() {
     #expect(menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot()))
     #expect(!menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: []))))
+    #expect(menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        loadingManagers: [.homebrew]
+    )))
+}
+
+@Test func managerScanResultReplacesOnlyItsPackagesAtStableGenerationDate() {
+    let generatedAt = Date(timeIntervalSince1970: 100)
+    let oldBrew = ManagedPackage(manager: .homebrew, name: "old", installedVersion: "1", latestVersion: nil)
+    let npm = ManagedPackage(manager: .npm, name: "npm", installedVersion: "1", latestVersion: nil)
+    let newBrew = ManagedPackage(manager: .homebrew, name: "new", installedVersion: "2", latestVersion: nil)
+    let snapshot = PackageHostSnapshot(inventory: PackageInventory(packages: [oldBrew, npm]))
+
+    let merged = menuBarSnapshot(
+        snapshot,
+        merging: PackageManagerScanResult(manager: .homebrew, packages: [newBrew]),
+        generatedAt: generatedAt,
+        errors: ["warning"]
+    )
+
+    #expect(merged.inventory?.generatedAt == generatedAt)
+    #expect(merged.inventory?.packages == [newBrew, npm])
+    #expect(merged.inventory?.errors == ["warning"])
 }
 
 @Test func successfulActionsUpdateSnapshotImmediately() {

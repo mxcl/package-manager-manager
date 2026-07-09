@@ -434,7 +434,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     var activeSidebarSection: MainWindowSection? { selectedSection }
 
     var dashboardIsLoadingData: Bool {
-        isReloading || !hasInventory
+        !hasInventory || !loadingManagers.isEmpty
     }
 
     var dashboardInstalledCount: Int? {
@@ -781,7 +781,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     private func apply(snapshot: PackageHostSnapshot, inventory: PackageInventory) {
         isReloading = snapshot.isRefreshing
-        loadingManagers = snapshot.isRefreshing ? Set(PackageManagerKind.allCases) : []
+        loadingManagers = snapshot.loadingManagers ?? (snapshot.isRefreshing ? Set(PackageManagerKind.allCases) : [])
         var nextErrors = inventory.errors
         if let errorMessage = snapshot.errorMessage, !nextErrors.contains(errorMessage) {
             nextErrors.insert(errorMessage, at: 0)

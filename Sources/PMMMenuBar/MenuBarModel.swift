@@ -90,7 +90,25 @@ func menuBarCommandInstallPackages(ids: [String], snapshot: PackageHostSnapshot)
 }
 
 func menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot) -> Bool {
-    snapshot.inventory == nil
+    snapshot.inventory == nil || snapshot.loadingManagers?.isEmpty == false
+}
+
+func menuBarSnapshot(
+    _ snapshot: PackageHostSnapshot,
+    merging result: PackageManagerScanResult,
+    generatedAt: Date,
+    errors: [String]
+) -> PackageHostSnapshot {
+    var snapshot = snapshot
+    let existing = snapshot.inventory?.packages ?? []
+    let packages = (existing.filter { $0.manager != result.manager } + result.packages).sorted {
+        if $0.manager != $1.manager { return $0.manager.rawValue < $1.manager.rawValue }
+        let displayOrder = $0.displayName.localizedStandardCompare($1.displayName)
+        if displayOrder != .orderedSame { return displayOrder == .orderedAscending }
+        return $0.identifier < $1.identifier
+    }
+    snapshot.inventory = PackageInventory(generatedAt: generatedAt, packages: packages, errors: errors)
+    return snapshot
 }
 
 func menuBarSnapshot(

@@ -8,6 +8,7 @@ import Testing
         inventory: PackageInventory(generatedAt: Date(timeIntervalSince1970: 10), packages: [package], errors: ["scan warning"]),
         catalogPackages: [package],
         isRefreshing: true,
+        loadingManagers: [.homebrew],
         runningAction: PackageHostRunningAction(
             kind: .update,
             packageID: package.id,
@@ -38,6 +39,7 @@ import Testing
     let decoded = try JSONDecoder().decode(PackageHostSnapshot.self, from: data)
 
     #expect(decoded.installedPackageFirstSeenAtByID == nil)
+    #expect(decoded.loadingManagers == nil)
 }
 
 @Test func packageHostRunningActionDecodesOldJSONWithoutCommandOutput() throws {

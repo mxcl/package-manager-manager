@@ -616,6 +616,32 @@ import Testing
 }
 
 @MainActor
+@Test func dashboardWaitsForMissingManagersButNotBackgroundFreshness() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let package = package(.npm, "eslint")
+
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: [package]),
+        isRefreshing: true,
+        loadingManagers: [.homebrew]
+    ))
+
+    #expect(model.dashboardIsLoadingData)
+    #expect(model.isLoadingCount(for: .homebrew))
+    #expect(!model.isLoadingCount(for: .javascript))
+
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: [package]),
+        isRefreshing: true,
+        loadingManagers: []
+    ))
+
+    #expect(model.isReloading)
+    #expect(!model.dashboardIsLoadingData)
+    #expect(!model.isLoadingCount(for: .homebrew))
+}
+
+@MainActor
 @Test func dashboardInstalledThisWeekCountsOnlyCurrentInstalledPackages() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let week = Calendar.current.dateInterval(of: .weekOfYear, for: Date())!
