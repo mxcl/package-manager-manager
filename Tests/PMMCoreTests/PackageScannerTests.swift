@@ -721,3 +721,19 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(package.installLocation?.hasSuffix("/environments-v2/b0305c6237c84604/5341eec7131f3f0c") == true)
     #expect(package.binaryPath?.hasSuffix("/environments-v2/b0305c6237c84604/5341eec7131f3f0c/bin/cowsay") == true)
 }
+
+@Test func uvxScannerSkipsAmbiguousHashBuckets() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let environment = temp.appendingPathComponent("environments-v2/758e20266bf5b18e/c948314f11ff49ce", isDirectory: true)
+    let sitePackages = environment.appendingPathComponent("lib/python3.11/site-packages", isDirectory: true)
+    try FileManager.default.createDirectory(at: sitePackages.appendingPathComponent("idna-3.17.dist-info", isDirectory: true), withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: sitePackages.appendingPathComponent("requests-2.34.2.dist-info", isDirectory: true), withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let runner = FakeRunner(responses: [
+        "/fake/uv cache dir": CommandResult(stdout: "\(temp.path)\n", stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["uv": "/fake/uv"])
+
+    #expect(try scanner.scanUVX(database: PackageDatabase()).isEmpty)
+}

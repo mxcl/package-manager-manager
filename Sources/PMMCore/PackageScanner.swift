@@ -181,9 +181,10 @@ public struct PackageScanner {
 
         return entries.flatMap { entry -> [ManagedPackage] in
             guard !entry.lastPathComponent.hasPrefix(".") else { return [] }
-            return uvxEnvironmentRoots(entry).map { environment in
+            return uvxEnvironmentRoots(entry).compactMap { environment in
                 let fallbackName = uvxDisplayName(entry.lastPathComponent)
                 let dist = matchingDistInfo(in: environment, packageName: fallbackName) ?? requestedDistInfo(in: environment) ?? singleDistInfo(in: environment)
+                guard dist != nil || !isUVXCacheHash(entry.lastPathComponent) else { return nil }
                 let name = dist?.name ?? fallbackName
                 return ManagedPackage(
                     manager: .uvx,
@@ -833,6 +834,10 @@ public struct PackageScanner {
         guard suffix.count == 16, suffix.allSatisfy(\.isHexDigit) else { return directoryName }
         let prefix = directoryName[..<dash]
         return prefix.isEmpty ? directoryName : String(prefix)
+    }
+
+    private func isUVXCacheHash(_ directoryName: String) -> Bool {
+        directoryName.count == 16 && directoryName.allSatisfy(\.isHexDigit)
     }
 
     private func uvxEnvironmentRoots(_ entry: URL) -> [URL] {
