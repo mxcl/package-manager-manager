@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Introducing Install Packs | Package Manager Manager Blog</title>
+  <meta name="description" content="Install Packs are Package Manager Manager shortlists that install complete toolsets through one pkgmgrmgr:// URL.">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Package Manager Manager">
+  <meta property="og:title" content="Introducing Install Packs">
+  <meta property="og:description" content="Install complete developer toolsets through one Package Manager Manager link.">
+  <meta property="og:url" content="https://mxcl.dev/package-manager-manager/blog/introducing-install-packs/">
+  <meta property="og:image" content="https://mxcl.dev/package-manager-manager/boxes.png">
+  <meta property="article:published_time" content="2026-07-09">
+  <meta property="article:modified_time" content="2026-07-09">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://mxcl.dev/package-manager-manager/boxes.png">
+  <meta name="twitter:title" content="Introducing Install Packs">
+  <meta name="twitter:description" content="Install complete developer toolsets through one Package Manager Manager link.">
+  <link rel="canonical" href="https://mxcl.dev/package-manager-manager/blog/introducing-install-packs/">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://mxcl.dev/package-manager-manager/#organization",
+        "name": "Package Manager Manager",
+        "url": "https://mxcl.dev/package-manager-manager/",
+        "logo": "https://mxcl.dev/package-manager-manager/boxes.png"
+      },
+      {
+        "@type": "BlogPosting",
+        "@id": "https://mxcl.dev/package-manager-manager/blog/introducing-install-packs/#article",
+        "headline": "Introducing Install Packs",
+        "description": "Install Packs are Package Manager Manager shortlists that install complete toolsets through one pkgmgrmgr:// URL.",
+        "image": "https://mxcl.dev/package-manager-manager/boxes.png",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": {
+          "@id": "https://mxcl.dev/package-manager-manager/#organization"
+        },
+        "publisher": {
+          "@id": "https://mxcl.dev/package-manager-manager/#organization"
+        },
+        "mainEntityOfPage": {
+          "@id": "https://mxcl.dev/package-manager-manager/blog/introducing-install-packs/#webpage"
+        }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://mxcl.dev/package-manager-manager/blog/introducing-install-packs/#webpage",
+        "url": "https://mxcl.dev/package-manager-manager/blog/introducing-install-packs/",
+        "name": "Introducing Install Packs",
+        "isPartOf": {
+          "@id": "https://mxcl.dev/package-manager-manager/blog/#blog"
+        }
+      }
+    ]
+  }
+  </script>
+  <link rel="icon" href="../../boxes.png" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="../../boxes.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+  <div class="scroll-meter" aria-hidden="true"><span></span></div>
+  <div class="site-shell" id="top">
+    <header class="masthead">
+      <a class="brand" href="../../" aria-label="Package Manager Manager home">
+        <img class="brand-mark" src="../../boxes.png" alt="Package Manager Manager" width="54" height="54">
+        <span class="brand-type">pkg⋅mgr²</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="nav" aria-label="Main navigation">
+        <a href="../../">Home</a>
+        <a href="#packs">Packs</a>
+        <a href="#make-your-own">Make your own</a>
+        <a href="../" aria-current="page">Blog</a>
+        <a href="https://github.com/mxcl/pmm/releases/latest">Download</a>
+      </nav>
+    </header>
+
+    <main>
+      <article>
+        <header class="article-hero">
+          <div class="article-hero-copy">
+            <p class="eyebrow">Install Packs</p>
+            <h1>Introducing Install Packs.</h1>
+            <p class="lede">
+              A pack is a useful set of packages, installable from one link and still managed by the package managers you already use.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="#packs">See the packs</a>
+              <a class="button text" href="#make-your-own">Make your own</a>
+            </div>
+          </div>
+          <figure class="article-hero-image">
+            <img src="../../boxes.png" alt="Install Packs package grid artwork" width="1200" height="675" decoding="async" fetchpriority="high">
+          </figure>
+        </header>
+
+        <section class="article-body" aria-label="Install Packs overview">
+          <p>
+            Installing a developer machine is usually a pile of tribal knowledge: a gist, a dotfiles script, a README, a copied terminal transcript. Install Packs turn that into a link.
+          </p>
+          <p>
+            A pack is not a new package manager. It is just a shortlist of package identifiers. pkg⋅mgr² opens the link, matches the packages it knows about, shows a confirmation, and asks the native managers to install the missing pieces.
+          </p>
+        </section>
+
+        <section class="toolkit-summary" id="packs" aria-labelledby="current-packs">
+          <div class="section-label">
+            <h2 id="current-packs">The first three packs</h2>
+            <span>published now</span>
+          </div>
+          <div class="compare-grid">
+            <article>
+              <span>01 / agentic toolkit</span>
+              <h3><a href="../agentic-toolkit/">Agentic Toolkit</a></h3>
+              <p>26 media, runtime, search, build, OCR, metadata, and document-conversion tools for agent workflows.</p>
+            </article>
+            <article>
+              <span>02 / agent pack</span>
+              <h3><a href="../agent-pack/">Agent Pack</a></h3>
+              <p>10 terminal-native agent CLIs, coding assistants, model routers, and usage inspection tools.</p>
+            </article>
+            <article>
+              <span>03 / unix++</span>
+              <h3><a href="../unix-plus-plus/">UNIX++ Pack</a></h3>
+              <p>23 modern shell tools for search, previewing, navigation, process monitoring, data work, HTTP, and DNS.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="pack-install-band" aria-labelledby="try-a-pack">
+          <div>
+            <p class="story-kicker">One click</p>
+            <h2 id="try-a-pack">Install packs are ordinary app links.</h2>
+            <p>
+              The app accepts repeated <code>package</code> query parameters, so a pack can live in any blog post, README, docs page, or internal setup guide.
+            </p>
+          </div>
+          <a
+            class="button primary"
+            href="pkgmgrmgr://install?package=brew%3Aripgrep&amp;package=brew%3Afd&amp;package=brew%3Abat"
+          >Try a tiny pack</a>
+        </section>
+
+        <section class="article-body" id="make-your-own" aria-label="Make your own Install Pack">
+          <p>
+            To make your own pack, build a URL that starts with <code>pkgmgrmgr://install</code> and add one URL-encoded <code>package</code> value per package:
+          </p>
+          <p>
+            <code>pkgmgrmgr://install?package=brew%3Aripgrep&amp;package=brew%3Afd&amp;package=brew%3Abat</code>
+          </p>
+          <p>
+            Package identifiers use the same prefixes pkg⋅mgr² stores internally: <code>brew:bat</code>, <code>brew:cask:codex</code>, <code>npm:typescript</code>, <code>npx:create-vite</code>, <code>cargo:ripgrep</code>, <code>uv:tool:ruff</code>, and <code>uvx:ruff</code>. Colons must be URL-encoded as <code>%3A</code> inside query values.
+          </p>
+          <p>
+            For a single package, link directly to its manager path instead: <code>pkgmgrmgr://brew/bat</code>, <code>pkgmgrmgr://brew/cask/codex</code>, <code>pkgmgrmgr://npm/typescript</code>, or <code>pkgmgrmgr://cargo/ripgrep</code>.
+          </p>
+          <p>
+            Public packs are listed from <code>packs/index.json</code>. A pack entry needs a slug, title, subtitle, SF Symbol name, URL, and package identifiers. That is enough for the dashboard to show it and for the blog post to carry the install link.
+          </p>
+        </section>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; 2026 Package Manager Manager.</p>
+      <div class="footer-links">
+        <a href="../../">Home</a>
+        <a href="../">Blog</a>
+        <a href="https://github.com/mxcl/pmm/releases/latest">Download</a>
+        <a href="https://github.com/mxcl/pmm">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="../../app.js"></script>
+</body>
+</html>

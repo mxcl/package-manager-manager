@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Introducing Package Manager Manager | Package Manager Manager Blog</title>
+  <meta name="description" content="Package Manager Manager inventories Homebrew, npm, npx, uv, uvx, cargo install, and rustup packages on a Mac.">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Package Manager Manager">
+  <meta property="og:title" content="Introducing Package Manager Manager">
+  <meta property="og:description" content="One Mac app for seeing what your package managers installed, what is outdated, and what can be removed.">
+  <meta property="og:url" content="https://mxcl.dev/package-manager-manager/blog/introducing-package-manager-manager/">
+  <meta property="og:image" content="https://mxcl.dev/package-manager-manager/boxes.png">
+  <meta property="article:published_time" content="2026-07-09">
+  <meta property="article:modified_time" content="2026-07-09">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://mxcl.dev/package-manager-manager/boxes.png">
+  <meta name="twitter:title" content="Introducing Package Manager Manager">
+  <meta name="twitter:description" content="One Mac app for seeing what your package managers installed, what is outdated, and what can be removed.">
+  <link rel="canonical" href="https://mxcl.dev/package-manager-manager/blog/introducing-package-manager-manager/">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://mxcl.dev/package-manager-manager/#organization",
+        "name": "Package Manager Manager",
+        "url": "https://mxcl.dev/package-manager-manager/",
+        "logo": "https://mxcl.dev/package-manager-manager/boxes.png"
+      },
+      {
+        "@type": "BlogPosting",
+        "@id": "https://mxcl.dev/package-manager-manager/blog/introducing-package-manager-manager/#article",
+        "headline": "Introducing Package Manager Manager",
+        "description": "Package Manager Manager inventories Homebrew, npm, npx, uv, uvx, cargo install, and rustup packages on a Mac.",
+        "image": "https://mxcl.dev/package-manager-manager/boxes.png",
+        "datePublished": "2026-07-09",
+        "dateModified": "2026-07-09",
+        "author": {
+          "@id": "https://mxcl.dev/package-manager-manager/#organization"
+        },
+        "publisher": {
+          "@id": "https://mxcl.dev/package-manager-manager/#organization"
+        },
+        "mainEntityOfPage": {
+          "@id": "https://mxcl.dev/package-manager-manager/blog/introducing-package-manager-manager/#webpage"
+        }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://mxcl.dev/package-manager-manager/blog/introducing-package-manager-manager/#webpage",
+        "url": "https://mxcl.dev/package-manager-manager/blog/introducing-package-manager-manager/",
+        "name": "Introducing Package Manager Manager",
+        "isPartOf": {
+          "@id": "https://mxcl.dev/package-manager-manager/blog/#blog"
+        }
+      }
+    ]
+  }
+  </script>
+  <link rel="icon" href="../../boxes.png" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="../../boxes.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+  <div class="scroll-meter" aria-hidden="true"><span></span></div>
+  <div class="site-shell" id="top">
+    <header class="masthead">
+      <a class="brand" href="../../" aria-label="Package Manager Manager home">
+        <img class="brand-mark" src="../../boxes.png" alt="Package Manager Manager" width="54" height="54">
+        <span class="brand-type">pkg⋅mgr²</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="nav" aria-label="Main navigation">
+        <a href="../../">Home</a>
+        <a href="#what-it-finds">What it finds</a>
+        <a href="../" aria-current="page">Blog</a>
+        <a href="https://github.com/mxcl/pmm#readme">Docs</a>
+        <a href="https://github.com/mxcl/pmm/releases/latest">Download</a>
+      </nav>
+    </header>
+
+    <main>
+      <article>
+        <header class="article-hero">
+          <div class="article-hero-copy">
+            <p class="eyebrow">Package Manager Manager</p>
+            <h1>Introducing Package Manager Manager.</h1>
+            <p class="lede">
+              The Mac app for seeing what your package managers installed, what is outdated, and what can be cleaned up.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="https://github.com/mxcl/pmm/releases/latest">Download</a>
+              <a class="button text" href="https://github.com/mxcl/pmm#readme">Read the docs</a>
+            </div>
+          </div>
+          <figure class="article-hero-image">
+            <img src="../../boxes.png" alt="Package Manager Manager package grid artwork" width="1200" height="675" decoding="async" fetchpriority="high">
+          </figure>
+        </header>
+
+        <section class="article-body" aria-label="Package Manager Manager overview">
+          <p>
+            One package manager used to be enough. Now a normal developer machine has Homebrew formulae, Homebrew casks, global npm packages, one-off npx tools, uv tools, uv Python installs, uvx environments, cargo-installed binaries, and rustup toolchains.
+          </p>
+          <p>
+            Package Manager Manager, or pkg⋅mgr², inventories that mess and gives it one window. It does not replace the package managers. It shows what they installed, highlights what is outdated, and uses the native commands when you update, uninstall, or install supported packages.
+          </p>
+        </section>
+
+        <section class="toolkit-summary" id="what-it-finds" aria-labelledby="finds-title">
+          <div class="section-label">
+            <h2 id="finds-title">What it finds</h2>
+            <span>local inventory</span>
+          </div>
+          <div class="compare-grid">
+            <article>
+              <span>01 / mac packages</span>
+              <h3>Homebrew formulae and casks.</h3>
+              <p>See command line packages and app bundles together, with metadata and update state when it is available.</p>
+            </article>
+            <article>
+              <span>02 / language tools</span>
+              <h3>npm, npx, uv, uvx, cargo, and rustup.</h3>
+              <p>Track global tools, cached execution environments, Python installs, Rust binaries, and installed Rust toolchains.</p>
+            </article>
+            <article>
+              <span>03 / package context</span>
+              <h3>Versions, links, summaries, and categories.</h3>
+              <p>Metadata is best-effort. Missing metadata does not hide a package; it just means the app has less to say about it.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="pack-install-band" aria-labelledby="native-actions">
+          <div>
+            <p class="story-kicker">Native commands</p>
+            <h2 id="native-actions">pkg⋅mgr² manages packages by asking their manager.</h2>
+            <p>
+              Updates and removals go through commands like <code>brew upgrade</code>, <code>npm install --global</code>, <code>uv tool upgrade</code>, and <code>cargo install --force</code>.
+            </p>
+          </div>
+          <a class="button primary" href="https://github.com/mxcl/pmm/releases/latest">Get the app</a>
+        </section>
+
+        <section class="article-body" aria-label="Why Package Manager Manager exists">
+          <p>
+            The goal is visibility without forcing a new workflow. Keep using Homebrew, npm, uv, cargo, and rustup directly. pkg⋅mgr² gives you the map: what is installed, what changed, what is outdated, and which package manager owns each thing.
+          </p>
+          <p>
+            It also introduces Install Packs: curated package sets that open in the app from a <code>pkgmgrmgr://</code> link. Packs are for bootstrapping real workstations without pretending every machine should be managed by one universal installer.
+          </p>
+        </section>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; 2026 Package Manager Manager.</p>
+      <div class="footer-links">
+        <a href="../../">Home</a>
+        <a href="../">Blog</a>
+        <a href="https://github.com/mxcl/pmm/releases/latest">Download</a>
+        <a href="https://github.com/mxcl/pmm">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="../../app.js"></script>
+</body>
+</html>
