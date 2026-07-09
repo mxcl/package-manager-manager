@@ -406,15 +406,19 @@ private struct DashboardSponsoredCard: View {
             .padding(16)
             .frame(maxWidth: .infinity, minHeight: 200, alignment: .leading)
             .background {
-                Rectangle()
-                    .fill(
-                        .linearGradient(
-                            Gradient(colors: [Color(red: 0.35, green: 0.16, blue: 0.62), Color(red: 0.98, green: 0.44, blue: 0.25), Color(red: 0.05, green: 0.06, blue: 0.10)])
-                                .colorSpace(.perceptual),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                MeshGradient(
+                    width: 2,
+                    height: 2,
+                    points: [[0, 0], [1, 0], [0, 1], [1, 1]],
+                    colors: [
+                        Color(red: 0.35, green: 0.16, blue: 0.62),
+                        Color(red: 0.98, green: 0.44, blue: 0.25),
+                        Color(red: 0.80, green: 0.26, blue: 0.18),
+                        Color(red: 0.05, green: 0.06, blue: 0.10),
+                    ],
+                    smoothsColors: true,
+                    colorSpace: .perceptual
+                )
                     .overlay {
                         if let ditherImage = Self.ditherImage {
                             Image(decorative: ditherImage, scale: 2)
