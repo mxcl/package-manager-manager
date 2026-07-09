@@ -137,7 +137,7 @@ enum MainWindowLinkTab: String, CaseIterable, Identifiable {
         case .registry: "Registry"
         case .docs: "Docs"
         case .repo: "Repo"
-        case .releases: "Releases"
+        case .releases: "Changelog"
         }
     }
 
