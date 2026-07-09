@@ -436,23 +436,13 @@ h1 {
 }
 
 .product-shot {
-  position: relative;
-  overflow: hidden;
-  aspect-ratio: 2670 / 1598;
   margin: 0;
-  border-radius: 24px;
-  box-shadow: 0 30px 80px rgb(49 38 20 / 0.19);
 }
 
 .product-shot img {
-  position: absolute;
-  top: -4.63%;
-  left: -4.08%;
-  width: 111.61%;
-  max-width: none;
+  width: 100%;
   height: auto;
   aspect-ratio: 2980 / 1872;
-  object-fit: contain;
 }
 
 .hero-shot {
@@ -543,10 +533,6 @@ h1 {
 .check-list li::before {
   content: "↳";
   color: var(--accent);
-}
-
-.detail-shot {
-  border-radius: 18px;
 }
 
 .feature-strip {
@@ -747,10 +733,6 @@ h1 {
   .manager-line {
     align-items: center;
     flex-direction: column;
-  }
-
-  .product-shot {
-    border-radius: 10px;
   }
 
   .final-cta {
