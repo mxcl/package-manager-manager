@@ -446,12 +446,13 @@ h1 {
 
 .product-shot img {
   width: 100%;
+  height: auto;
+  aspect-ratio: 2980 / 1872;
+  object-fit: contain;
 }
 
 .hero-shot {
   margin-top: 28px;
-  transform: perspective(1600px) rotateX(1.5deg);
-  transform-origin: center bottom;
 }
 
 .inventory-intro {
@@ -757,9 +758,5 @@ h1 {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
-  }
-
-  .hero-shot {
-    transform: none;
   }
 }
