@@ -793,14 +793,14 @@ private struct PackageEcosystemMark: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 12, height: 12)
+                    .frame(width: 15, height: 15)
             } else {
                 Image(systemName: section.systemImage)
                     .font(.system(size: 11, weight: .semibold))
             }
         }
         .foregroundStyle(color)
-        .frame(width: 14, height: 14)
+        .frame(width: section.sidebarImage == nil ? 14 : 16, height: section.sidebarImage == nil ? 14 : 16)
         .accessibilityLabel(section.title)
     }
 
