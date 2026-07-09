@@ -361,6 +361,18 @@ import Testing
     #expect(index.packagesBySection[.developerTools]?.map(\.displayName) == ["new", "middle", "old"])
 }
 
+@Test func categoryCatalogPackageVersionTextShowsManager() {
+    let package = ManagedPackage(
+        manager: .npm,
+        name: "sherif",
+        installedVersion: nil,
+        latestVersion: "1.13.0",
+        category: "developer-tools"
+    )
+
+    #expect(mainWindowVersionText(package, section: .developerTools) == "NPM")
+}
+
 @MainActor
 @Test func dashboardDataUsesLoadedSnapshot() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)

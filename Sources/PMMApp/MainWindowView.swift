@@ -435,18 +435,18 @@ func mainWindowBrowserDisplayURL(_ url: URL) -> String {
     return string
 }
 
-private func mainWindowVersionText(_ package: ManagedPackage, section: MainWindowSection? = nil) -> String {
+func mainWindowVersionText(_ package: ManagedPackage, section: MainWindowSection? = nil) -> String {
     if section == .newUpdated, let pulseKind = package.pulseKind {
         return pulseKind.capitalized
+    }
+    if section?.categoryIdentifier != nil, package.installedVersion == nil {
+        return package.manager == .npm ? "NPM" : package.manager.title
     }
     if package.isOutdated {
         if section == nil || section == .outdated {
             return "\(package.installedVersion ?? "?") → \(package.latestVersion ?? "?")"
         }
         return package.installedVersion ?? package.latestVersion ?? "available"
-    }
-    if section?.categoryIdentifier != nil, package.installedVersion == nil, package.latestVersion == nil {
-        return package.manager.title
     }
     return package.installedVersion ?? package.latestVersion ?? "available"
 }
