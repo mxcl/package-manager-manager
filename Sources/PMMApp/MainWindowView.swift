@@ -783,8 +783,10 @@ private struct PackageRow: View {
     }
 }
 
-private struct PackageEcosystemMark: View {
+struct PackageEcosystemMark: View {
     let package: ManagedPackage
+    var size: CGFloat = 15
+    var isBaselineAligned = true
 
     var body: some View {
         Group {
@@ -793,15 +795,18 @@ private struct PackageEcosystemMark: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 15, height: 15)
-                    .offset(y: imageOffset)
+                    .frame(width: size, height: size)
+                    .offset(y: isBaselineAligned ? imageOffset : 0)
             } else {
                 Image(systemName: section.systemImage)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: size * 0.73, weight: .semibold))
             }
         }
         .foregroundStyle(color)
-        .frame(width: section.sidebarImage == nil ? 14 : 16, height: section.sidebarImage == nil ? 14 : 16)
+        .frame(
+            width: section.sidebarImage == nil ? size - 1 : size + 1,
+            height: section.sidebarImage == nil ? size - 1 : size + 1
+        )
         .accessibilityLabel(section.title)
     }
 

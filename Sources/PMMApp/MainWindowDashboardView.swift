@@ -243,9 +243,7 @@ private struct DashboardPackageRow: View {
             ZStack {
                 Circle()
                     .fill(SystemColor.controlFill)
-                Image(systemName: package.manager.dashboardSymbol)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(SystemColor.primaryText)
+                PackageEcosystemMark(package: package, size: 22, isBaselineAligned: false)
             }
             .frame(width: 40, height: 40)
 
@@ -333,9 +331,7 @@ private struct DashboardRecommendationCard: View {
         VStack(alignment: .leading, spacing: 9) {
             ZStack {
                 Circle().fill(SystemColor.controlFill)
-                Image(systemName: package.manager.dashboardSymbol)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(SystemColor.primaryText)
+                PackageEcosystemMark(package: package, size: 22, isBaselineAligned: false)
             }
             .frame(width: 38, height: 38)
             Text(package.displayName)
@@ -593,17 +589,6 @@ private struct DashboardCheckmarkText: View {
                 .font(.system(size: 11))
         }
         .foregroundStyle(SystemColor.secondaryText)
-    }
-}
-
-private extension PackageManagerKind {
-    var dashboardSymbol: String {
-        switch self {
-        case .cargoInstall, .rustup: "hammer"
-        case .homebrew: "mug"
-        case .npm, .npx: "curlybraces"
-        case .uv, .uvx: "shippingbox.circle"
-        }
     }
 }
 
