@@ -54,6 +54,14 @@ import Testing
     #expect(output.string == "done")
 }
 
+@Test func terminalOutputDoesNotWrapHomebrewManifestLineBeforeEightyColumns() {
+    let line = "==> Downloading https://ghcr.io/v2/homebrew/core/talosctl/manifests/1.13.6"
+    let output = mainWindowTerminalAttributedOutput(line)
+
+    #expect(line.count < 80)
+    #expect(output.string == line)
+}
+
 @MainActor
 @Test func inventoryApplyDoesNotSelectPackageAutomatically() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)

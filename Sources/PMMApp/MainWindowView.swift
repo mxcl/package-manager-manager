@@ -934,7 +934,7 @@ private struct PackageCommandProgressView: View {
                 }
             }
             TerminalOutputTextView(output: output)
-                .frame(height: 300)
+                .frame(width: TerminalOutputTextView.eightyColumnWidth, height: 300)
         }
         .frame(width: TerminalOutputTextView.eightyColumnWidth)
         .padding(5)
@@ -959,9 +959,14 @@ private struct TerminalOutputTextView: NSViewRepresentable {
         textView.isEditable = false
         textView.isSelectable = true
         textView.drawsBackground = false
+        textView.isHorizontallyResizable = false
+        textView.minSize = NSSize(width: Self.eightyColumnWidth, height: 0)
+        textView.maxSize = NSSize(width: Self.eightyColumnWidth, height: .greatestFiniteMagnitude)
         textView.textContainerInset = .zero
+        textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(width: scrollView.contentSize.width, height: .greatestFiniteMagnitude)
+        textView.textContainer?.containerSize = NSSize(width: Self.eightyColumnWidth, height: .greatestFiniteMagnitude)
+        textView.frame = NSRect(x: 0, y: 0, width: Self.eightyColumnWidth, height: 0)
         textView.autoresizingMask = [.width]
         scrollView.documentView = textView
         return scrollView
@@ -969,6 +974,10 @@ private struct TerminalOutputTextView: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        textView.minSize.width = Self.eightyColumnWidth
+        textView.maxSize.width = Self.eightyColumnWidth
+        textView.frame.size.width = Self.eightyColumnWidth
+        textView.textContainer?.containerSize = NSSize(width: Self.eightyColumnWidth, height: .greatestFiniteMagnitude)
         textView.textStorage?.setAttributedString(mainWindowTerminalAttributedOutput(output))
         textView.scrollToEndOfDocument(nil)
     }
