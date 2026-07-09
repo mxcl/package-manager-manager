@@ -10,6 +10,33 @@ private struct FakeRunner: CommandRunning {
     }
 }
 
+private final class RecordingRunner: CommandRunning, @unchecked Sendable {
+    private let lock = NSLock()
+    private let responses: [String: CommandResult]
+    private(set) var calls: [(command: String, options: CommandRunOptions)] = []
+
+    init(responses: [String: CommandResult]) {
+        self.responses = responses
+    }
+
+    func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
+        try run(executable, arguments, options: CommandRunOptions(), onOutput: nil)
+    }
+
+    func run(
+        _ executable: String,
+        _ arguments: [String],
+        options: CommandRunOptions,
+        onOutput: (@Sendable (String) -> Void)?
+    ) throws -> CommandResult {
+        let command = ([executable] + arguments).joined(separator: " ")
+        lock.lock()
+        calls.append((command, options))
+        lock.unlock()
+        return responses[command] ?? CommandResult(stdout: "", stderr: "", status: 0)
+    }
+}
+
 private final class NPMResolveRunner: CommandRunning, @unchecked Sendable {
     let version: String?
     let status: Int32
@@ -227,15 +254,19 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     defer { try? FileManager.default.removeItem(at: temp) }
 
     let runner = FakeRunner(responses: [
-        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "git\n", stderr: "", status: 0),
         "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
-        "/fake/brew list --versions --formula": CommandResult(stdout: "git 2.51.0\n", stderr: "", status: 0),
-        "/fake/brew info --installed --cask --json=v2": CommandResult(stdout: #"""
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"""
         {
-          "formulae": [],
+          "formulae": [{
+            "name": "git",
+            "versions": {"stable":"2.51.0"},
+            "installed": [{"version":"2.51.0","installed_on_request":true}],
+            "linked_keg": "2.51.0"
+          }],
           "casks": [{
             "token": "visual-studio-code",
-            "version": "1.102.0"
+            "version": "1.102.0",
+            "installed": "1.102.0"
           }]
         }
         """#, stderr: "", status: 0),
@@ -261,6 +292,24 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages.last?.category == "productivity")
 }
 
+@Test func homebrewScannerUsesOnlyConsolidatedCommandsWithoutAutoUpdate() throws {
+    let runner = RecordingRunner(responses: [
+        "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/brew --prefix": CommandResult(stdout: "/fake/homebrew\n", stderr: "", status: 0),
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+    ])
+
+    _ = try PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"])
+        .scanHomebrew(database: PackageDatabase())
+
+    #expect(runner.calls.map(\.command) == [
+        "/fake/brew outdated --json=v2",
+        "/fake/brew --prefix",
+        "/fake/brew info --json=v2 --installed",
+    ])
+    #expect(runner.calls.allSatisfy { $0.options.environment["HOMEBREW_NO_AUTO_UPDATE"] == "1" })
+}
+
 @Test func homebrewScannerPrefersDatabaseRepositoryOverFormulaSource() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     let formulaCache = temp.appendingPathComponent("api/formula", isDirectory: true)
@@ -271,10 +320,8 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     defer { try? FileManager.default.removeItem(at: temp) }
 
     let runner = FakeRunner(responses: [
-        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "pnpm\n", stderr: "", status: 0),
         "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
-        "/fake/brew list --versions --formula": CommandResult(stdout: "pnpm 11.8.0\n", stderr: "", status: 0),
-        "/fake/brew list --versions --cask": CommandResult(stdout: "", stderr: "", status: 0),
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"{"formulae":[{"name":"pnpm","versions":{"stable":"11.8.0"},"installed":[{"version":"11.8.0","installed_on_request":true}],"linked_keg":"11.8.0"}],"casks":[]}"#, stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"], environment: ["HOMEBREW_CACHE": temp.path])
 
@@ -290,7 +337,6 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     defer { try? FileManager.default.removeItem(at: temp) }
 
     let runner = FakeRunner(responses: [
-        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "create-dmg\n", stderr: "", status: 0),
         "/fake/brew --prefix": CommandResult(stdout: "/fake/homebrew\n", stderr: "", status: 0),
         "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
         "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"""
@@ -301,14 +347,13 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
             "desc": "Shell script to build fancy DMGs",
             "homepage": "https://github.com/create-dmg/create-dmg",
             "versions": { "stable": "1.3.0" },
+            "installed": [{"version":"1.3.0","installed_on_request":true}],
+            "linked_keg": "1.3.0",
             "urls": { "stable": { "url": "https://github.com/create-dmg/create-dmg/archive/refs/tags/v1.3.0.tar.gz" } }
           }],
           "casks": []
         }
         """#, stderr: "", status: 0),
-        "/fake/brew list --versions --formula": CommandResult(stdout: "create-dmg 1.3.0\n", stderr: "", status: 0),
-        "/fake/brew list --versions --cask": CommandResult(stdout: "", stderr: "", status: 0),
-        "/fake/brew list --formula create-dmg": CommandResult(stdout: "/fake/homebrew/Cellar/create-dmg/1.3.0/bin/create-dmg\n", stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"], environment: ["HOMEBREW_CACHE": temp.path])
 
@@ -323,34 +368,38 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages.first?.repo == "https://github.com/create-dmg/create-dmg")
     #expect(packages.first?.category == "developer-tools")
     #expect(packages.first?.installLocation == "/fake/homebrew/opt/create-dmg")
-    #expect(packages.first?.binaryPath == "/fake/homebrew/Cellar/create-dmg/1.3.0/bin/create-dmg")
+    #expect(packages.first?.binaryPath == nil)
 }
 
 @Test func homebrewScannerRecordsFormulaExecutableNames() throws {
+    let prefix = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let bin = prefix.appendingPathComponent("bin", isDirectory: true)
+    let cellarBin = prefix.appendingPathComponent("Cellar/findutils/4.10.0/bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: cellarBin, withIntermediateDirectories: true)
+    for name in ["gbase32", "gfind"] {
+        let target = cellarBin.appendingPathComponent(name)
+        FileManager.default.createFile(atPath: target.path, contents: Data())
+        try FileManager.default.createSymbolicLink(at: bin.appendingPathComponent(name), withDestinationURL: target)
+    }
+    defer { try? FileManager.default.removeItem(at: prefix) }
+
     let runner = FakeRunner(responses: [
-        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "findutils\n", stderr: "", status: 0),
-        "/fake/brew --prefix": CommandResult(stdout: "/fake/homebrew\n", stderr: "", status: 0),
+        "/fake/brew --prefix": CommandResult(stdout: "\(prefix.path)\n", stderr: "", status: 0),
         "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
-        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
-        "/fake/brew list --versions --formula": CommandResult(stdout: "findutils 4.10.0\n", stderr: "", status: 0),
-        "/fake/brew list --versions --cask": CommandResult(stdout: "", stderr: "", status: 0),
-        "/fake/brew list --formula findutils": CommandResult(stdout: """
-        /fake/homebrew/Cellar/findutils/4.10.0/bin/gbase32
-        /fake/homebrew/Cellar/findutils/4.10.0/bin/gfind
-        """, stderr: "", status: 0),
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"{"formulae":[{"name":"findutils","versions":{"stable":"4.10.0"},"installed":[{"version":"4.10.0","installed_on_request":true}],"linked_keg":"4.10.0"}],"casks":[]}"#, stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"])
 
     let package = try #require(scanner.scanHomebrew(database: PackageDatabase()).first)
 
     #expect(package.identifier == "brew:findutils")
-    #expect(package.binaryPath == "/fake/homebrew/Cellar/findutils/4.10.0/bin/gbase32")
+    #expect(package.binaryPath == cellarBin.appendingPathComponent("gbase32").path)
     #expect(package.executableNames == ["gbase32", "gfind"])
 }
 
 @Test func homebrewScannerUsesCaskLocationMetadata() throws {
     let runner = FakeRunner(responses: [
-        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "", stderr: "", status: 0),
         "/fake/brew --prefix": CommandResult(stdout: "/fake/homebrew\n", stderr: "", status: 0),
         "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
         "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"""
@@ -366,20 +415,6 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
           }]
         }
         """#, stderr: "", status: 0),
-        "/fake/brew info --installed --cask --json=v2": CommandResult(stdout: #"""
-        {
-          "formulae": [],
-          "casks": [{
-            "token": "codex",
-            "desc": "OpenAI's coding agent",
-            "homepage": "https://github.com/openai/codex",
-            "version": "0.142.5",
-            "installed": "0.142.5",
-            "artifacts": [{ "binary": ["codex-aarch64-apple-darwin", { "target": "codex" }], "target": "/fake/homebrew/bin/codex" }]
-          }]
-        }
-        """#, stderr: "", status: 0),
-        "/fake/brew list --versions --formula": CommandResult(stdout: "", stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"])
 
@@ -392,7 +427,6 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 
 @Test func homebrewScannerDoesNotMarkInstalledFormulaRevisionsOutdated() throws {
     let runner = FakeRunner(responses: [
-        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "zopfli\n", stderr: "", status: 0),
         "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
         "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"""
         {
@@ -401,13 +435,12 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
             "desc": "Compression tool",
             "homepage": "https://github.com/google/zopfli",
             "versions": { "stable": "1.0.3" },
+            "installed": [{"version":"1.0.3_1","installed_on_request":true}],
             "linked_keg": "1.0.3_1"
           }],
           "casks": []
         }
         """#, stderr: "", status: 0),
-        "/fake/brew list --versions --formula": CommandResult(stdout: "zopfli 1.0.3_1\n", stderr: "", status: 0),
-        "/fake/brew list --versions --cask": CommandResult(stdout: "", stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"])
 
@@ -419,19 +452,20 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 
 @Test func homebrewScannerKeepsOnlyRequestedFormulaeAndCasks() throws {
     let runner = FakeRunner(responses: [
-        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "git\n", stderr: "", status: 0),
         "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
-        "/fake/brew list --versions --formula": CommandResult(stdout: "git 2.50.0\nopenssl@3 3.5.0\n", stderr: "", status: 0),
-        "/fake/brew info --installed --cask --json=v2": CommandResult(stdout: #"""
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"""
         {
-          "formulae": [],
+          "formulae": [
+            {"name":"git","installed":[{"version":"2.50.0","installed_on_request":true}],"linked_keg":"2.50.0"},
+            {"name":"openssl@3","installed":[{"version":"3.5.0","installed_on_request":false}],"linked_keg":"3.5.0"}
+          ],
           "casks": [{
             "token": "visual-studio-code",
-            "version": "1.101.2"
+            "version": "1.101.2",
+            "installed": "1.101.2"
           }]
         }
         """#, stderr: "", status: 0),
-        "/fake/brew list --versions --cask": CommandResult(stdout: "", stderr: "Error: Cask 'visual-studio-code' is not installed.\n", status: 1),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"])
 
@@ -443,10 +477,8 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 
 @Test func homebrewScannerKeepsTappedRequestedFormulae() throws {
     let runner = FakeRunner(responses: [
-        "/fake/brew leaves --installed-on-request": CommandResult(stdout: "automic-vault/isotopes/gh-cli\n", stderr: "", status: 0),
         "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[{"name":"automic-vault/isotopes/gh-cli","installed_versions":["2.94.0"],"current_version":"2.96.0"}],"casks":[]}"#, stderr: "", status: 0),
-        "/fake/brew list --versions --formula": CommandResult(stdout: "gh-cli 2.94.0\nopenssl@3 3.5.0\n", stderr: "", status: 0),
-        "/fake/brew info --installed --cask --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"{"formulae":[{"name":"gh-cli","full_name":"automic-vault/isotopes/gh-cli","installed":[{"version":"2.94.0","installed_on_request":true}],"linked_keg":"2.94.0"}],"casks":[]}"#, stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"])
 
