@@ -794,6 +794,7 @@ private struct PackageEcosystemMark: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 15, height: 15)
+                    .offset(y: 1.5)
             } else {
                 Image(systemName: section.systemImage)
                     .font(.system(size: 11, weight: .semibold))
