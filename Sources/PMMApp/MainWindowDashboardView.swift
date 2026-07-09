@@ -4,34 +4,6 @@ import SwiftUI
 private let dashboardItemCornerRadius: CGFloat = 17.5
 private let dashboardCardSpacing: CGFloat = 8.5
 private let dashboardInstallPacksBlogURL = URL(string: "https://mxcl.dev/package-manager-manager/blog/")!
-private let dashboardInstallPacks = [
-    DashboardInstallPack(
-        title: "Agentic Toolkit",
-        subtitle: "26 tools for agent workflows",
-        systemImage: "shippingbox",
-        url: URL(string: "https://mxcl.dev/package-manager-manager/blog/agentic-toolkit/")!
-    ),
-    DashboardInstallPack(
-        title: "Agent Pack",
-        subtitle: "10 agent CLIs and assistants",
-        systemImage: "sparkles",
-        url: URL(string: "https://mxcl.dev/package-manager-manager/blog/agent-pack/")!
-    ),
-    DashboardInstallPack(
-        title: "UNIX++ Pack",
-        subtitle: "23 modern shell tools",
-        systemImage: "terminal",
-        url: URL(string: "https://mxcl.dev/package-manager-manager/blog/unix-plus-plus/")!
-    ),
-]
-
-private struct DashboardInstallPack: Identifiable {
-    var id: String { title }
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let url: URL
-}
 
 struct MainWindowDashboardView: View {
     @ObservedObject var model: MainWindowModel
@@ -66,7 +38,13 @@ struct MainWindowDashboardView: View {
                     model.selectSection(section)
                 }
             }
-            DashboardMetricCard(title: "Install packs", value: dashboardInstallPacks.count, detail: "Published", isLoading: false, tint: AnyShapeStyle(Color.accentColor))
+            DashboardMetricCard(
+                title: "Install packs",
+                value: model.dashboardInstallPacksAreLoading ? nil : model.dashboardInstallPacks.count,
+                detail: model.dashboardInstallPacksAreLoading ? nil : "Published",
+                isLoading: model.dashboardInstallPacksAreLoading,
+                tint: AnyShapeStyle(Color.accentColor)
+            )
         }
     }
 
@@ -96,7 +74,12 @@ struct MainWindowDashboardView: View {
         VStack(spacing: dashboardCardSpacing) {
             DashboardSponsoredCard()
             DashboardUpdatesCard()
-            DashboardInstallPacksCard()
+            DashboardInstallPacksCard(
+                packs: model.dashboardInstallPacks,
+                isLoading: model.dashboardInstallPacksAreLoading
+            ) {
+                model.install($0)
+            }
         }
     }
 }
@@ -479,6 +462,10 @@ private struct DashboardUpdatesCard: View {
 }
 
 private struct DashboardInstallPacksCard: View {
+    let packs: [DashboardInstallPack]
+    let isLoading: Bool
+    let install: (DashboardInstallPack) -> Void
+
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -487,37 +474,63 @@ private struct DashboardInstallPacksCard: View {
                 openURL(dashboardInstallPacksBlogURL)
             }
             VStack(spacing: 0) {
-                ForEach(dashboardInstallPacks) { pack in
-                    Link(destination: pack.url) {
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                } else if packs.isEmpty {
+                    Text("No install packs yet")
+                        .font(.system(size: 12))
+                        .foregroundStyle(SystemColor.secondaryText)
+                        .frame(maxWidth: .infinity, minHeight: 92)
+                } else {
+                    ForEach(packs) { pack in
                         HStack(spacing: 12) {
-                            Image(systemName: pack.systemImage)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 30, height: 30)
-                                .background(Color.accentColor.opacity(0.75), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(pack.title)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(SystemColor.primaryText)
-                                    .lineLimit(1)
-                                Text(pack.subtitle)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(SystemColor.secondaryText)
-                                    .lineLimit(1)
+                            Link(destination: pack.url) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: pack.systemImage)
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 30, height: 30)
+                                        .background(Color.accentColor.opacity(0.75), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(pack.title)
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(SystemColor.primaryText)
+                                            .lineLimit(1)
+                                        Text(pack.subtitle)
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(SystemColor.secondaryText)
+                                            .lineLimit(1)
+                                    }
+                                }
                             }
+                            .buttonStyle(.plain)
                             Spacer(minLength: 8)
-                            Text("View")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Color.accentColor)
-                                .frame(width: 58, height: 30)
-                                .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            Link(destination: pack.url) {
+                                Text("View")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(Color.accentColor)
+                                    .frame(width: 48, height: 30)
+                                    .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            Button {
+                                install(pack)
+                            } label: {
+                                Text("Install")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 58, height: 30)
+                                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.plain)
-                    if pack.id != dashboardInstallPacks.last?.id {
-                        Divider().overlay(SystemColor.hairline)
+                        if pack.id != packs.last?.id {
+                            Divider().overlay(SystemColor.hairline)
+                        }
                     }
                 }
             }

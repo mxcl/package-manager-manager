@@ -155,6 +155,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     private func observeCommands() {
         notificationCenter.addObserver(self, selector: #selector(refreshRequested(_:)), name: PackageHostNotifications.refreshRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(installRequested(_:)), name: PackageHostNotifications.installRequested, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(installManyRequested(_:)), name: PackageHostNotifications.installManyRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(updateRequested(_:)), name: PackageHostNotifications.updateRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(updateAllRequested(_:)), name: PackageHostNotifications.updateAllRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(uninstallRequested(_:)), name: PackageHostNotifications.uninstallRequested, object: nil)
@@ -243,6 +244,37 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func runInstallMany(packageIDs: [String]) {
+        guard refreshTask == nil, actionTask == nil else { return }
+        let packages = menuBarCommandInstallPackages(ids: packageIDs, snapshot: snapshot)
+        guard !packages.isEmpty else { return }
+        snapshot.errorMessage = nil
+        publishSnapshot()
+
+        actionTask = Task { [weak self] in
+            var errors: [String] = []
+            for package in packages {
+                guard let self, !Task.isCancelled else { return }
+                self.snapshot.runningAction = PackageHostRunningAction(kind: .install, packageID: package.id, displayName: package.displayName)
+                self.publishSnapshot()
+
+                let result = await Task.detached(priority: .background) {
+                    Result {
+                        try PackageInstaller().install(package)
+                    }
+                }.value
+                if case .failure(let error) = result {
+                    errors.append(error.localizedDescription)
+                }
+            }
+
+            guard let self, !Task.isCancelled else { return }
+            self.snapshot.runningAction = nil
+            self.publishSnapshot()
+            self.rescanAfterAction(errorMessage: errors.isEmpty ? nil : errors.joined(separator: "\n"))
+        }
+    }
+
     private func disabledItem(_ title: String) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
@@ -275,6 +307,10 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     @objc private func installRequested(_ notification: Notification) {
         guard let packageID = PackageHostNotifications.packageID(from: notification) else { return }
         runAction(kind: .install, packageID: packageID)
+    }
+
+    @objc private func installManyRequested(_ notification: Notification) {
+        runInstallMany(packageIDs: PackageHostNotifications.packageIDs(from: notification))
     }
 
     @objc private func updateRequested(_ notification: Notification) {

@@ -84,6 +84,11 @@ func menuBarCommandUpdateAllPackages(snapshot: PackageHostSnapshot) -> [ManagedP
     return (snapshot.inventory?.outdatedPackages ?? []).filter(PackageUpdater.supports)
 }
 
+func menuBarCommandInstallPackages(ids: [String], snapshot: PackageHostSnapshot) -> [ManagedPackage] {
+    guard snapshot.runningAction == nil else { return [] }
+    return ids.compactMap { menuBarCommandPackage(id: $0, kind: .install, snapshot: snapshot) }
+}
+
 func menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot) -> Bool {
     snapshot.inventory == nil
 }

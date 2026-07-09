@@ -228,6 +228,25 @@ import Testing
     #expect(model.selectedPackage == zsh)
 }
 
+@Test func packageURLRequestParsesInstallIdentifiers() throws {
+    let cask = try #require(MainWindowPackageURLRequest(identifier: "brew:cask:codex"))
+    #expect(cask.manager == .homebrew)
+    #expect(cask.name == "cask/codex")
+    #expect(cask.identifier == "brew:cask:codex")
+    #expect(cask.section == .casks)
+
+    let scoped = try #require(MainWindowPackageURLRequest(identifier: "npm:@scope/tool"))
+    #expect(scoped.manager == .npm)
+    #expect(scoped.name == "@scope/tool")
+    #expect(scoped.identifier == "npm:@scope/tool")
+    #expect(scoped.section == .javascript)
+
+    let python = try #require(MainWindowPackageURLRequest(identifier: "brew:python@3.13"))
+    #expect(python.manager == .homebrew)
+    #expect(python.name == "python@3.13")
+    #expect(python.identifier == "brew:python@3.13")
+}
+
 @Test func installedSectionSortsPackagesAlphabetically() {
     let packages = [
         package(.npm, "zeta"),

@@ -90,11 +90,13 @@ public enum PackageHostNotifications {
     public static let snapshotChanged = Notification.Name("dev.mxcl.pmm.packageHost.snapshotChanged")
     public static let refreshRequested = Notification.Name("dev.mxcl.pmm.packageHost.refreshRequested")
     public static let installRequested = Notification.Name("dev.mxcl.pmm.packageHost.installRequested")
+    public static let installManyRequested = Notification.Name("dev.mxcl.pmm.packageHost.installManyRequested")
     public static let updateRequested = Notification.Name("dev.mxcl.pmm.packageHost.updateRequested")
     public static let updateAllRequested = Notification.Name("dev.mxcl.pmm.packageHost.updateAllRequested")
     public static let uninstallRequested = Notification.Name("dev.mxcl.pmm.packageHost.uninstallRequested")
 
     public static let packageIDKey = "packageID"
+    public static let packageIDsKey = "packageIDs"
 
     public static func postSnapshotChanged() {
         DistributedNotificationCenter.default().postNotificationName(snapshotChanged, object: nil, deliverImmediately: true)
@@ -106,6 +108,15 @@ public enum PackageHostNotifications {
 
     public static func postInstallRequested(packageID: String) {
         postPackageCommand(installRequested, packageID: packageID)
+    }
+
+    public static func postInstallManyRequested(packageIDs: [String]) {
+        DistributedNotificationCenter.default().postNotificationName(
+            installManyRequested,
+            object: nil,
+            userInfo: [packageIDsKey: packageIDs],
+            deliverImmediately: true
+        )
     }
 
     public static func postUpdateRequested(packageID: String) {
@@ -122,6 +133,10 @@ public enum PackageHostNotifications {
 
     public static func packageID(from notification: Notification) -> String? {
         notification.userInfo?[packageIDKey] as? String
+    }
+
+    public static func packageIDs(from notification: Notification) -> [String] {
+        notification.userInfo?[packageIDsKey] as? [String] ?? []
     }
 
     private static func postPackageCommand(_ name: Notification.Name, packageID: String) {

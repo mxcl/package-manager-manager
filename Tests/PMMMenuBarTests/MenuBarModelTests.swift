@@ -73,6 +73,25 @@ import Testing
     #expect(menuBarCommandUpdateAllPackages(snapshot: busy).isEmpty)
 }
 
+@Test func menuBarInstallManyOnlyIncludesSupportedCatalogPackagesWhenIdle() {
+    let installed = ManagedPackage(manager: .homebrew, name: "git", installedVersion: "2.0.0", latestVersion: "2.0.0")
+    let brew = ManagedPackage(manager: .homebrew, name: "bat", installedVersion: nil, latestVersion: "1.0.0")
+    let npm = ManagedPackage(manager: .npm, name: "eslint", installedVersion: nil, latestVersion: "9.0.0")
+    let unsupported = ManagedPackage(manager: .uvx, name: "ruff", installedVersion: nil, latestVersion: "1.0.0")
+    let snapshot = PackageHostSnapshot(
+        inventory: PackageInventory(packages: [installed]),
+        catalogPackages: [brew, npm, unsupported]
+    )
+    let busy = PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: [brew],
+        runningAction: PackageHostRunningAction(kind: .install, packageID: brew.id, displayName: "bat")
+    )
+
+    #expect(menuBarCommandInstallPackages(ids: [installed.id, brew.id, npm.id, unsupported.id], snapshot: snapshot) == [brew, npm])
+    #expect(menuBarCommandInstallPackages(ids: [brew.id], snapshot: busy).isEmpty)
+}
+
 @Test func menuBarRefreshesOnLaunchOnlyWhenInventoryIsMissing() {
     #expect(menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot()))
     #expect(!menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: []))))

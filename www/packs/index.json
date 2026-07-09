@@ -1,0 +1,90 @@
+{
+  "packs": [
+    {
+      "slug": "agentic-toolkit",
+      "title": "Agentic Toolkit",
+      "subtitle": "26 tools for agent workflows",
+      "systemImage": "shippingbox",
+      "url": "https://mxcl.dev/package-manager-manager/blog/agentic-toolkit/",
+      "packages": [
+        "brew:ffmpeg-full",
+        "brew:imagemagick-full",
+        "brew:node",
+        "brew:uv",
+        "brew:python@3.13",
+        "brew:bash",
+        "brew:ripgrep",
+        "brew:pnpm",
+        "brew:yq",
+        "brew:gh",
+        "brew:gum",
+        "brew:fd",
+        "brew:bat",
+        "brew:tree",
+        "brew:git-delta",
+        "brew:shellcheck",
+        "brew:shfmt",
+        "brew:hyperfine",
+        "brew:deno",
+        "brew:go",
+        "brew:pkgconf",
+        "brew:cmake",
+        "brew:poppler",
+        "brew:tesseract",
+        "brew:exiftool",
+        "brew:pandoc"
+      ]
+    },
+    {
+      "slug": "agent-pack",
+      "title": "Agent Pack",
+      "subtitle": "10 agent CLIs and assistants",
+      "systemImage": "sparkles",
+      "url": "https://mxcl.dev/package-manager-manager/blog/agent-pack/",
+      "packages": [
+        "brew:cask:codex",
+        "brew:claude-code",
+        "brew:block-goose-cli",
+        "brew:aider",
+        "brew:opencode",
+        "brew:gemini-cli",
+        "brew:qwen-code",
+        "brew:ccusage",
+        "brew:llm",
+        "brew:mods"
+      ]
+    },
+    {
+      "slug": "unix-plus-plus",
+      "title": "UNIX++ Pack",
+      "subtitle": "23 modern shell tools",
+      "systemImage": "terminal",
+      "url": "https://mxcl.dev/package-manager-manager/blog/unix-plus-plus/",
+      "packages": [
+        "brew:bat",
+        "brew:bat-extras",
+        "brew:eza",
+        "brew:fd",
+        "brew:ripgrep",
+        "brew:sd",
+        "brew:dust",
+        "brew:duf",
+        "brew:procs",
+        "brew:bottom",
+        "brew:zoxide",
+        "brew:fzf",
+        "brew:git-delta",
+        "brew:hyperfine",
+        "brew:tokei",
+        "brew:choose",
+        "brew:jq",
+        "brew:yq",
+        "brew:xh",
+        "brew:doggo",
+        "brew:miller",
+        "brew:entr",
+        "brew:watchexec"
+      ]
+    }
+  ]
+}

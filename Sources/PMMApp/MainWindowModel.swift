@@ -164,6 +164,42 @@ struct MainWindowPackageURLRequest: Equatable {
     let name: String
     let identifier: String
 
+    init?(identifier rawIdentifier: String) {
+        let identifier = rawIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !identifier.isEmpty else { return nil }
+
+        if identifier.hasPrefix("brew:cask:") {
+            manager = .homebrew
+            name = "cask/" + String(identifier.trimmingPrefix("brew:cask:"))
+        } else if identifier.hasPrefix("brew:") {
+            manager = .homebrew
+            name = String(identifier.trimmingPrefix("brew:"))
+        } else if identifier.hasPrefix("cargo:") {
+            manager = .cargoInstall
+            name = String(identifier.trimmingPrefix("cargo:"))
+        } else if identifier.hasPrefix("rustup:") {
+            manager = .rustup
+            name = String(identifier.trimmingPrefix("rustup:")).replacingOccurrences(of: ":", with: "/")
+        } else if identifier.hasPrefix("npm:") {
+            manager = .npm
+            name = String(identifier.trimmingPrefix("npm:"))
+        } else if identifier.hasPrefix("npx:") {
+            manager = .npx
+            name = String(identifier.trimmingPrefix("npx:"))
+        } else if identifier.hasPrefix("uv:") {
+            manager = .uv
+            name = String(identifier.trimmingPrefix("uv:")).replacingOccurrences(of: ":", with: "/")
+        } else if identifier.hasPrefix("uvx:") {
+            manager = .uvx
+            name = String(identifier.trimmingPrefix("uvx:"))
+        } else {
+            return nil
+        }
+
+        guard !name.isEmpty else { return nil }
+        self.identifier = identifier
+    }
+
     init?(url: URL) {
         guard url.scheme?.lowercased() == "pkgmgrmgr", let host = url.host()?.lowercased() else { return nil }
         let name = url.path(percentEncoded: false).trimmingPrefix("/").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -215,6 +251,44 @@ struct MainWindowPackageURLRequest: Equatable {
     func matches(_ package: ManagedPackage) -> Bool {
         package.manager == manager && (package.identifier == identifier || package.packageToken == name)
     }
+}
+
+private enum MainWindowPackageURLCommand: Equatable {
+    case select(MainWindowPackageURLRequest)
+    case install([MainWindowPackageURLRequest])
+
+    init?(url: URL) {
+        guard url.scheme?.lowercased() == "pkgmgrmgr" else { return nil }
+
+        if url.host()?.lowercased() == "install" {
+            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+            let identifiers = (components.queryItems ?? [])
+                .filter { $0.name == "package" }
+                .compactMap(\.value)
+            let requests = identifiers.compactMap(MainWindowPackageURLRequest.init(identifier:))
+            guard !requests.isEmpty, requests.count == identifiers.count else { return nil }
+            self = .install(requests)
+            return
+        }
+
+        guard let request = MainWindowPackageURLRequest(url: url) else { return nil }
+        self = .select(request)
+    }
+}
+
+struct DashboardInstallPack: Codable, Equatable, Identifiable, Sendable {
+    let slug: String
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let url: URL
+    let packages: [String]
+
+    var id: String { slug }
+}
+
+private struct DashboardInstallPackIndex: Decodable, Sendable {
+    let packs: [DashboardInstallPack]
 }
 
 func mainWindowLinks(for package: ManagedPackage?) -> [MainWindowPackageLink] {
@@ -272,6 +346,8 @@ private func mainWindowGitHubRepoReleaseNotesURL(_ string: String?) -> URL? {
 
 @MainActor
 final class MainWindowModel: NSObject, ObservableObject {
+    static let defaultDashboardInstallPacksURL = URL(string: "https://mxcl.dev/package-manager-manager/packs/index.json")!
+
     @Published var selectedSection: MainWindowSection = .home
     @Published private(set) var packages: [ManagedPackage] = []
     @Published private(set) var selectedPackage: ManagedPackage?
@@ -287,6 +363,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var uninstallingPackageName: String?
     @Published private(set) var updatingPackageName: String?
     @Published private(set) var packageIDToScrollIntoView: String?
+    @Published private(set) var dashboardInstallPacks: [DashboardInstallPack] = []
+    @Published private(set) var dashboardInstallPacksAreLoading = false
     @Published var searchText = ""
 
     nonisolated private static let newUpdatedLastClickedAtDefaultsKey = "MainWindowModel.newUpdatedLastClickedAt"
@@ -295,19 +373,21 @@ final class MainWindowModel: NSObject, ObservableObject {
     private var packageIndex = PackageIndex.empty
     private var installedPackageFirstSeenAtByID: [String: Date]?
     private var hasInventory = false
-    private var pendingPackageURLRequest: MainWindowPackageURLRequest?
+    private var pendingPackageURLCommand: MainWindowPackageURLCommand?
     private var newUpdatedLastClickedAt: Date?
     private var newUpdatedSelectionDisplayCount: Int?
     private let userDefaults: UserDefaults
     private let store: PackageHostStore
     private let dossierClient: PackageDossierClient?
     private var dossierTask: Task<Void, Never>?
+    private var dashboardInstallPacksTask: Task<Void, Never>?
     private let notificationCenter = DistributedNotificationCenter.default()
 
     init(
         userDefaults: UserDefaults = .standard,
         store: PackageHostStore = PackageHostStore(),
-        dossierClient: PackageDossierClient? = nil
+        dossierClient: PackageDossierClient? = nil,
+        dashboardInstallPacksURL: URL? = nil
     ) {
         self.userDefaults = userDefaults
         newUpdatedLastClickedAt = userDefaults.object(forKey: Self.newUpdatedLastClickedAtDefaultsKey) as? Date
@@ -315,11 +395,15 @@ final class MainWindowModel: NSObject, ObservableObject {
         self.dossierClient = dossierClient
         super.init()
         syncFromHost()
+        if let dashboardInstallPacksURL {
+            loadDashboardInstallPacks(from: dashboardInstallPacksURL)
+        }
         notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
     }
 
     deinit {
         dossierTask?.cancel()
+        dashboardInstallPacksTask?.cancel()
         notificationCenter.removeObserver(self)
     }
 
@@ -420,9 +504,9 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     @discardableResult
     func openPackageURL(_ url: URL) -> Bool {
-        guard let request = MainWindowPackageURLRequest(url: url) else { return false }
-        pendingPackageURLRequest = request
-        return openPackage(request)
+        guard let command = MainWindowPackageURLCommand(url: url) else { return false }
+        pendingPackageURLCommand = command
+        return openPackageURLCommand(command)
     }
 
     func consumePackageScrollRequest() {
@@ -460,6 +544,14 @@ final class MainWindowModel: NSObject, ObservableObject {
         PackageHostNotifications.postInstallRequested(packageID: package.id)
     }
 
+    func install(_ pack: DashboardInstallPack) {
+        let requests = pack.packages.compactMap(MainWindowPackageURLRequest.init(identifier:))
+        guard !requests.isEmpty, requests.count == pack.packages.count else { return }
+        let command = MainWindowPackageURLCommand.install(requests)
+        pendingPackageURLCommand = command
+        openPackageURLCommand(command)
+    }
+
     func uninstall(_ package: ManagedPackage) {
         guard PackageUninstaller.supports(package), !isPackageActionRunning else { return }
         PackageHostNotifications.postUninstallRequested(packageID: package.id)
@@ -495,6 +587,33 @@ final class MainWindowModel: NSObject, ObservableObject {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private static func fetchDashboardInstallPacks(from url: URL) async throws -> [DashboardInstallPack] {
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode(DashboardInstallPackIndex.self, from: data).packs
+    }
+
+    private func loadDashboardInstallPacks(from url: URL) {
+        dashboardInstallPacksTask?.cancel()
+        dashboardInstallPacksAreLoading = true
+        dashboardInstallPacksTask = Task { [url] in
+            let result = await Task.detached(priority: .utility) { () -> Result<[DashboardInstallPack], Error> in
+                do {
+                    return .success(try await Self.fetchDashboardInstallPacks(from: url))
+                } catch {
+                    return .failure(error)
+                }
+            }.value
+
+            guard !Task.isCancelled else { return }
+            dashboardInstallPacksAreLoading = false
+            if case .success(let packs) = result {
+                dashboardInstallPacks = packs
+            } else {
+                dashboardInstallPacks = []
+            }
+        }
+    }
+
     private func packages(in section: MainWindowSection) -> [ManagedPackage] {
         let packages = packageIndex.packagesBySection[section] ?? []
         let query = searchQuery
@@ -519,6 +638,16 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     @discardableResult
+    private func openPackageURLCommand(_ command: MainWindowPackageURLCommand) -> Bool {
+        switch command {
+        case .select(let request):
+            openPackage(request)
+        case .install(let requests):
+            install(requests)
+        }
+    }
+
+    @discardableResult
     private func openPackage(_ request: MainWindowPackageURLRequest) -> Bool {
         guard let package = package(matching: request) else {
             selectSection(request.section)
@@ -529,7 +658,27 @@ final class MainWindowModel: NSObject, ObservableObject {
         let resolvedPackage = packageIndex.packagesBySection[section]?.first { $0.id == package.id } ?? package
         select(resolvedPackage)
         packageIDToScrollIntoView = resolvedPackage.id
-        pendingPackageURLRequest = nil
+        pendingPackageURLCommand = nil
+        return true
+    }
+
+    @discardableResult
+    private func install(_ requests: [MainWindowPackageURLRequest]) -> Bool {
+        guard hasInventory else {
+            if let first = requests.first {
+                selectSection(first.section)
+            }
+            return false
+        }
+        let installablePackages = requests.compactMap(package(matching:)).filter(canInstall)
+        pendingPackageURLCommand = nil
+        guard !installablePackages.isEmpty else {
+            if let first = requests.first {
+                _ = openPackage(first)
+            }
+            return false
+        }
+        PackageHostNotifications.postInstallManyRequested(packageIDs: installablePackages.map(\.id))
         return true
     }
 
@@ -559,8 +708,8 @@ final class MainWindowModel: NSObject, ObservableObject {
         packages = next.packages
         errors = next.errors
         selectedPackage = selectedPackage.flatMap { selected in displayedPackages.first { $0.id == selected.id } }
-        if let pendingPackageURLRequest {
-            openPackage(pendingPackageURLRequest)
+        if let pendingPackageURLCommand {
+            openPackageURLCommand(pendingPackageURLCommand)
         }
         if selectedPackage == nil { clearDossier() }
     }

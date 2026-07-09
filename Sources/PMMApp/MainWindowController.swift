@@ -4,7 +4,10 @@ import SwiftUI
 
 @MainActor
 final class MainWindowController: NSHostingController<MainWindowRootView> {
-    private let model = MainWindowModel(dossierClient: PackageDossierClient())
+    private let model = MainWindowModel(
+        dossierClient: PackageDossierClient(),
+        dashboardInstallPacksURL: MainWindowModel.defaultDashboardInstallPacksURL
+    )
     private var showsAppUpdateButton = false
 
     init() {
