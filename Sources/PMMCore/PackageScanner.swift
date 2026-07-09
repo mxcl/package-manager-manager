@@ -1,6 +1,24 @@
 import Foundation
 
-public struct PackageScanner {
+public enum PackageScanMode: Sendable {
+    case local
+    case fresh
+}
+
+public struct PackageManagerScanResult: Sendable {
+    public let manager: PackageManagerKind
+    public let packages: [ManagedPackage]
+    public let errors: [String]
+
+    public init(manager: PackageManagerKind, packages: [ManagedPackage], errors: [String] = []) {
+        self.manager = manager
+        self.packages = packages
+        self.errors = errors
+    }
+}
+
+// FileManager is only used for concurrent, read-only filesystem inspection.
+public struct PackageScanner: @unchecked Sendable {
     private let runner: CommandRunning
     private let fileManager: FileManager
     private let homeDirectory: URL
@@ -22,24 +40,46 @@ public struct PackageScanner {
     }
 
     public func inventory(database: PackageDatabase) async -> PackageInventory {
-        var errors: [String] = []
+        let generatedAt = Date()
+        var errorsByManager: [PackageManagerKind: [String]] = [:]
         var packages: [ManagedPackage] = []
-
-        do { packages += try scanCargoInstall(database: database) } catch { errors.append(error.localizedDescription) }
-        do { packages += try scanRustup(database: database) } catch { errors.append(error.localizedDescription) }
-        do { packages += try scanHomebrew(database: database) } catch { errors.append(error.localizedDescription) }
-        do { packages += try scanNPM(database: database) } catch { errors.append(error.localizedDescription) }
-        do { packages += try scanNPX(database: database) } catch { errors.append(error.localizedDescription) }
-        do { packages += try scanUV(database: database) } catch { errors.append(error.localizedDescription) }
-        do { packages += try scanUVX(database: database) } catch { errors.append(error.localizedDescription) }
+        for await result in results(for: Set(PackageManagerKind.allCases), database: database, mode: .fresh) {
+            packages += result.packages
+            errorsByManager[result.manager] = result.errors
+        }
 
         return PackageInventory(
+            generatedAt: generatedAt,
             packages: packages.sorted {
                 if $0.manager != $1.manager { return $0.manager.rawValue < $1.manager.rawValue }
                 return packageDisplayOrder($0, $1)
             },
-            errors: errors
+            errors: PackageManagerKind.allCases.flatMap { errorsByManager[$0] ?? [] }
         )
+    }
+
+    public func results(
+        for managers: Set<PackageManagerKind>,
+        database: PackageDatabase,
+        mode: PackageScanMode
+    ) -> AsyncStream<PackageManagerScanResult> {
+        AsyncStream { continuation in
+            let task = Task {
+                await withTaskGroup(of: PackageManagerScanResult.self) { group in
+                    for manager in managers {
+                        group.addTask {
+                            await scanOnUtilityQueue(manager, database: database, mode: mode)
+                        }
+                    }
+                    for await result in group {
+                        guard !Task.isCancelled else { break }
+                        continuation.yield(result)
+                    }
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
     }
 
     public func scanCargoInstall(database: PackageDatabase) throws -> [ManagedPackage] {
@@ -60,8 +100,14 @@ public struct PackageScanner {
     }
 
     public func scanHomebrew(database: PackageDatabase) throws -> [ManagedPackage] {
+        try scanHomebrew(database: database, mode: .fresh)
+    }
+
+    private func scanHomebrew(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
         guard let brew = executable(named: "brew", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin"]) else { return [] }
-        let outdated = try homebrewOutdated(brew)
+        let outdated: (formulae: [String: String], casks: [String: String]) = mode == .fresh
+            ? try homebrewOutdated(brew)
+            : ([:], [:])
         let prefix = successfulBrewLine(brew, ["--prefix"])
         let result = try runBrew(brew, ["info", "--json=v2", "--installed"])
         guard result.status == 0,
@@ -78,11 +124,15 @@ public struct PackageScanner {
     }
 
     public func scanNPM(database: PackageDatabase) throws -> [ManagedPackage] {
+        try scanNPM(database: database, mode: .fresh)
+    }
+
+    private func scanNPM(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
         guard let npm = executable(named: "npm", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]) else { return [] }
         let root = successfulLine(npm, ["root", "-g"])
         let prefix = successfulLine(npm, ["prefix", "-g"])
         let bin = prefix.map { "\($0)/bin" }
-        let outdated = npmOutdated(npm)
+        let outdated = mode == .fresh ? npmOutdated(npm) : [:]
         let result = try runner.run(npm, ["ls", "-g", "--depth=0", "--json"])
         guard let json = jsonObject(result.stdout),
               let dependencies = json["dependencies"] as? [String: Any] else { return [] }
@@ -169,10 +219,14 @@ public struct PackageScanner {
     }
 
     public func scanUV(database: PackageDatabase) throws -> [ManagedPackage] {
+        try scanUV(database: database, mode: .fresh)
+    }
+
+    private func scanUV(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
         guard let uv = executable(named: "uv", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]) else { return [] }
         let toolDir = successfulLine(uv, ["tool", "dir", "--offline", "--color", "never"])
         let pythonDir = successfulLine(uv, ["python", "dir", "--offline", "--color", "never"])
-        return try uvTools(uv, toolDir: toolDir, database: database) + uvPythons(uv, pythonDir: pythonDir)
+        return try uvTools(uv, toolDir: toolDir, includeOutdated: mode == .fresh, database: database) + uvPythons(uv, pythonDir: pythonDir)
     }
 
     public func scanUVX(database: PackageDatabase) throws -> [ManagedPackage] {
@@ -534,10 +588,10 @@ public struct PackageScanner {
         }
     }
 
-    private func uvTools(_ uv: String, toolDir: String?, database: PackageDatabase) throws -> [ManagedPackage] {
+    private func uvTools(_ uv: String, toolDir: String?, includeOutdated: Bool, database: PackageDatabase) throws -> [ManagedPackage] {
         let result = try runner.run(uv, ["tool", "list", "--show-paths", "--show-version-specifiers", "--show-python", "--offline", "--color", "never"])
         guard result.status == 0 else { return [] }
-        return parseUVToolList(result.stdout, toolDir: toolDir, outdated: uvToolOutdated(uv), database: database)
+        return parseUVToolList(result.stdout, toolDir: toolDir, outdated: includeOutdated ? uvToolOutdated(uv) : [:], database: database)
     }
 
     private func uvPythons(_ uv: String, pythonDir: String?) throws -> [ManagedPackage] {
@@ -700,6 +754,36 @@ public struct PackageScanner {
 
     private func executable(named name: String, extraPaths: [String]) -> String? {
         toolPaths[name] ?? firstExecutable(named: name, extraPaths: extraPaths)
+    }
+
+    private func scanOnUtilityQueue(
+        _ manager: PackageManagerKind,
+        database: PackageDatabase,
+        mode: PackageScanMode
+    ) async -> PackageManagerScanResult {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                do {
+                    let packages: [ManagedPackage]
+                    switch manager {
+                    case .cargoInstall: packages = try scanCargoInstall(database: database)
+                    case .rustup: packages = try scanRustup(database: database)
+                    case .homebrew: packages = try scanHomebrew(database: database, mode: mode)
+                    case .npm: packages = try scanNPM(database: database, mode: mode)
+                    case .npx: packages = try scanNPX(database: database)
+                    case .uv: packages = try scanUV(database: database, mode: mode)
+                    case .uvx: packages = try scanUVX(database: database)
+                    }
+                    continuation.resume(returning: PackageManagerScanResult(manager: manager, packages: packages))
+                } catch {
+                    continuation.resume(returning: PackageManagerScanResult(
+                        manager: manager,
+                        packages: [],
+                        errors: [error.localizedDescription]
+                    ))
+                }
+            }
+        }
     }
 
     private func npxResolvedLatestVersions(for names: Set<String>) -> [String: String] {

@@ -13,7 +13,13 @@ private struct FakeRunner: CommandRunning {
 private final class RecordingRunner: CommandRunning, @unchecked Sendable {
     private let lock = NSLock()
     private let responses: [String: CommandResult]
-    private(set) var calls: [(command: String, options: CommandRunOptions)] = []
+    private var storedCalls: [(command: String, options: CommandRunOptions)] = []
+
+    var calls: [(command: String, options: CommandRunOptions)] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedCalls
+    }
 
     init(responses: [String: CommandResult]) {
         self.responses = responses
@@ -31,9 +37,31 @@ private final class RecordingRunner: CommandRunning, @unchecked Sendable {
     ) throws -> CommandResult {
         let command = ([executable] + arguments).joined(separator: " ")
         lock.lock()
-        calls.append((command, options))
+        storedCalls.append((command, options))
         lock.unlock()
         return responses[command] ?? CommandResult(stdout: "", stderr: "", status: 0)
+    }
+}
+
+private final class GatedRunner: CommandRunning, @unchecked Sendable {
+    private let cargoGate = DispatchSemaphore(value: 0)
+
+    func releaseCargo() {
+        cargoGate.signal()
+    }
+
+    func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
+        switch ([executable] + arguments).joined(separator: " ") {
+        case "/fake/cargo install --list --color never":
+            cargoGate.wait()
+            return CommandResult(stdout: "ripgrep v14.1.1:\n    rg\n", stderr: "", status: 0)
+        case "/fake/rustup --version":
+            return CommandResult(stdout: "rustup 1.29.0\n", stderr: "", status: 0)
+        case "/fake/rustup toolchain list -v":
+            return CommandResult(stdout: "", stderr: "", status: 0)
+        default:
+            return CommandResult(stdout: "", stderr: "", status: 0)
+        }
     }
 }
 
@@ -126,6 +154,75 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages.last?.identifier == "cargo:cargo-edit")
     #expect(packages.last?.displayName == "cargo-edit")
     #expect(packages.last?.binaryPath == nil)
+}
+
+@Test(.timeLimit(.minutes(1))) func managerScanResultsYieldInCompletionOrder() async throws {
+    let runner = GatedRunner()
+    let scanner = PackageScanner(
+        runner: runner,
+        toolPaths: ["cargo": "/fake/cargo", "rustup": "/fake/rustup"],
+        environment: [:]
+    )
+    var iterator = scanner.results(
+        for: [.cargoInstall, .rustup],
+        database: PackageDatabase(),
+        mode: .local
+    ).makeAsyncIterator()
+    defer { runner.releaseCargo() }
+
+    let first = await iterator.next()
+    #expect(first?.manager == .rustup)
+    runner.releaseCargo()
+    let second = await iterator.next()
+    #expect(second?.manager == .cargoInstall)
+    #expect(await iterator.next() == nil)
+}
+
+@Test func localManagerScansSkipFreshnessCommands() async {
+    let responses = [
+        "/fake/brew --prefix": CommandResult(stdout: "/fake/homebrew\n", stderr: "", status: 0),
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/npm ls -g --depth=0 --json": CommandResult(stdout: #"{"dependencies":{}}"#, stderr: "", status: 0),
+        "/fake/uv tool list --show-paths --show-version-specifiers --show-python --offline --color never": CommandResult(stdout: "", stderr: "", status: 0),
+    ]
+    let runner = RecordingRunner(responses: responses)
+    let scanner = PackageScanner(
+        runner: runner,
+        toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "uv": "/fake/uv"],
+        environment: [:]
+    )
+    var managers = Set<PackageManagerKind>()
+    for await result in scanner.results(for: [.homebrew, .npm, .uv], database: PackageDatabase(), mode: .local) {
+        managers.insert(result.manager)
+    }
+
+    let calls = runner.calls.map(\.command)
+    #expect(managers == [.homebrew, .npm, .uv])
+    #expect(!calls.contains("/fake/brew outdated --json=v2"))
+    #expect(!calls.contains("/fake/npm outdated -g --json"))
+    #expect(!calls.contains("/fake/uv tool list --outdated --show-paths --show-version-specifiers --show-python --color never"))
+}
+
+@Test func freshManagerScansRunFreshnessCommands() async {
+    let runner = RecordingRunner(responses: [
+        "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: #"{"formulae":[],"casks":[]}"#, stderr: "", status: 0),
+        "/fake/npm ls -g --depth=0 --json": CommandResult(stdout: #"{"dependencies":{}}"#, stderr: "", status: 0),
+        "/fake/npm outdated -g --json": CommandResult(stdout: #"{}"#, stderr: "", status: 0),
+        "/fake/uv tool list --show-paths --show-version-specifiers --show-python --offline --color never": CommandResult(stdout: "", stderr: "", status: 0),
+        "/fake/uv tool list --outdated --show-paths --show-version-specifiers --show-python --color never": CommandResult(stdout: "", stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(
+        runner: runner,
+        toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "uv": "/fake/uv"],
+        environment: [:]
+    )
+    for await _ in scanner.results(for: [.homebrew, .npm, .uv], database: PackageDatabase(), mode: .fresh) {}
+
+    let calls = Set(runner.calls.map(\.command))
+    #expect(calls.contains("/fake/brew outdated --json=v2"))
+    #expect(calls.contains("/fake/npm outdated -g --json"))
+    #expect(calls.contains("/fake/uv tool list --outdated --show-paths --show-version-specifiers --show-python --color never"))
 }
 
 @Test func rustupScannerAddsRustupAndInstalledToolchains() throws {
