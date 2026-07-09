@@ -184,7 +184,7 @@ private struct DashboardPackageSection: View {
                             action(package)
                         }
                         if package.id != packages.last?.id {
-                            Divider().overlay(SystemColor.hairline)
+                            Divider()
                         }
                     }
                 }
@@ -485,7 +485,7 @@ private struct DashboardUpdatesCard: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
                         if post.id != posts.last?.id {
-                            Divider().overlay(SystemColor.hairline)
+                            Divider()
                         }
                     }
                 }
@@ -551,7 +551,7 @@ private struct DashboardInstallPacksCard: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
                         if pack.id != packs.last?.id {
-                            Divider().overlay(SystemColor.hairline)
+                            Divider()
                         }
                     }
                 }
