@@ -740,6 +740,7 @@ private struct PackageRow: View {
                         .foregroundStyle(SystemColor.primaryText)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                    PackageEcosystemMark(package: package)
                     if package.isOutdated && !showsManager { PackageBadgePill(text: "Outdated", color: SystemColor.orange) }
                     Spacer(minLength: 8)
                     Text(versionText)
@@ -779,6 +780,49 @@ private struct PackageRow: View {
             return "\(package.manager.title) · \(summary)"
         }
         return package.summary ?? package.manager.title
+    }
+}
+
+private struct PackageEcosystemMark: View {
+    let package: ManagedPackage
+
+    var body: some View {
+        Group {
+            if let image = section.sidebarImage {
+                Image(image)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 12, height: 12)
+            } else {
+                Image(systemName: section.systemImage)
+                    .font(.system(size: 11, weight: .semibold))
+            }
+        }
+        .foregroundStyle(color)
+        .frame(width: 14, height: 14)
+        .accessibilityLabel(section.title)
+    }
+
+    private var section: MainWindowSection {
+        if package.identifier.hasPrefix("brew:cask:") { return .casks }
+        switch package.manager {
+        case .cargoInstall, .rustup: return .rust
+        case .homebrew: return .homebrew
+        case .npm, .npx: return .javascript
+        case .uv, .uvx: return .python
+        }
+    }
+
+    private var color: Color {
+        switch section {
+        case .casks: .teal
+        case .homebrew: .orange
+        case .javascript: .yellow
+        case .python: .blue
+        case .rust: .red
+        default: SystemColor.secondaryText
+        }
     }
 }
 
