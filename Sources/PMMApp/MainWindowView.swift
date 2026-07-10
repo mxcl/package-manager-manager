@@ -753,6 +753,7 @@ private struct PackageRow: View {
                     .font(.system(size: 12))
                     .foregroundStyle(SystemColor.quietText)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
