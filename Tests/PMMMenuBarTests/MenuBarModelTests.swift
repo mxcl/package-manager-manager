@@ -92,13 +92,18 @@ import Testing
     #expect(menuBarCommandInstallPackages(ids: [brew.id], snapshot: busy).isEmpty)
 }
 
-@Test func menuBarRefreshesOnLaunchOnlyWhenInventoryIsMissing() {
-    #expect(menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot()))
-    #expect(!menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: []))))
+@Test func menuBarRefreshesOnLaunchWhenInventoryIsMissingIncompleteOrStale() {
+    let now = Date(timeIntervalSince1970: 10_000)
+    let fresh = PackageInventory(generatedAt: now.addingTimeInterval(-(menuBarRefreshInterval - 1)), packages: [])
+    let stale = PackageInventory(generatedAt: now.addingTimeInterval(-menuBarRefreshInterval), packages: [])
+
+    #expect(menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(), now: now))
+    #expect(!menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(inventory: fresh), now: now))
+    #expect(menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(inventory: stale), now: now))
     #expect(menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot(
-        inventory: PackageInventory(packages: []),
+        inventory: fresh,
         loadingManagers: [.homebrew]
-    )))
+    ), now: now))
 }
 
 @Test func managerScanResultReplacesOnlyItsPackagesAtStableGenerationDate() {

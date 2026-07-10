@@ -23,10 +23,17 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         observeCommands()
         configureStatusButton()
         rebuildMenu()
-        timer = Timer.scheduledTimer(withTimeInterval: 3300, repeats: true) { [weak self] _ in
+        let now = Date()
+        let shouldRefresh = menuBarShouldRefreshOnLaunch(snapshot: snapshot, now: now)
+        let firstRefreshAt = shouldRefresh
+            ? now.addingTimeInterval(menuBarRefreshInterval)
+            : min(snapshot.inventory!.generatedAt.addingTimeInterval(menuBarRefreshInterval), now.addingTimeInterval(menuBarRefreshInterval))
+        let timer = Timer(fire: firstRefreshAt, interval: menuBarRefreshInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
-        if menuBarShouldRefreshOnLaunch(snapshot: snapshot) {
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+        if shouldRefresh {
             refresh()
         }
     }

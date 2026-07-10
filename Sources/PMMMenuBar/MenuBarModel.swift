@@ -1,6 +1,8 @@
 import Foundation
 import PMMCore
 
+let menuBarRefreshInterval: TimeInterval = 55 * 60
+
 struct MenuBarPackageRow: Equatable {
     let managerTitle: String
     let name: String
@@ -89,8 +91,10 @@ func menuBarCommandInstallPackages(ids: [String], snapshot: PackageHostSnapshot)
     return ids.compactMap { menuBarCommandPackage(id: $0, kind: .install, snapshot: snapshot) }
 }
 
-func menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot) -> Bool {
-    snapshot.inventory == nil || snapshot.loadingManagers?.isEmpty == false
+func menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot, now: Date = Date()) -> Bool {
+    guard let inventory = snapshot.inventory else { return true }
+    return snapshot.loadingManagers?.isEmpty == false
+        || now.timeIntervalSince(inventory.generatedAt) >= menuBarRefreshInterval
 }
 
 func menuBarSnapshot(
