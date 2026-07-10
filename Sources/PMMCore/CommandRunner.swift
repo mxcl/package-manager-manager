@@ -154,14 +154,19 @@ private final class AsyncPipeReader: @unchecked Sendable {
     func start() {
         DispatchQueue.global(qos: .utility).async {
             var data = Data()
+            var decoder = IncrementalUTF8Decoder()
             while true {
                 let chunk = self.pipe.fileHandleForReading.availableData
                 if chunk.isEmpty { break }
                 data.append(chunk)
-                let text = String(decoding: chunk, as: UTF8.self)
+                let text = decoder.decode(chunk)
                 if !text.isEmpty {
                     self.onOutput?(text)
                 }
+            }
+            let finalText = decoder.finish()
+            if !finalText.isEmpty {
+                self.onOutput?(finalText)
             }
             self.lock.lock()
             self.chunks = data
@@ -193,14 +198,19 @@ private final class AsyncFileHandleReader: @unchecked Sendable {
     func start() {
         DispatchQueue.global(qos: .utility).async {
             var data = Data()
+            var decoder = IncrementalUTF8Decoder()
             while true {
                 let chunk = self.handle.availableData
                 if chunk.isEmpty { break }
                 data.append(chunk)
-                let text = String(decoding: chunk, as: UTF8.self)
+                let text = decoder.decode(chunk)
                 if !text.isEmpty {
                     self.onOutput?(text)
                 }
+            }
+            let finalText = decoder.finish()
+            if !finalText.isEmpty {
+                self.onOutput?(finalText)
             }
             self.lock.lock()
             self.chunks = data
@@ -214,6 +224,43 @@ private final class AsyncFileHandleReader: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return chunks
+    }
+}
+
+struct IncrementalUTF8Decoder {
+    private var pending = Data()
+
+    mutating func decode(_ chunk: Data) -> String {
+        var data = pending
+        data.append(chunk)
+        let suffixLength = incompleteSuffixLength(in: data)
+        pending = suffixLength == 0 ? Data() : Data(data.suffix(suffixLength))
+        return String(decoding: data.dropLast(suffixLength), as: UTF8.self)
+    }
+
+    mutating func finish() -> String {
+        defer { pending.removeAll() }
+        return String(decoding: pending, as: UTF8.self)
+    }
+
+    private func incompleteSuffixLength(in data: Data) -> Int {
+        guard !data.isEmpty else { return 0 }
+        let bytes = [UInt8](data)
+        let lowerBound = max(0, bytes.count - 4)
+        for index in stride(from: bytes.count - 1, through: lowerBound, by: -1) {
+            let byte = bytes[index]
+            guard byte & 0xC0 != 0x80 else { continue }
+            let expectedLength: Int
+            switch byte {
+            case 0xC2...0xDF: expectedLength = 2
+            case 0xE0...0xEF: expectedLength = 3
+            case 0xF0...0xF4: expectedLength = 4
+            default: return 0
+            }
+            let availableLength = bytes.count - index
+            return availableLength < expectedLength ? availableLength : 0
+        }
+        return 0
     }
 }
 

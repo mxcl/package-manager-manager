@@ -28,9 +28,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.mainMenu = makeMainMenu()
+#if DEBUG
+        let isTerminalDemo = ProcessInfo.processInfo.environment["PMM_TERMINAL_DEMO"] == "1"
+        if !isTerminalDemo {
+            launchMenuBarApp()
+        }
+#else
         launchMenuBarApp()
+#endif
         showMainWindow()
+#if DEBUG
+        if !isTerminalDemo {
+            checkForUpdates(reportCurrent: false)
+        }
+#else
         checkForUpdates(reportCurrent: false)
+#endif
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

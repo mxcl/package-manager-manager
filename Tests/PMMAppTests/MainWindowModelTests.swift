@@ -19,6 +19,12 @@ import Testing
     #expect(output.attribute(.foregroundColor, at: 0, effectiveRange: nil) is NSColor)
 }
 
+@Test func terminalOutputCarriageReturnOverwritesWithoutImplicitErase() {
+    let output = mainWindowTerminalAttributedOutput("abcdef\rxy")
+
+    #expect(output.string == "xycdef")
+}
+
 @Test func terminalOutputHandlesCursorUpLineReplacement() {
     let output = mainWindowTerminalAttributedOutput("Downloading\nExtracting\n\u{1B}[1A\u{1B}[2KInstalling\n")
 
@@ -43,14 +49,10 @@ import Testing
     """)
 }
 
-@Test func terminalOutputCarriageReturnClearsSoftWrappedProgressLine() {
-    let first = ": Bottle dcmkt (3.7.0)" + String(repeating: " ", count: 37) + "Downloading 61.4KB/20.2MB"
-    let second = ": Bottle dcmkt (3.7.0)" + String(repeating: " ", count: 36) + "# Downloading 847.9KB/20.2MB"
-    let output = mainWindowTerminalAttributedOutput(first + "\r" + second)
+@Test func terminalOutputCarriageReturnTargetsCurrentPhysicalRowAfterWrap() {
+    let output = mainWindowTerminalAttributedOutput(String(repeating: "a", count: 82) + "\rxy\u{1B}[K")
 
-    #expect(first.count > 80)
-    #expect(second.count > 80)
-    #expect(output.string == ": Bottle dcmkt (3.7.0)                                    # Downloading 847.9KB/\n20.2MB")
+    #expect(output.string == String(repeating: "a", count: 80) + "\nxy")
 }
 
 @Test func terminalOutputCursorMovementAccountsForEightyColumnWraps() {
@@ -61,7 +63,64 @@ import Testing
     \u{1B}[3A\u{1B}[2Kdone
     """)
 
-    #expect(output.string == "done")
+    #expect(output.string == "done\n" + String(repeating: "a", count: 10) + "\nstatus")
+}
+
+@Test func terminalOutputEraseLineDoesNotDeleteFollowingRows() {
+    let output = mainWindowTerminalAttributedOutput("first\nsecond\nthird\n\u{1B}[2A\u{1B}[2Kreplacement")
+
+    #expect(output.string == "first\nreplacement\nthird")
+}
+
+@Test func terminalOutputSupportsTrueColorAndWideCharacters() {
+    let output = mainWindowTerminalAttributedOutput("\u{1B}[38;2;12;34;56m✔\u{1B}[0m ok")
+
+    #expect(output.string == "✔ ok")
+    #expect(output.attribute(.foregroundColor, at: 0, effectiveRange: nil) is NSColor)
+}
+
+@Test func terminalOutputRewritesExactlyEightyColumnProgressRows() {
+    func progress(_ name: String, marks: Int, status: String) -> String {
+        let prefix = "\u{1B}[34m: \u{1B}[0mBottle \(name)"
+        let visiblePrefix = ": Bottle \(name)"
+        let suffix = "\(String(repeating: "#", count: marks)) \(status)"
+        return prefix + String(repeating: " ", count: 80 - visiblePrefix.count - suffix.count) + suffix
+    }
+    let firstAlpha = progress("alpha (1.0.0)", marks: 2, status: "Downloading 1.2MB/8.0MB")
+    let firstBeta = progress("beta (2.0.0)", marks: 8, status: "Downloading 2.1MB/4.0MB")
+    let finalAlpha = progress("alpha (1.0.0)", marks: 10, status: "Downloaded 8.0MB")
+    let finalBeta = progress("beta (2.0.0)", marks: 10, status: "Downloaded 4.0MB")
+    let output = "header\r\n" + firstAlpha + "\r\n" + firstBeta + "\r\n"
+        + "\u{1B}[2A\r\u{1B}[2K" + finalAlpha + "\r\n"
+        + "\r\u{1B}[2K" + finalBeta + "\r\n"
+
+    let rendered = mainWindowTerminalAttributedOutput(output).string
+
+    #expect(mainWindowTerminalAttributedOutput(firstAlpha).string == firstAlpha.replacingOccurrences(of: "\u{1B}[34m", with: "").replacingOccurrences(of: "\u{1B}[0m", with: ""))
+    #expect(rendered.contains("header"))
+    #expect(rendered.contains("Bottle alpha (1.0.0)"))
+    #expect(rendered.contains("Downloaded 8.0MB"))
+    #expect(rendered.contains("Downloaded 4.0MB"))
+}
+
+@MainActor
+@Test func terminalDemoPreservesCompletedProgressAndEarlierOutput() {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = MainWindowModel(
+        userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
+        store: PackageHostStore(directory: root)
+    )
+
+    model.showTerminalDemo()
+    let rendered = mainWindowTerminalAttributedOutput(model.packageActionOutput).string
+
+    #expect(rendered.contains("==> Downloading https://ghcr.io/"))
+    #expect(rendered.contains("Bottle alpha (1.0.0)"))
+    #expect(rendered.contains("Bottle beta (2.0.0)"))
+    #expect(rendered.contains("Downloaded 8.0MB"))
+    #expect(rendered.contains("Downloaded 4.0MB"))
+    #expect(!rendered.contains(".1MB/\n4.0MB"))
 }
 
 @Test func terminalOutputDoesNotWrapHomebrewManifestLineBeforeEightyColumns() {
@@ -70,6 +129,10 @@ import Testing
 
     #expect(line.count < 80)
     #expect(output.string == line)
+}
+
+@Test func terminalScrollViewAllowsForEightyColumnsAndItsScroller() {
+    #expect(TerminalOutputTextView.scrollViewWidth > TerminalOutputTextView.eightyColumnWidth)
 }
 
 @MainActor

@@ -23,7 +23,13 @@ final class MainWindowController: NSHostingController<MainWindowRootView> {
         DispatchQueue.main.async { [weak self] in
             self?.view.window?.makeFirstResponder(nil)
         }
+#if DEBUG
+        if ProcessInfo.processInfo.environment["PMM_TERMINAL_DEMO"] != "1" {
+            model.syncFromHost()
+        }
+#else
         model.syncFromHost()
+#endif
     }
 
     @objc func refresh(_ sender: Any?) {

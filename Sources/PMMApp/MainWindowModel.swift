@@ -418,11 +418,24 @@ final class MainWindowModel: NSObject, ObservableObject {
         self.store = store
         self.dossierClient = dossierClient
         super.init()
+#if DEBUG
+        let isTerminalDemo = ProcessInfo.processInfo.environment["PMM_TERMINAL_DEMO"] == "1"
+        if isTerminalDemo {
+            showTerminalDemo()
+        } else {
+            syncFromHost()
+            if let dashboardBlogURL {
+                loadDashboardBlogEntries(from: dashboardBlogURL)
+            }
+            notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
+        }
+#else
         syncFromHost()
         if let dashboardBlogURL {
             loadDashboardBlogEntries(from: dashboardBlogURL)
         }
         notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
+#endif
     }
 
     deinit {
@@ -778,6 +791,37 @@ final class MainWindowModel: NSObject, ObservableObject {
         }
         apply(snapshot: snapshot, inventory: inventory)
     }
+
+#if DEBUG
+    func showTerminalDemo() {
+        selectedSection = .installed
+        installingPackageName = "terminal-output-demo"
+        uninstallingPackageName = nil
+        updatingPackageName = nil
+        packageActionCommand = "brew install terminal-output-demo"
+
+        func progress(_ name: String, marks: Int, status: String) -> String {
+            let prefix = "\u{1B}[34m: \u{1B}[0mBottle \(name)"
+            let visiblePrefix = ": Bottle \(name)"
+            let suffix = "\(String(repeating: "#", count: marks)) \(status)"
+            return prefix + String(repeating: " ", count: max(1, 80 - visiblePrefix.count - suffix.count)) + suffix
+        }
+
+        var output = "\u{1B}[?25l\u{1B}[34m==>\u{1B}[0m Downloading https://ghcr.io/v2/homebrew/core/terminal-output-demo/manifests/1.0.0\r\n"
+        output += progress("alpha (1.0.0)", marks: 2, status: "Downloading 1.2MB/8.0MB") + "\r\n"
+        output += progress("beta (2.0.0)", marks: 8, status: "Downloading 2.1MB/4.0MB") + "\r\n"
+        for step in 3...8 {
+            output += "\u{1B}[2A\r\u{1B}[2K" + progress("alpha (1.0.0)", marks: step, status: "Downloading \(step).0MB/8.0MB") + "\r\n"
+            output += "\r\u{1B}[2K" + progress("beta (2.0.0)", marks: step + 6, status: "Downloading \(min(step, 4)).0MB/4.0MB") + "\r\n"
+        }
+        output += "\u{1B}[2A\r\u{1B}[2K" + progress("alpha (1.0.0)", marks: 10, status: "Downloaded 8.0MB") + "\r\n"
+        output += "\r\u{1B}[2K" + progress("beta (2.0.0)", marks: 10, status: "Downloaded 4.0MB") + "\r\n"
+        output += "\u{1B}[32m✔\u{1B}[0m Pouring terminal-output-demo--1.0.0.arm64_sonoma.bottle.tar.gz\r\n"
+        output += "\u{1B}[32m==>\u{1B}[0m Caveats\r\nExactly eighty columns are rendered before this sentence wraps at the edge.......X"
+        output += "\u{1B}[?25h"
+        packageActionOutput = output
+    }
+#endif
 
     private func apply(snapshot: PackageHostSnapshot, inventory: PackageInventory) {
         isReloading = snapshot.isRefreshing

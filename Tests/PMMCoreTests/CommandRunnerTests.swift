@@ -52,3 +52,13 @@ private final class StringRecorder: @unchecked Sendable {
     let lines = result.stdout.split(whereSeparator: \.isNewline).map(String.init)
     #expect(lines == ["24 80", "80 24"])
 }
+
+@Test func streamingUTF8DecoderPreservesScalarsSplitAcrossChunks() {
+    var decoder = IncrementalUTF8Decoder()
+
+    #expect(decoder.decode(Data([0xE2])) == "")
+    #expect(decoder.decode(Data([0x9C])) == "")
+    #expect(decoder.decode(Data([0x94, 0x20, 0xF0, 0x9F])) == "✔ ")
+    #expect(decoder.decode(Data([0x9A, 0x80])) == "🚀")
+    #expect(decoder.finish() == "")
+}
