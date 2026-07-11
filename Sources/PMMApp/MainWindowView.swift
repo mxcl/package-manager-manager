@@ -742,6 +742,7 @@ private struct PackageRow: View {
                         .foregroundStyle(SystemColor.primaryText)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                        .layoutPriority(1)
                     PackageEcosystemMark(package: package)
                     if package.isOutdated && !showsManager { PackageBadgePill(text: "Outdated", color: SystemColor.orange) }
                     Spacer(minLength: 8)
@@ -749,7 +750,7 @@ private struct PackageRow: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(SystemColor.secondaryText)
                         .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
+                        .truncationMode(.middle)
                 }
                 Text(subtitle)
                     .font(.system(size: 12))
