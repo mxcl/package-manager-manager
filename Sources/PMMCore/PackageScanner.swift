@@ -198,20 +198,27 @@ public struct PackageScanner: @unchecked Sendable {
     }
 
     public func scanSkills(database: PackageDatabase) throws -> [ManagedPackage] {
-        let result: CommandResult
+        let executable: String
+        let prefix: [String]
         if let skills = toolPaths["skills"] {
-            result = try runner.run(skills, ["list"])
+            executable = skills
+            prefix = []
         } else if let npx = toolPaths["npx"] {
-            result = try runner.run(npx, ["--yes", "skills", "list"])
+            executable = npx
+            prefix = ["--yes", "skills"]
         } else if let skills = ["/opt/homebrew/bin/skills", "/usr/local/bin/skills"].first(where: fileManager.isExecutableFile) {
-            result = try runner.run(skills, ["list"])
+            executable = skills
+            prefix = []
         } else if let npx = firstExecutable(named: "npx", extraPaths: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]) {
-            result = try runner.run(npx, ["--yes", "skills", "list"])
+            executable = npx
+            prefix = ["--yes", "skills"]
         } else {
             return []
         }
-        guard result.status == 0 else { return [] }
-        return parseSkillsList(result.stdout)
+        let project = try runner.run(executable, prefix + ["list"])
+        let global = try runner.run(executable, prefix + ["list", "--global"])
+        return (project.status == 0 ? parseSkillsList(project.stdout, defaultScope: "project") : [])
+            + (global.status == 0 ? parseSkillsList(global.stdout, defaultScope: "global") : [])
     }
 
     public func scanNPX(database: PackageDatabase, npmRegistryClient: NPMRegistryClient) async throws -> [ManagedPackage] {
@@ -708,8 +715,8 @@ public struct PackageScanner: @unchecked Sendable {
         }
     }
 
-    private func parseSkillsList(_ output: String) -> [ManagedPackage] {
-        var scope = "project"
+    private func parseSkillsList(_ output: String, defaultScope: String) -> [ManagedPackage] {
+        var scope = defaultScope
         return output
             .replacingOccurrences(of: "\u{001B}\\[[0-9;]*m", with: "", options: .regularExpression)
             .split(whereSeparator: \.isNewline)
