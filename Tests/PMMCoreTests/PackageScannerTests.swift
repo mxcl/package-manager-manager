@@ -657,10 +657,16 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 }
 
 @Test func skillsScannerPrefersInstalledExecutableAndScansOnlyGlobalScope() throws {
-    let home = URL(fileURLWithPath: "/Users/test")
+    let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let lock = home.appendingPathComponent(".agents/.skill-lock.json")
+    try FileManager.default.createDirectory(at: lock.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try #"{"version":3,"skills":{"global-skill":{"source":"example/tools","sourceType":"github","sourceUrl":"https://github.com/example/tools.git"}}}"#
+        .write(to: lock, atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: home) }
     let runner = RecordingRunner(responses: [
         "/fake/skills list --global": CommandResult(stdout: """
         \u{001B}[36mglobal-skill\u{001B}[0m  ~/.agents/skills/global-skill  \u{001B}[38;5;102mAgents:\u{001B}[0m Codex
+        manual-skill  ~/.codex/skills/manual-skill  Agents: Codex
         """, stderr: "", status: 0)
     ])
     let scanner = PackageScanner(
@@ -672,8 +678,12 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     let packages = try scanner.scanSkills(database: PackageDatabase())
 
     #expect(runner.calls.map(\.command) == ["/fake/skills list --global"])
-    #expect(packages.map(\.identifier) == ["skills:global:global-skill"])
-    #expect(packages.map(\.installLocation) == ["/Users/test/.agents/skills/global-skill"])
+    #expect(packages.map(\.identifier) == ["skills:global:global-skill", "skills:global:manual-skill"])
+    #expect(packages.map(\.installLocation) == [
+        home.appendingPathComponent(".agents/skills/global-skill").path,
+        home.appendingPathComponent(".codex/skills/manual-skill").path,
+    ])
+    #expect(packages.map(\.repo) == ["https://github.com/example/tools", nil])
 }
 
 @Test func skillsScannerFallsBackToNPX() throws {

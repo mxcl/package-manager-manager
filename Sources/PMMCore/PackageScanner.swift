@@ -216,7 +216,7 @@ public struct PackageScanner: @unchecked Sendable {
             return []
         }
         let global = try runner.run(executable, prefix + ["list", "--global"])
-        return global.status == 0 ? parseSkillsList(global.stdout) : []
+        return global.status == 0 ? parseSkillsList(global.stdout, repositories: skillRepositories()) : []
     }
 
     public func scanNPX(database: PackageDatabase, npmRegistryClient: NPMRegistryClient) async throws -> [ManagedPackage] {
@@ -713,7 +713,7 @@ public struct PackageScanner: @unchecked Sendable {
         }
     }
 
-    private func parseSkillsList(_ output: String) -> [ManagedPackage] {
+    private func parseSkillsList(_ output: String, repositories: [String: String]) -> [ManagedPackage] {
         return output
             .replacingOccurrences(of: "\u{001B}\\[[0-9;]*m", with: "", options: .regularExpression)
             .split(whereSeparator: \.isNewline)
@@ -736,9 +736,45 @@ public struct PackageScanner: @unchecked Sendable {
                     latestVersion: nil,
                     summary: "Global agent skill",
                     category: "developer-tools",
+                    repo: repositories[name],
                     installLocation: expandedPath
                 )
             }
+    }
+
+    private func skillRepositories() -> [String: String] {
+        let lock: URL
+        if let stateHome = environment["XDG_STATE_HOME"], !stateHome.isEmpty {
+            lock = URL(fileURLWithPath: stateHome).appendingPathComponent("skills/.skill-lock.json")
+        } else {
+            lock = homeDirectory.appendingPathComponent(".agents/.skill-lock.json")
+        }
+        guard let data = try? Data(contentsOf: lock),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let skills = root["skills"] as? [String: Any] else { return [:] }
+        return skills.reduce(into: [:]) { repositories, pair in
+            guard let entry = pair.value as? [String: Any], let repository = githubRepository(in: entry) else { return }
+            repositories[pair.key] = repository
+        }
+    }
+
+    private func githubRepository(in entry: [String: Any]) -> String? {
+        if let sourceURL = entry["sourceUrl"] as? String, let repository = normalizedGitHubRepository(sourceURL) {
+            return repository
+        }
+        guard entry["sourceType"] as? String == "github", let source = entry["source"] as? String else { return nil }
+        return normalizedGitHubRepository("https://github.com/\(source)")
+    }
+
+    private func normalizedGitHubRepository(_ value: String) -> String? {
+        let https = value.hasPrefix("git@github.com:")
+            ? "https://github.com/\(value.dropFirst("git@github.com:".count))"
+            : value
+        guard let url = URL(string: https), url.host()?.lowercased() == "github.com" else { return nil }
+        let parts = url.path.split(separator: "/")
+        guard parts.count >= 2 else { return nil }
+        let repository = parts[1].hasSuffix(".git") ? parts[1].dropLast(4) : parts[1][...]
+        return "https://github.com/\(parts[0])/\(repository)"
     }
 
     private func uvToolHeader(_ line: String) -> (name: String, version: String?, latest: String?)? {
