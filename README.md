@@ -14,10 +14,10 @@ Use whatever you want without compromising visibility into what’s going on.
 ## Quickstart
 
 ```sh
-$ brew install --cask mxcl/made/package-manager-manager
-
-# no brew? download the .dmg: https://github.com/mxcl/pmm/releases/latest
+brew install --cask mxcl/made/package-manager-manager
 ```
+
+> No brew? [Download the `.dmg` from `./releases/`](https://github.com/mxcl/pmm/releases/latest).
 
 ![Package Manager Manager screenshot](docs/pmm-promo-2.png)
 
