@@ -6,11 +6,41 @@ import WebKit
 
 struct MainWindowSidebarView: View {
     @ObservedObject var model: MainWindowModel
+    @State private var expandedHosts = Set<UUID>()
+    @State private var editingHost: RemoteHostEditorItem?
 
     var body: some View {
         List(selection: sidebarSelection) {
             Section {
                 ForEach(MainWindowSection.librarySections) { sidebarRow($0) }
+            }
+            Section {
+                ForEach(model.remoteHosts) { host in
+                    DisclosureGroup(isExpanded: expansionBinding(for: host.id)) {
+                        ForEach(RemoteHostSection.allCases) { section in
+                            remoteSidebarRow(section, host: host)
+                        }
+                    } label: {
+                        remoteHostLabel(host)
+                    }
+                    .contextMenu {
+                        Button("Refresh") { model.refreshRemoteHost(host.id) }
+                        Button("Edit…") { editingHost = RemoteHostEditorItem(host: host) }
+                        Divider()
+                        Button("Remove", role: .destructive) { model.removeRemoteHost(host.id) }
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("Hosts")
+                    Spacer()
+                    Button { editingHost = RemoteHostEditorItem(host: nil) } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.plain)
+                    .help("Add SSH Host")
+                    .accessibilityLabel("Add SSH Host")
+                }
             }
             if !model.visibleManagerSections.isEmpty {
                 Section("Ecosystems") {
@@ -24,14 +54,24 @@ struct MainWindowSidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .onAppear { expandedHosts.formUnion(model.remoteHosts.map(\.id)) }
+        .onChange(of: model.remoteHosts.map(\.id)) { _, ids in expandedHosts.formUnion(ids) }
+        .sheet(item: $editingHost) { item in
+            RemoteHostEditorView(model: model, host: item.host)
+        }
     }
 
-    private var sidebarSelection: Binding<MainWindowSection?> {
+    private var sidebarSelection: Binding<MainWindowSidebarSelection?> {
         Binding {
-            model.selectedSection
-        } set: { section in
-            if let section {
+            model.sidebarSelection
+        } set: { selection in
+            switch selection {
+            case .local(let section):
                 model.selectSection(section)
+            case .remote(let hostID, let section):
+                model.selectRemoteHost(hostID, section: section)
+            case nil:
+                break
             }
         }
     }
@@ -57,7 +97,49 @@ struct MainWindowSidebarView: View {
                 }
             }
         }
-        .tag(section)
+        .tag(MainWindowSidebarSelection.local(section))
+    }
+
+    private func remoteSidebarRow(_ section: RemoteHostSection, host: RemoteHost) -> some View {
+        let selected = model.sidebarSelection == .remote(hostID: host.id, section: section)
+        return HStack(spacing: 8) {
+            Image(systemName: section.systemImage)
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 20, height: 20)
+            Text(section.title)
+                .foregroundStyle(selected ? Color.accentColor : .primary)
+            Spacer(minLength: 6)
+            if model.isLoading(host.id) {
+                ProgressView().controlSize(.small).fixedSize()
+            } else if let count = model.count(for: section, on: host.id), count > 0 {
+                SidebarCountText(count: count).fixedSize()
+            }
+        }
+        .tag(MainWindowSidebarSelection.remote(hostID: host.id, section: section))
+    }
+
+    private func remoteHostLabel(_ host: RemoteHost) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "desktopcomputer")
+                .frame(width: 20, height: 20)
+            Text(host.displayName).lineLimit(1)
+            Spacer(minLength: 6)
+            if let error = model.error(for: host.id) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .help(error)
+                    .accessibilityLabel("Connection error: \(error)")
+            }
+        }
+    }
+
+    private func expansionBinding(for hostID: UUID) -> Binding<Bool> {
+        Binding(
+            get: { expandedHosts.contains(hostID) },
+            set: { expanded in
+                if expanded { expandedHosts.insert(hostID) } else { expandedHosts.remove(hostID) }
+            }
+        )
     }
 
     @ViewBuilder
@@ -79,6 +161,65 @@ struct MainWindowSidebarView: View {
     }
 }
 
+private struct RemoteHostEditorItem: Identifiable {
+    let id = UUID()
+    let host: RemoteHost?
+}
+
+private struct RemoteHostEditorView: View {
+    @ObservedObject var model: MainWindowModel
+    let host: RemoteHost?
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    @State private var destination: String
+    @State private var error: String?
+
+    init(model: MainWindowModel, host: RemoteHost?) {
+        self.model = model
+        self.host = host
+        name = host?.name ?? ""
+        destination = host?.destination ?? ""
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Name (optional)", text: $name)
+                TextField("SSH host or alias", text: $destination)
+                    .textContentType(.URL)
+                Text("PMM uses your existing SSH config, keys, agent, and known_hosts. Connect successfully in Terminal before adding the host here.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let error {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle(host == nil ? "Add SSH Host" : "Edit SSH Host")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", action: save)
+                        .disabled(!RemoteHost.isValidDestination(destination.trimmingCharacters(in: .whitespacesAndNewlines)))
+                }
+            }
+        }
+        .frame(width: 460, height: 250)
+    }
+
+    private func save() {
+        do {
+            _ = try model.saveRemoteHost(id: host?.id, name: name, destination: destination)
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
 struct MainWindowPackageListView: View {
     @ObservedObject var model: MainWindowModel
 
@@ -86,18 +227,32 @@ struct MainWindowPackageListView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 let displayedPackages = model.displayedPackages
-                if model.activeSidebarSection.map(model.isLoadingCount(for:)) == true && displayedPackages.isEmpty {
+                if model.displayedPackagesAreLoading && displayedPackages.isEmpty {
                     ProgressView()
                         .controlSize(.small)
                         .frame(maxWidth: .infinity, minHeight: 180)
+                } else if let error = model.displayedPackagesError, displayedPackages.isEmpty {
+                    ContentUnavailableView {
+                        Label("Host Unavailable", systemImage: "desktopcomputer.trianglebadge.exclamationmark")
+                    } description: {
+                        Text(error)
+                    } actions: {
+                        if let hostID = model.selectedRemoteHostID {
+                            Button("Retry") { model.refreshRemoteHost(hostID) }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 260)
                 } else {
                     LazyVStack(spacing: 0) {
                         ForEach(displayedPackages) { package in
                             PackageRow(
                                 package: package,
                                 selected: model.selectedPackage?.id == package.id,
-                                showsManager: model.activeSidebarSection == .outdated || (model.activeSidebarSection?.packageManagers.count ?? 0) > 1,
-                                versionText: mainWindowVersionText(package, section: model.activeSidebarSection)
+                                showsManager: model.isRemoteSelection || model.activeSidebarSection == .outdated || (model.activeSidebarSection?.packageManagers.count ?? 0) > 1,
+                                versionText: mainWindowVersionText(
+                                    package,
+                                    section: model.selectedRemoteSection == .outdated ? .outdated : model.activeSidebarSection
+                                )
                             ) {
                                 model.select(package)
                             }
@@ -113,9 +268,9 @@ struct MainWindowPackageListView: View {
         }
         .safeAreaBar(edge: .top, alignment: .leading, spacing: 0) {
             HStack {
-                Text(model.activeSidebarSection?.title ?? "")
+                Text(model.displayedSectionTitle)
                 Spacer()
-                if model.isReloading { ProgressView().controlSize(.small) }
+                if model.displayedPackagesAreLoading { ProgressView().controlSize(.small) }
             }
             .font(.system(size: 13, weight: .bold))
             .foregroundStyle(Color.secondary)
@@ -182,8 +337,10 @@ struct MainWindowDossierView: View {
                             .disabled(isPackageActionRunning)
                         }
                         PackagePageSection(model: model)
-                        PackageConfigurationSection(locations: model.selectedPackageConfigurationLocations)
-                        PackageLocationSection(package: package)
+                        if model.showsLocalFilesystemActions {
+                            PackageConfigurationSection(locations: model.selectedPackageConfigurationLocations)
+                            PackageLocationSection(package: package)
+                        }
                         if !mainWindowBrowserLinks(for: package).isEmpty {
                             InfoSection(title: "External URLs") {
                                 PackageLinkStack(model: model)
@@ -642,7 +799,11 @@ private struct PackagePageSection: View {
                     InfoRow(label: "License", value: license)
                 }
                 if !dossier.executables.isEmpty {
-                    DossierExecutableStack(executables: dossier.executables, package: model.selectedPackage)
+                    DossierExecutableStack(
+                        executables: dossier.executables,
+                        package: model.selectedPackage,
+                        allowsReveal: model.showsLocalFilesystemActions
+                    )
                 }
                 if !dossier.dependencies.isEmpty {
                     InfoRow(label: "Dependencies", value: dossier.dependencies.prefix(12).joined(separator: ", "))
@@ -687,6 +848,7 @@ private struct PackagePageSection: View {
 private struct DossierExecutableStack: View {
     let executables: [String]
     let package: ManagedPackage?
+    let allowsReveal: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -696,6 +858,7 @@ private struct DossierExecutableStack: View {
             VStack(spacing: 2) {
                 ForEach(executables, id: \.self) { executable in
                     Button {
+                        guard allowsReveal else { return }
                         revealExecutableInFinder(executable)
                     } label: {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -711,6 +874,7 @@ private struct DossierExecutableStack: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(!allowsReveal)
                 }
             }
         }

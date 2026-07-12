@@ -66,7 +66,7 @@ struct MainWindowRootView: View {
 
     var body: some View {
         Group {
-            if model.selectedSection == .home {
+            if model.showsDashboard {
                 NavigationSplitView {
                     sidebar
                 } detail: {
@@ -114,6 +114,15 @@ struct MainWindowRootView: View {
         } message: {
             Text("pkg⋅mgr² will install them one at a time through the existing package managers.")
         }
+        .alert(
+            "Uninstall \(model.pendingRemoteUninstall?.package.displayName ?? "package")?",
+            isPresented: remoteUninstallConfirmationBinding
+        ) {
+            Button("Cancel", role: .cancel) { model.cancelRemoteUninstall() }
+            Button("Uninstall", role: .destructive) { model.confirmRemoteUninstall() }
+        } message: {
+            Text("This will uninstall the package from \(model.pendingRemoteUninstall?.host.displayName ?? "the remote Mac").")
+        }
     }
 
     @ToolbarContentBuilder
@@ -156,6 +165,13 @@ struct MainWindowRootView: View {
                     model.cancelPendingInstallPack()
                 }
             }
+        )
+    }
+
+    private var remoteUninstallConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { model.pendingRemoteUninstall != nil },
+            set: { if !$0 { model.cancelRemoteUninstall() } }
         )
     }
 }

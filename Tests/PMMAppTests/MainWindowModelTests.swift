@@ -1130,3 +1130,121 @@ private func package(
         lastUpdatedAt: lastUpdatedAt
     )
 }
+
+@MainActor
+@Test func remoteHostsPersistRejectDuplicatesAndRemoveCleanly() throws {
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    let response = RemoteControlResponse(inventory: PackageInventory(packages: []))
+    let runner = MainWindowRemoteRunner(response: response)
+    let model = MainWindowModel(userDefaults: defaults, remoteClient: RemoteSSHClient(runner: runner))
+
+    let host = try model.saveRemoteHost(name: "Build Mac", destination: "builder")
+    #expect(throws: RemoteHostConfigurationError.duplicateDestination) {
+        try model.saveRemoteHost(name: nil, destination: "builder")
+    }
+    let restored = MainWindowModel(userDefaults: defaults, remoteClient: RemoteSSHClient(runner: runner))
+    #expect(restored.remoteHosts == [host])
+
+    model.selectRemoteHost(host.id, section: .installed)
+    model.removeRemoteHost(host.id)
+    #expect(model.remoteHosts.isEmpty)
+    #expect(!model.isRemoteSelection)
+    #expect(model.selectedSection == .home)
+}
+
+@MainActor
+@Test func remoteSelectionFiltersInventoryAndGatesLocalInstall() async throws {
+    let outdated = package(.npm, "eslint", installedVersion: "1.0.0", latestVersion: "2.0.0")
+    let current = package(.homebrew, "wget")
+    let response = RemoteControlResponse(inventory: PackageInventory(packages: [outdated, current]))
+    let runner = MainWindowRemoteRunner(response: response)
+    let model = MainWindowModel(
+        userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
+        remoteClient: RemoteSSHClient(runner: runner)
+    )
+    let host = try model.saveRemoteHost(name: "Server", destination: "server")
+    await waitForRemoteModel { model.remoteHostStates[host.id]?.inventory != nil }
+
+    model.selectRemoteHost(host.id, section: .outdated)
+    #expect(model.sidebarSelection == .remote(hostID: host.id, section: .outdated))
+    #expect(model.displayedPackages.map(\.identifier) == [outdated.identifier])
+    #expect(model.count(for: .installed, on: host.id) == 2)
+    #expect(model.count(for: .outdated, on: host.id) == 1)
+    #expect(model.showsUpdateAllOutdatedPackages)
+    #expect(!model.canInstall(outdated))
+    #expect(!model.showsLocalFilesystemActions)
+
+    model.searchText = "nothing"
+    #expect(model.displayedPackages.isEmpty)
+    #expect(model.count(for: .outdated, on: host.id) == 0)
+}
+
+@MainActor
+@Test func remoteUninstallRequiresConfirmationAndNamesHost() async throws {
+    let installed = package(.npm, "eslint")
+    let response = RemoteControlResponse(inventory: PackageInventory(packages: [installed]))
+    let runner = MainWindowRemoteRunner(response: response)
+    let model = MainWindowModel(
+        userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
+        remoteClient: RemoteSSHClient(runner: runner)
+    )
+    let host = try model.saveRemoteHost(name: "Server", destination: "server")
+    await waitForRemoteModel { model.remoteHostStates[host.id]?.inventory != nil }
+    model.selectRemoteHost(host.id, section: .installed)
+
+    model.uninstall(installed)
+    #expect(model.pendingRemoteUninstall == RemoteUninstallConfirmation(host: host, package: installed))
+    #expect(runner.invocationCount == 1)
+
+    model.confirmRemoteUninstall()
+    await waitForRemoteModel { runner.invocationCount == 2 }
+    #expect(model.pendingRemoteUninstall == nil)
+    #expect(runner.lastArguments?.last?.contains("'uninstall'") == true)
+    #expect(model.packageActionCommand?.contains("Server") == false)
+    #expect(model.packageActionCommand?.contains("server") == true)
+}
+
+@MainActor
+private func waitForRemoteModel(_ predicate: @MainActor () -> Bool) async {
+    for _ in 0..<1_000 {
+        if predicate() { return }
+        await Task.yield()
+    }
+    Issue.record("Timed out waiting for remote model state")
+}
+
+private final class MainWindowRemoteRunner: CommandRunning, @unchecked Sendable {
+    private let response: RemoteControlResponse
+    private let lock = NSLock()
+    private var invocations = [[String]]()
+
+    init(response: RemoteControlResponse) {
+        self.response = response
+    }
+
+    var invocationCount: Int { lock.withLock { invocations.count } }
+    var lastArguments: [String]? { lock.withLock { invocations.last } }
+
+    func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
+        try result(arguments)
+    }
+
+    func run(
+        _ executable: String,
+        _ arguments: [String],
+        options: CommandRunOptions,
+        onOutput: (@Sendable (String) -> Void)?
+    ) throws -> CommandResult {
+        onOutput?("remote progress\n")
+        return try result(arguments)
+    }
+
+    private func result(_ arguments: [String]) throws -> CommandResult {
+        lock.withLock { invocations.append(arguments) }
+        return CommandResult(
+            stdout: String(decoding: try JSONEncoder().encode(response), as: UTF8.self),
+            stderr: "",
+            status: 0
+        )
+    }
+}

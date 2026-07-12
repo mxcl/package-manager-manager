@@ -5,6 +5,12 @@ public struct CommandResult: Sendable {
     public let stdout: String
     public let stderr: String
     public let status: Int32
+
+    public init(stdout: String, stderr: String, status: Int32) {
+        self.stdout = stdout
+        self.stderr = stderr
+        self.status = status
+    }
 }
 
 public struct CommandRunOptions: Sendable, Equatable {

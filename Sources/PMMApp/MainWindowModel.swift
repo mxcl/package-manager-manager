@@ -378,11 +378,53 @@ private func mainWindowGitHubRepoReleaseNotesURL(_ string: String?) -> URL? {
     return components.url
 }
 
+enum RemoteHostSection: String, CaseIterable, Identifiable, Sendable {
+    case outdated
+    case installed
+
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    var systemImage: String { self == .outdated ? "clock" : "shippingbox" }
+}
+
+enum MainWindowSidebarSelection: Hashable, Sendable {
+    case local(MainWindowSection)
+    case remote(hostID: UUID, section: RemoteHostSection)
+}
+
+struct RemoteHostState: Equatable, Sendable {
+    var inventory: PackageInventory?
+    var isLoading = false
+    var error: String?
+}
+
+struct RemoteUninstallConfirmation: Equatable, Sendable {
+    let host: RemoteHost
+    let package: ManagedPackage
+}
+
+enum RemoteHostConfigurationError: LocalizedError, Equatable {
+    case duplicateDestination
+
+    var errorDescription: String? { "That SSH host is already configured." }
+}
+
+private enum RemotePackageAction {
+    case update
+    case uninstall
+    case updateAll
+}
+
 @MainActor
 final class MainWindowModel: NSObject, ObservableObject {
     static let defaultDashboardBlogURL = URL(string: "https://mxcl.dev/package-manager-manager/blog/index.json")!
 
     @Published var selectedSection: MainWindowSection = .home
+    @Published private(set) var selectedRemoteHostID: UUID?
+    @Published private(set) var selectedRemoteSection: RemoteHostSection?
+    @Published private(set) var remoteHosts: [RemoteHost]
+    @Published private(set) var remoteHostStates: [UUID: RemoteHostState] = [:]
+    @Published private(set) var pendingRemoteUninstall: RemoteUninstallConfirmation?
     @Published private(set) var packages: [ManagedPackage] = []
     @Published private(set) var selectedPackage: ManagedPackage?
     @Published var selectedLinkTab: MainWindowLinkTab?
@@ -406,6 +448,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published var searchText = ""
 
     nonisolated private static let newUpdatedLastClickedAtDefaultsKey = "MainWindowModel.newUpdatedLastClickedAt"
+    nonisolated private static let remoteHostsDefaultsKey = "MainWindowModel.remoteHosts"
 
     private var inventory = PackageInventory(packages: [])
     private var packageIndex = PackageIndex.empty
@@ -417,20 +460,28 @@ final class MainWindowModel: NSObject, ObservableObject {
     private let userDefaults: UserDefaults
     private let store: PackageHostStore
     private let dossierClient: PackageDossierClient?
+    private let remoteClient: RemoteSSHClient
     private var dossierTask: Task<Void, Never>?
     private var dashboardBlogEntriesTask: Task<Void, Never>?
+    private var remoteTasks: [UUID: Task<Void, Never>] = [:]
+    private var remoteActionTask: Task<Void, Never>?
+    private var remoteActionHostID: UUID?
     private let notificationCenter = DistributedNotificationCenter.default()
 
     init(
         userDefaults: UserDefaults = .standard,
         store: PackageHostStore = PackageHostStore(),
         dossierClient: PackageDossierClient? = nil,
-        dashboardBlogURL: URL? = nil
+        dashboardBlogURL: URL? = nil,
+        remoteClient: RemoteSSHClient = RemoteSSHClient()
     ) {
         self.userDefaults = userDefaults
         newUpdatedLastClickedAt = userDefaults.object(forKey: Self.newUpdatedLastClickedAtDefaultsKey) as? Date
+        remoteHosts = userDefaults.data(forKey: Self.remoteHostsDefaultsKey)
+            .flatMap { try? JSONDecoder().decode([RemoteHost].self, from: $0) } ?? []
         self.store = store
         self.dossierClient = dossierClient
+        self.remoteClient = remoteClient
         super.init()
 #if DEBUG
         let isTerminalDemo = ProcessInfo.processInfo.environment["PMM_TERMINAL_DEMO"] == "1"
@@ -442,6 +493,7 @@ final class MainWindowModel: NSObject, ObservableObject {
                 loadDashboardBlogEntries(from: dashboardBlogURL)
             }
             notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
+            reloadRemoteHosts()
         }
 #else
         syncFromHost()
@@ -449,16 +501,46 @@ final class MainWindowModel: NSObject, ObservableObject {
             loadDashboardBlogEntries(from: dashboardBlogURL)
         }
         notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
+        reloadRemoteHosts()
 #endif
     }
 
     deinit {
         dossierTask?.cancel()
         dashboardBlogEntriesTask?.cancel()
+        remoteTasks.values.forEach { $0.cancel() }
+        remoteActionTask?.cancel()
         notificationCenter.removeObserver(self)
     }
 
-    var activeSidebarSection: MainWindowSection? { selectedSection }
+    var sidebarSelection: MainWindowSidebarSelection {
+        if let selectedRemoteHostID, let selectedRemoteSection {
+            return .remote(hostID: selectedRemoteHostID, section: selectedRemoteSection)
+        }
+        return .local(selectedSection)
+    }
+
+    var activeSidebarSection: MainWindowSection? { selectedRemoteHostID == nil ? selectedSection : nil }
+    var isRemoteSelection: Bool { selectedRemoteHostID != nil }
+    var showsLocalFilesystemActions: Bool { !isRemoteSelection }
+    var showsDashboard: Bool { !isRemoteSelection && selectedSection == .home }
+    var selectedRemoteHost: RemoteHost? { remoteHosts.first { $0.id == selectedRemoteHostID } }
+
+    var displayedSectionTitle: String {
+        guard let host = selectedRemoteHost, let selectedRemoteSection else { return selectedSection.title }
+        return "\(host.displayName) · \(selectedRemoteSection.title)"
+    }
+
+    var displayedPackagesAreLoading: Bool {
+        if let hostID = selectedRemoteHostID {
+            return remoteHostStates[hostID]?.isLoading == true
+        }
+        return activeSidebarSection.map(isLoadingCount(for:)) == true
+    }
+
+    var displayedPackagesError: String? {
+        selectedRemoteHostID.flatMap { remoteHostStates[$0]?.error }
+    }
 
     var dashboardIsLoadingData: Bool {
         !hasInventory || !loadingManagers.isEmpty
@@ -518,19 +600,91 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     var displayedPackages: [ManagedPackage] {
-        packages(in: selectedSection)
+        if let hostID = selectedRemoteHostID, let section = selectedRemoteSection {
+            let packages = remoteHostStates[hostID]?.inventory?.packages ?? []
+            let index = PackageIndex(packages: packages, catalogPackages: [], newUpdatedLastClickedAt: nil)
+            let localSection: MainWindowSection = section == .outdated ? .outdated : .installed
+            let values = index.packagesBySection[localSection] ?? []
+            let query = searchQuery
+            return query.isEmpty ? values : values.filter { matchesSearch($0, query: query) }
+        }
+        return packages(in: selectedSection)
     }
 
     var showsUpdateAllOutdatedPackages: Bool {
-        selectedSection == .outdated
+        selectedRemoteSection == .outdated || (!isRemoteSelection && selectedSection == .outdated)
     }
 
     var canUpdateAllOutdatedPackages: Bool {
-        showsUpdateAllOutdatedPackages && !isReloading && !isPackageActionRunning && !updatableOutdatedPackages.isEmpty
+        showsUpdateAllOutdatedPackages && !displayedPackagesAreLoading && !isPackageActionRunning && !updatableOutdatedPackages.isEmpty
     }
 
     func reload() {
         PackageHostNotifications.postRefreshRequested()
+        reloadRemoteHosts()
+    }
+
+    @discardableResult
+    func saveRemoteHost(id: UUID? = nil, name: String?, destination: String) throws -> RemoteHost {
+        let host = try RemoteHost(id: id ?? UUID(), name: name, destination: destination)
+        guard !remoteHosts.contains(where: { $0.id != host.id && $0.destination == host.destination }) else {
+            throw RemoteHostConfigurationError.duplicateDestination
+        }
+        if let index = remoteHosts.firstIndex(where: { $0.id == host.id }) {
+            let destinationChanged = remoteHosts[index].destination != host.destination
+            remoteHosts[index] = host
+            if destinationChanged { remoteHostStates[host.id] = nil }
+        } else {
+            remoteHosts.append(host)
+        }
+        remoteHosts.sort { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+        persistRemoteHosts()
+        refreshRemoteHost(host.id)
+        return host
+    }
+
+    func removeRemoteHost(_ hostID: UUID) {
+        remoteTasks.removeValue(forKey: hostID)?.cancel()
+        remoteHosts.removeAll { $0.id == hostID }
+        remoteHostStates[hostID] = nil
+        persistRemoteHosts()
+        if selectedRemoteHostID == hostID { selectSection(.home) }
+    }
+
+    func reloadRemoteHosts() {
+        for host in remoteHosts where remoteActionHostID != host.id {
+            refreshRemoteHost(host.id)
+        }
+    }
+
+    func refreshRemoteHost(_ hostID: UUID) {
+        guard remoteActionHostID != hostID, let host = remoteHosts.first(where: { $0.id == hostID }) else { return }
+        remoteTasks.removeValue(forKey: hostID)?.cancel()
+        var state = remoteHostStates[hostID] ?? RemoteHostState()
+        state.isLoading = true
+        state.error = nil
+        remoteHostStates[hostID] = state
+        let remoteClient = remoteClient
+        remoteTasks[hostID] = Task { [weak self] in
+            do {
+                let response = try await remoteClient.inventory(on: host)
+                guard !Task.isCancelled else { return }
+                self?.remoteHostStates[hostID] = RemoteHostState(inventory: response.inventory)
+            } catch is CancellationError {
+            } catch {
+                guard !Task.isCancelled else { return }
+                var failed = self?.remoteHostStates[hostID] ?? RemoteHostState()
+                failed.isLoading = false
+                failed.error = error.localizedDescription
+                self?.remoteHostStates[hostID] = failed
+            }
+            self?.remoteTasks[hostID] = nil
+        }
+    }
+
+    private func persistRemoteHosts() {
+        guard let data = try? JSONEncoder().encode(remoteHosts) else { return }
+        userDefaults.set(data, forKey: Self.remoteHostsDefaultsKey)
     }
 
     func selectSection(_ section: MainWindowSection) {
@@ -541,7 +695,18 @@ final class MainWindowModel: NSObject, ObservableObject {
         } else {
             newUpdatedSelectionDisplayCount = nil
         }
+        selectedRemoteHostID = nil
+        selectedRemoteSection = nil
         selectedSection = section
+        selectedPackage = nil
+        selectedLinkTab = nil
+        clearDossier()
+    }
+
+    func selectRemoteHost(_ hostID: UUID, section: RemoteHostSection) {
+        guard remoteHosts.contains(where: { $0.id == hostID }) else { return }
+        selectedRemoteHostID = hostID
+        selectedRemoteSection = section
         selectedPackage = nil
         selectedLinkTab = nil
         clearDossier()
@@ -594,6 +759,21 @@ final class MainWindowModel: NSObject, ObservableObject {
         }
     }
 
+    func count(for section: RemoteHostSection, on hostID: UUID) -> Int? {
+        guard let inventory = remoteHostStates[hostID]?.inventory else { return nil }
+        let packages = section == .outdated ? inventory.outdatedPackages : inventory.packages
+        let query = searchQuery
+        return query.isEmpty ? packages.count : packages.filter { matchesSearch($0, query: query) }.count
+    }
+
+    func isLoading(_ hostID: UUID) -> Bool {
+        remoteHostStates[hostID]?.isLoading == true
+    }
+
+    func error(for hostID: UUID) -> String? {
+        remoteHostStates[hostID]?.error
+    }
+
     func isLoadingCount(for section: MainWindowSection) -> Bool {
         !section.packageManagers.isDisjoint(with: loadingManagers)
     }
@@ -605,17 +785,102 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     func uninstall(_ package: ManagedPackage) {
         guard PackageUninstaller.supports(package), !isPackageActionRunning else { return }
+        if let host = selectedRemoteHost {
+            pendingRemoteUninstall = RemoteUninstallConfirmation(host: host, package: package)
+            return
+        }
         PackageHostNotifications.postUninstallRequested(packageID: package.id)
     }
 
     func update(_ package: ManagedPackage) {
         guard PackageUpdater.supports(package), !isPackageActionRunning else { return }
+        if let host = selectedRemoteHost {
+            runRemoteAction(.update, package: package, host: host)
+            return
+        }
         PackageHostNotifications.postUpdateRequested(packageID: package.id)
     }
 
     func updateAllOutdatedPackages() {
         guard canUpdateAllOutdatedPackages else { return }
+        if let host = selectedRemoteHost {
+            runRemoteAction(.updateAll, package: nil, host: host)
+            return
+        }
         PackageHostNotifications.postUpdateAllRequested()
+    }
+
+    func confirmRemoteUninstall() {
+        guard let confirmation = pendingRemoteUninstall else { return }
+        pendingRemoteUninstall = nil
+        runRemoteAction(.uninstall, package: confirmation.package, host: confirmation.host)
+    }
+
+    func cancelRemoteUninstall() {
+        pendingRemoteUninstall = nil
+    }
+
+    private func runRemoteAction(_ action: RemotePackageAction, package: ManagedPackage?, host: RemoteHost) {
+        guard !isPackageActionRunning else { return }
+        switch action {
+        case .update, .uninstall: guard package != nil else { return }
+        case .updateAll: break
+        }
+        remoteTasks.removeValue(forKey: host.id)?.cancel()
+        remoteActionHostID = host.id
+        packageActionOutput = ""
+        packageActionError = nil
+        switch action {
+        case .update:
+            updatingPackageName = package?.displayName
+            packageActionCommand = "ssh \(host.destination) — pmmctl update \(package?.displayName ?? "package")"
+        case .uninstall:
+            uninstallingPackageName = package?.displayName
+            packageActionCommand = "ssh \(host.destination) — pmmctl uninstall \(package?.displayName ?? "package")"
+        case .updateAll:
+            updatingPackageName = "All outdated packages on \(host.displayName)"
+            packageActionCommand = "ssh \(host.destination) — pmmctl update-all"
+        }
+
+        let remoteClient = remoteClient
+        let progress: @Sendable (String) -> Void = { [weak self] chunk in
+            Task { @MainActor in self?.packageActionOutput += chunk }
+        }
+        remoteActionTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let response: RemoteControlResponse
+                switch action {
+                case .update:
+                    response = try await remoteClient.update(package!, on: host, onProgress: progress)
+                case .uninstall:
+                    response = try await remoteClient.uninstall(package!, on: host, onProgress: progress)
+                case .updateAll:
+                    response = try await remoteClient.updateAll(on: host, onProgress: progress)
+                }
+                remoteHostStates[host.id] = RemoteHostState(
+                    inventory: response.inventory,
+                    error: response.failures.isEmpty ? nil : response.failures.map(\.message).joined(separator: "\n")
+                )
+                if !response.failures.isEmpty {
+                    packageActionError = response.failures.map(\.message).joined(separator: "\n")
+                }
+                selectedPackage = selectedPackage.flatMap { selected in
+                    self.displayedPackages.first { $0.id == selected.id }
+                }
+            } catch is CancellationError {
+            } catch {
+                var state = remoteHostStates[host.id] ?? RemoteHostState()
+                state.isLoading = false
+                state.error = error.localizedDescription
+                remoteHostStates[host.id] = state
+                packageActionError = error.localizedDescription
+            }
+            updatingPackageName = nil
+            uninstallingPackageName = nil
+            remoteActionHostID = nil
+            remoteActionTask = nil
+        }
     }
 
     func dismissPackageAction() {
@@ -636,7 +901,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func canInstall(_ package: ManagedPackage) -> Bool {
-        PackageInstaller.supports(package) && !packages.contains { $0.identifier == package.identifier }
+        !isRemoteSelection && PackageInstaller.supports(package) && !packages.contains { $0.identifier == package.identifier }
     }
 
     private var isPackageActionRunning: Bool {
@@ -648,7 +913,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     private var updatableOutdatedPackages: [ManagedPackage] {
-        (packageIndex.packagesBySection[.outdated] ?? []).filter(PackageUpdater.supports)
+        if isRemoteSelection { return displayedPackages.filter(PackageUpdater.supports) }
+        return (packageIndex.packagesBySection[.outdated] ?? []).filter(PackageUpdater.supports)
     }
 
     private var searchQuery: String {
@@ -862,6 +1128,7 @@ final class MainWindowModel: NSObject, ObservableObject {
             ),
             installedPackageFirstSeenAtByID: snapshot.installedPackageFirstSeenAtByID
         )
+        guard remoteActionHostID == nil else { return }
         installingPackageName = snapshot.runningAction?.kind == .install ? snapshot.runningAction?.displayName : nil
         uninstallingPackageName = snapshot.runningAction?.kind == .uninstall ? snapshot.runningAction?.displayName : nil
         updatingPackageName = snapshot.runningAction?.kind == .update ? snapshot.runningAction?.displayName : nil
@@ -894,11 +1161,14 @@ final class MainWindowModel: NSObject, ObservableObject {
         clearDossier()
         guard let dossierClient else { return }
         let packageID = package.id
+        let resolvesLocalPaths = !isRemoteSelection
         isLoadingSelectedPackageMetadata = true
         dossierTask = Task { [dossierClient] in
             do {
                 let dossier = try await dossierClient.dossier(for: package)
-                let configurationLocations = await mainWindowResolvedConfigurationLocations(for: dossier)
+                let configurationLocations = resolvesLocalPaths
+                    ? await mainWindowResolvedConfigurationLocations(for: dossier)
+                    : []
                 guard !Task.isCancelled else { return }
                 if selectedPackage?.id == packageID {
                     selectedPackageDossier = dossier
