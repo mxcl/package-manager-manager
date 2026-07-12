@@ -1141,7 +1141,11 @@ private func package(
     #expect(!model.showsHostManagement)
 
     let host = try model.saveRemoteHost(name: "Build Mac", destination: "builder")
-    #expect(model.ecosystemsSidebarTitle == MainWindowModel.droppingLocalSuffix(ProcessInfo.processInfo.hostName))
+    #expect(model.ecosystemsSidebarTitle == MainWindowModel.localSidebarHostName)
+    #expect(MainWindowModel.sidebarHostName(
+        localHostName: "maliwan",
+        fallback: "customer.example.isp.invalid"
+    ) == "maliwan")
     #expect(MainWindowModel.droppingLocalSuffix("workstation.local") == "workstation")
     model.showHostManagement()
     #expect(model.showsHostManagement)

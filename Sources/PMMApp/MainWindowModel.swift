@@ -1,5 +1,6 @@
 import Foundation
 import PMMCore
+import SystemConfiguration
 
 enum MainWindowSection: String, CaseIterable, Identifiable, Sendable {
     case home
@@ -533,7 +534,19 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     var ecosystemsSidebarTitle: String {
-        remoteHosts.isEmpty ? "Ecosystems" : Self.droppingLocalSuffix(ProcessInfo.processInfo.hostName)
+        remoteHosts.isEmpty ? "Ecosystems" : Self.localSidebarHostName
+    }
+
+    nonisolated static var localSidebarHostName: String {
+        sidebarHostName(
+            localHostName: SCDynamicStoreCopyLocalHostName(nil) as String?,
+            fallback: ProcessInfo.processInfo.hostName
+        )
+    }
+
+    nonisolated static func sidebarHostName(localHostName: String?, fallback: String) -> String {
+        let name = localHostName.flatMap { $0.isEmpty ? nil : $0 } ?? fallback
+        return droppingLocalSuffix(name)
     }
 
     nonisolated static func droppingLocalSuffix(_ value: String) -> String {
