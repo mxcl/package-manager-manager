@@ -1,22 +1,18 @@
 import AppKit
-import AppUpdater
 import PMMCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let appUpdater = AppUpdater(owner: "mxcl", repo: "package-manager-manager")
+    private let store = PackageHostStore()
+    private let notificationCenter = DistributedNotificationCenter.default()
     private var checkForUpdatesItem: NSMenuItem?
-    private var availableUpdate: Update? {
+    private var appUpdatePresentation = AppUpdatePresentationState() {
         didSet {
+            checkForUpdatesItem?.isEnabled = !appUpdatePresentation.host.isChecking
             syncToolbarItems()
         }
     }
     private var window: NSWindow?
-    private var isCheckingForUpdates = false {
-        didSet {
-            checkForUpdatesItem?.isEnabled = !isCheckingForUpdates
-        }
-    }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -30,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         PostHogTelemetry.shared.captureAppOpened()
         NSApp.mainMenu = makeMainMenu()
+        observeAppUpdateHost()
 #if DEBUG
         let isTerminalDemo = ProcessInfo.processInfo.environment["PMM_TERMINAL_DEMO"] == "1"
         if !isTerminalDemo {
@@ -39,13 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launchMenuBarApp()
 #endif
         showMainWindow()
-#if DEBUG
-        if !isTerminalDemo {
-            checkForUpdates(reportCurrent: false)
-        }
-#else
-        checkForUpdates(reportCurrent: false)
-#endif
+        syncAppUpdateState()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        notificationCenter.removeObserver(self)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -79,6 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.center()
         window.makeKeyAndOrderFront(nil)
         self.window = window
+        syncToolbarItems()
         NSApp.activate()
     }
 
@@ -174,32 +170,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func checkForUpdates(_ sender: Any?) {
-        checkForUpdates(reportCurrent: true)
-    }
-
-    private func checkForUpdates(reportCurrent: Bool) {
-        guard !isCheckingForUpdates else { return }
-        isCheckingForUpdates = true
-        Task { @MainActor in
-            do {
-                availableUpdate = try await appUpdater.check()
-                if let update = availableUpdate, reportCurrent {
-                    showUpdateAvailableAlert(update)
-                } else if availableUpdate == nil, reportCurrent {
-                    showUpdateAlert(message: "pkg⋅mgr² is up to date.")
-                }
-            } catch {
-                if reportCurrent {
-                    showUpdateAlert(message: "Unable to check for updates.", informativeText: error.localizedDescription)
-                }
-            }
-            isCheckingForUpdates = false
-        }
+        guard appUpdatePresentation.beginManualCheck() else { return }
+        PackageHostNotifications.postAppUpdateCheckRequested()
     }
 
     private func syncToolbarItems() {
-        mainWindowController?.setAppUpdateButtonVisible(availableUpdate != nil) { [weak self] in
-            self?.updatePMM(nil)
+        mainWindowController?.setAppUpdateButtonVisible(appUpdatePresentation.host.isAvailable) { [weak self] in
+            self?.requestAppUpdateInstall()
         }
     }
 
@@ -207,29 +184,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window?.contentViewController as? MainWindowController
     }
 
-    @objc private func updatePMM(_ sender: Any?) {
-        guard let update = availableUpdate else { return }
-        availableUpdate = nil
-        Task { @MainActor in
-            do {
-                try await update.installAndRelaunch()
-            } catch {
-                availableUpdate = update
-                showUpdateAlert(message: "Unable to install update.", informativeText: error.localizedDescription)
-            }
+    private func observeAppUpdateHost() {
+        notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(appUpdateQuitRequested(_:)), name: PackageHostNotifications.appUpdateQuitRequested, object: nil)
+    }
+
+    @objc private func hostSnapshotChanged(_ notification: Notification) {
+        syncAppUpdateState()
+    }
+
+    @objc private func appUpdateQuitRequested(_ notification: Notification) {
+        NSApp.terminate(nil)
+    }
+
+    private func syncAppUpdateState() {
+        guard let state = try? store.load()?.appUpdate else { return }
+        switch appUpdatePresentation.apply(state) {
+        case .available:
+            showUpdateAvailableAlert()
+        case .current:
+            showUpdateAlert(message: "pkg⋅mgr² is up to date.")
+        case .checkFailed(let errorMessage):
+            showUpdateAlert(message: "Unable to check for updates.", informativeText: errorMessage)
+        case .installFailed(let errorMessage):
+            showUpdateAlert(message: "Unable to install update.", informativeText: errorMessage)
+        case nil:
+            break
         }
     }
 
-    private func showUpdateAvailableAlert(_ update: Update) {
+    private func showUpdateAvailableAlert() {
         let alert = NSAlert()
         alert.messageText = "A pkg⋅mgr² update is available."
         alert.informativeText = "Install it now?"
         alert.addButton(withTitle: "Update")
         alert.addButton(withTitle: "Later")
         if alert.runModal() == .alertFirstButtonReturn {
-            availableUpdate = update
-            updatePMM(nil)
+            requestAppUpdateInstall()
         }
+    }
+
+    private func requestAppUpdateInstall() {
+        appUpdatePresentation.beginInstall()
+        PackageHostNotifications.postAppUpdateInstallRequested()
     }
 
     private func showUpdateAlert(message: String, informativeText: String = "") {

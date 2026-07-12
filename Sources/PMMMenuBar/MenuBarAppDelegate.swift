@@ -1,4 +1,5 @@
 import AppKit
+import AppUpdater
 import PMMCore
 import ServiceManagement
 
@@ -15,8 +16,37 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     private var rescanTask: Task<Void, Never>?
     private var lastActionOutputPublishAt = Date.distantPast
     private var pendingActionOutputPublishTask: Task<Void, Never>?
+    private var appUpdateTask: Task<Void, Never>?
+    private var pendingAppUpdateInstall = false
     private static let actionOutputLimit = 100_000
     private static let actionOutputPublishInterval: TimeInterval = 0.1
+    private lazy var mainAppBundle: Bundle = {
+        guard let bundle = Bundle(url: mainAppURL) else {
+            fatalError("Unable to locate the main app bundle")
+        }
+        return bundle
+    }()
+    private lazy var appUpdater = AppUpdater(
+        owner: "mxcl",
+        repo: "package-manager-manager",
+        targetBundle: mainAppBundle
+    )
+    private lazy var appUpdateController = AppUpdateController(
+        initialState: snapshot.appUpdate ?? AppUpdateHostState(),
+        checkForUpdate: { [weak self] in
+            guard let self, let update = try await self.appUpdater.check() else { return nil }
+            return AppUpdateInstallation { try await update.installAndRelaunch() }
+        },
+        publish: { [weak self] state in
+            guard let self else { return }
+            self.snapshot.appUpdate = state
+            self.publishSnapshot(updateFirstSeen: false)
+        },
+        requestMainAppQuit: PackageHostNotifications.postAppUpdateQuitRequested,
+        waitForMainAppExit: { [weak self] in
+            await self?.waitForMainAppExit() ?? false
+        }
+    )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         loadSnapshot()
@@ -36,6 +66,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         if shouldRefresh {
             refresh()
         }
+        startAppUpdateCheck()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -44,6 +75,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         actionTask?.cancel()
         rescanTask?.cancel()
         pendingActionOutputPublishTask?.cancel()
+        appUpdateTask?.cancel()
         notificationCenter.removeObserver(self)
     }
 
@@ -208,8 +240,10 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
 
             guard let self, !Task.isCancelled else { return }
             self.rescanTask = nil
+            let appUpdate = self.snapshot.appUpdate
             self.snapshot = next
             self.snapshot.installedPackageFirstSeenAtByID = previousFirstSeen
+            self.snapshot.appUpdate = appUpdate
             self.publishSnapshot()
         }
     }
@@ -302,6 +336,8 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         notificationCenter.addObserver(self, selector: #selector(updateRequested(_:)), name: PackageHostNotifications.updateRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(updateAllRequested(_:)), name: PackageHostNotifications.updateAllRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(uninstallRequested(_:)), name: PackageHostNotifications.uninstallRequested, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(appUpdateCheckRequested(_:)), name: PackageHostNotifications.appUpdateCheckRequested, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(appUpdateInstallRequested(_:)), name: PackageHostNotifications.appUpdateInstallRequested, object: nil)
     }
 
     private func rebuildMenu() {
@@ -536,16 +572,69 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         runAction(kind: .uninstall, packageID: packageID)
     }
 
+    @objc private func appUpdateCheckRequested(_ notification: Notification) {
+        startAppUpdateCheck()
+    }
+
+    @objc private func appUpdateInstallRequested(_ notification: Notification) {
+        startAppUpdateInstall()
+    }
+
+    private func startAppUpdateCheck() {
+        startAppUpdateTask { controller in
+            await controller.check()
+        }
+    }
+
+    private func startAppUpdateInstall() {
+        guard appUpdateTask == nil else {
+            pendingAppUpdateInstall = true
+            return
+        }
+        startAppUpdateTask { controller in
+            await controller.install()
+        }
+    }
+
+    private func startAppUpdateTask(_ operation: @escaping (AppUpdateController) async -> Void) {
+        guard appUpdateTask == nil else { return }
+        appUpdateTask = Task { [weak self] in
+            guard let self else { return }
+            await operation(self.appUpdateController)
+            self.appUpdateTask = nil
+            if self.pendingAppUpdateInstall {
+                self.pendingAppUpdateInstall = false
+                self.startAppUpdateInstall()
+            }
+        }
+    }
+
+    private func waitForMainAppExit() async -> Bool {
+        guard let identifier = mainAppBundle.bundleIdentifier else { return false }
+        for _ in 0..<100 {
+            if NSRunningApplication.runningApplications(withBundleIdentifier: identifier).isEmpty {
+                return true
+            }
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return false }
+        }
+        return false
+    }
+
     @objc private func openMainWindow(_ sender: Any?) {
-        let mainApp = Bundle.main.bundleURL
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
+        let mainApp = mainAppURL
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         configuration.addsToRecentItems = false
         NSWorkspace.shared.openApplication(at: mainApp, configuration: configuration)
+    }
+
+    private var mainAppURL: URL {
+        Bundle.main.bundleURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
     }
 
     @objc private func toggleStartAtLogin(_ sender: Any?) {
