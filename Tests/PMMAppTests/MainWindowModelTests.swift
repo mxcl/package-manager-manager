@@ -1177,6 +1177,11 @@ private func package(
     model.searchText = "nothing"
     #expect(model.displayedPackages.isEmpty)
     #expect(model.count(for: .outdated, on: host.id) == 0)
+
+    model.searchText = ""
+    model.updateAllOutdatedPackages()
+    await waitForRemoteModel { runner.invocationCount == 2 }
+    #expect(runner.lastArguments?.last?.contains("'update-all'") == true)
 }
 
 @MainActor

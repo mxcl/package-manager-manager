@@ -3,6 +3,17 @@ import PMMCore
 
 let args = Array(CommandLine.arguments.dropFirst())
 
+if args.contains("--help") {
+    print("""
+    Usage: pmmctl [--json] [--outdated]
+           pmmctl remote inventory --protocol \(remoteControlProtocolVersion)
+           pmmctl remote update --protocol \(remoteControlProtocolVersion) --manager <manager> --id <package-id>
+           pmmctl remote uninstall --protocol \(remoteControlProtocolVersion) --manager <manager> --id <package-id>
+           pmmctl remote update-all --protocol \(remoteControlProtocolVersion)
+    """)
+    exit(0)
+}
+
 if args.first == "remote" {
     let command: RemoteControlCommand
     do {
@@ -77,11 +88,6 @@ if args.first == "remote" {
 
 let json = args.contains("--json")
 let outdatedOnly = args.contains("--outdated")
-
-if args.contains("--help") {
-    print("Usage: pmmctl [--json] [--outdated]")
-    exit(0)
-}
 
 let database = await PackageDatabase.load()
 let inventory = await PackageScanner().inventory(database: database)

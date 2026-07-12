@@ -53,6 +53,17 @@ import Testing
     #expect(decoded == response)
 }
 
+@Test func remoteSSHExplainsUntrustedHostKeys() async {
+    let runner = RecordingRemoteRunner(result: CommandResult(
+        stdout: "",
+        stderr: "Host key verification failed.",
+        status: 255
+    ))
+    await #expect(throws: RemoteSSHError.untrustedHost("mac-mini")) {
+        try await RemoteSSHClient(runner: runner).inventory(on: RemoteHost(destination: "mac-mini"))
+    }
+}
+
 private final class RecordingRemoteRunner: CommandRunning, @unchecked Sendable {
     private let result: CommandResult
     private let lock = NSLock()

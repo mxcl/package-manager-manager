@@ -124,7 +124,9 @@ public struct RemoteSSHClient: Sendable {
 
     private static func error(for result: CommandResult, host: RemoteHost) -> RemoteSSHError {
         let output = (result.stderr + "\n" + result.stdout).lowercased()
-        if output.contains("host key verification failed") || output.contains("no host key is known") {
+        if output.contains("host key verification failed")
+            || output.contains("no host key is known")
+            || output.contains("remote host identification has changed") {
             return .untrustedHost(host.destination)
         }
         if output.contains("permission denied") || output.contains("authentication failed") {

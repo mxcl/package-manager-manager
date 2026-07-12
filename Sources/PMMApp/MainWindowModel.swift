@@ -644,6 +644,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func removeRemoteHost(_ hostID: UUID) {
+        guard remoteActionHostID != hostID else { return }
         remoteTasks.removeValue(forKey: hostID)?.cancel()
         remoteHosts.removeAll { $0.id == hostID }
         remoteHostStates[hostID] = nil
@@ -768,6 +769,10 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     func isLoading(_ hostID: UUID) -> Bool {
         remoteHostStates[hostID]?.isLoading == true
+    }
+
+    func isRunningAction(on hostID: UUID) -> Bool {
+        remoteActionHostID == hostID
     }
 
     func error(for hostID: UUID) -> String? {

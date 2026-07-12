@@ -25,9 +25,12 @@ struct MainWindowSidebarView: View {
                     }
                     .contextMenu {
                         Button("Refresh") { model.refreshRemoteHost(host.id) }
+                            .disabled(model.isRunningAction(on: host.id))
                         Button("Edit…") { editingHost = RemoteHostEditorItem(host: host) }
+                            .disabled(model.isRunningAction(on: host.id))
                         Divider()
                         Button("Remove", role: .destructive) { model.removeRemoteHost(host.id) }
+                            .disabled(model.isRunningAction(on: host.id))
                     }
                 }
             } header: {
