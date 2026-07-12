@@ -28,6 +28,18 @@ public struct PackageHostRunningAction: Codable, Equatable, Sendable {
     }
 }
 
+public struct AppUpdateHostState: Codable, Equatable, Sendable {
+    public var isChecking: Bool
+    public var isAvailable: Bool
+    public var errorMessage: String?
+
+    public init(isChecking: Bool = false, isAvailable: Bool = false, errorMessage: String? = nil) {
+        self.isChecking = isChecking
+        self.isAvailable = isAvailable
+        self.errorMessage = errorMessage
+    }
+}
+
 public struct PackageHostSnapshot: Codable, Equatable, Sendable {
     public var inventory: PackageInventory?
     public var catalogPackages: [ManagedPackage]
@@ -37,6 +49,7 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
     public var errorMessage: String?
     public var lastBrewUpdateAt: Date?
     public var installedPackageFirstSeenAtByID: [String: Date]?
+    public var appUpdate: AppUpdateHostState?
 
     public init(
         inventory: PackageInventory? = nil,
@@ -46,7 +59,8 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         runningAction: PackageHostRunningAction? = nil,
         errorMessage: String? = nil,
         lastBrewUpdateAt: Date? = nil,
-        installedPackageFirstSeenAtByID: [String: Date]? = nil
+        installedPackageFirstSeenAtByID: [String: Date]? = nil,
+        appUpdate: AppUpdateHostState? = nil
     ) {
         self.inventory = inventory
         self.catalogPackages = catalogPackages
@@ -56,6 +70,7 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         self.errorMessage = errorMessage
         self.lastBrewUpdateAt = lastBrewUpdateAt
         self.installedPackageFirstSeenAtByID = installedPackageFirstSeenAtByID
+        self.appUpdate = appUpdate
     }
 
     public mutating func updateInstalledPackageFirstSeenAtByID() {
@@ -107,6 +122,9 @@ public enum PackageHostNotifications {
     public static let updateRequested = Notification.Name("dev.mxcl.pmm.packageHost.updateRequested")
     public static let updateAllRequested = Notification.Name("dev.mxcl.pmm.packageHost.updateAllRequested")
     public static let uninstallRequested = Notification.Name("dev.mxcl.pmm.packageHost.uninstallRequested")
+    public static let appUpdateCheckRequested = Notification.Name("dev.mxcl.pmm.packageHost.appUpdateCheckRequested")
+    public static let appUpdateInstallRequested = Notification.Name("dev.mxcl.pmm.packageHost.appUpdateInstallRequested")
+    public static let appUpdateQuitRequested = Notification.Name("dev.mxcl.pmm.packageHost.appUpdateQuitRequested")
 
     public static let packageIDKey = "packageID"
     public static let packageIDsKey = "packageIDs"
@@ -144,6 +162,18 @@ public enum PackageHostNotifications {
         postPackageCommand(uninstallRequested, packageID: packageID)
     }
 
+    public static func postAppUpdateCheckRequested() {
+        post(appUpdateCheckRequested)
+    }
+
+    public static func postAppUpdateInstallRequested() {
+        post(appUpdateInstallRequested)
+    }
+
+    public static func postAppUpdateQuitRequested() {
+        post(appUpdateQuitRequested)
+    }
+
     public static func packageID(from notification: Notification) -> String? {
         notification.userInfo?[packageIDKey] as? String
     }
@@ -159,5 +189,9 @@ public enum PackageHostNotifications {
             userInfo: [packageIDKey: packageID],
             deliverImmediately: true
         )
+    }
+
+    private static func post(_ name: Notification.Name) {
+        DistributedNotificationCenter.default().postNotificationName(name, object: nil, deliverImmediately: true)
     }
 }

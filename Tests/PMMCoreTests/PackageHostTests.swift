@@ -18,7 +18,8 @@ import Testing
         ),
         errorMessage: "brew failed",
         lastBrewUpdateAt: Date(timeIntervalSince1970: 20),
-        installedPackageFirstSeenAtByID: [package.id: Date(timeIntervalSince1970: 30)]
+        installedPackageFirstSeenAtByID: [package.id: Date(timeIntervalSince1970: 30)],
+        appUpdate: AppUpdateHostState(isChecking: false, isAvailable: true)
     )
 
     let data = try JSONEncoder().encode(snapshot)
@@ -40,6 +41,7 @@ import Testing
 
     #expect(decoded.installedPackageFirstSeenAtByID == nil)
     #expect(decoded.loadingManagers == nil)
+    #expect(decoded.appUpdate == nil)
 }
 
 @Test func packageHostRunningActionDecodesOldJSONWithoutCommandOutput() throws {
