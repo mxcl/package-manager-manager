@@ -94,8 +94,6 @@ struct MainWindowSidebarView: View {
 
     private func remoteHostLabel(_ host: RemoteHost) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: "desktopcomputer")
-                .frame(width: 20, height: 20)
             Text(host.displayName).lineLimit(1)
             Spacer(minLength: 6)
             if let error = model.error(for: host.id) {
@@ -145,8 +143,6 @@ struct RemoteHostsManagementView: View {
                 } else {
                     List(model.remoteHosts) { host in
                         HStack(spacing: 12) {
-                            Image(systemName: "desktopcomputer")
-                                .foregroundStyle(.secondary)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(host.displayName)
                                 if host.name != nil {

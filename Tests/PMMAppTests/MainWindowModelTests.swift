@@ -1145,7 +1145,7 @@ private func package(
     #expect(MainWindowModel.sidebarHostName(
         localHostName: "maliwan",
         fallback: "customer.example.isp.invalid"
-    ) == "maliwan")
+    ) == "Maliwan")
     #expect(MainWindowModel.droppingLocalSuffix("workstation.local") == "workstation")
     model.showHostManagement()
     #expect(model.showsHostManagement)

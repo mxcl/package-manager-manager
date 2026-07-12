@@ -14,7 +14,7 @@ public struct RemoteHost: Codable, Equatable, Identifiable, Sendable {
         self.destination = destination
     }
 
-    public var displayName: String { Self.droppingLocalSuffix(name ?? destination) }
+    public var displayName: String { Self.capitalizingHost(Self.droppingLocalSuffix(name ?? destination)) }
 
     public static func isValidDestination(_ destination: String) -> Bool {
         guard !destination.isEmpty, destination.count <= 255, !destination.hasPrefix("-") else { return false }
@@ -24,6 +24,10 @@ public struct RemoteHost: Codable, Equatable, Identifiable, Sendable {
 
     private static func droppingLocalSuffix(_ value: String) -> String {
         value.lowercased().hasSuffix(".local") ? String(value.dropLast(6)) : value
+    }
+
+    private static func capitalizingHost(_ value: String) -> String {
+        value.prefix(1).uppercased() + value.dropFirst()
     }
 }
 

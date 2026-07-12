@@ -7,8 +7,8 @@ import Testing
     #expect(host.name == "Build Mac")
     #expect(host.destination == "max@mac-mini")
     #expect(host.displayName == "Build Mac")
-    #expect(try RemoteHost(destination: "pangolin.local").displayName == "pangolin")
-    #expect(try RemoteHost(destination: "max@pangolin.local").displayName == "max@pangolin")
+    #expect(try RemoteHost(destination: "pangolin.local").displayName == "Pangolin")
+    #expect(try RemoteHost(destination: "max@pangolin.local").displayName == "Max@pangolin")
     #expect(throws: RemoteHostError.invalidDestination) { try RemoteHost(destination: "-oProxyCommand=bad") }
     #expect(throws: RemoteHostError.invalidDestination) { try RemoteHost(destination: "host; touch /tmp/bad") }
 }

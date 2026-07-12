@@ -546,7 +546,8 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     nonisolated static func sidebarHostName(localHostName: String?, fallback: String) -> String {
         let name = localHostName.flatMap { $0.isEmpty ? nil : $0 } ?? fallback
-        return droppingLocalSuffix(name)
+        let hostname = droppingLocalSuffix(name)
+        return hostname.prefix(1).uppercased() + hostname.dropFirst()
     }
 
     nonisolated static func droppingLocalSuffix(_ value: String) -> String {
