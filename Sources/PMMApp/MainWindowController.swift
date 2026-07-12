@@ -40,6 +40,10 @@ final class MainWindowController: NSHostingController<MainWindowRootView> {
         model.openPackageURL(url)
     }
 
+    func showHostManagement() {
+        model.showHostManagement()
+    }
+
     func setAppUpdateButtonVisible(_ isVisible: Bool, updateApp: @escaping () -> Void) {
         guard showsAppUpdateButton != isVisible else { return }
         showsAppUpdateButton = isVisible
@@ -103,6 +107,9 @@ struct MainWindowRootView: View {
                 .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
                 .toolbar(removing: .title)
             }
+        }
+        .sheet(isPresented: $model.showsHostManagement) {
+            RemoteHostsManagementView(model: model)
         }
         .alert("Install \(model.pendingInstallPackConfirmation?.packageCount ?? 0) packages?", isPresented: installPackConfirmationBinding) {
             Button("Cancel", role: .cancel) {

@@ -425,6 +425,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var remoteHosts: [RemoteHost]
     @Published private(set) var remoteHostStates: [UUID: RemoteHostState] = [:]
     @Published private(set) var pendingRemoteUninstall: RemoteUninstallConfirmation?
+    @Published var showsHostManagement = false
     @Published private(set) var packages: [ManagedPackage] = []
     @Published private(set) var selectedPackage: ManagedPackage?
     @Published var selectedLinkTab: MainWindowLinkTab?
@@ -531,6 +532,10 @@ final class MainWindowModel: NSObject, ObservableObject {
         return "\(host.displayName) · \(selectedRemoteSection.title)"
     }
 
+    var ecosystemsSidebarTitle: String {
+        remoteHosts.isEmpty ? "Ecosystems" : ProcessInfo.processInfo.hostName
+    }
+
     var displayedPackagesAreLoading: Bool {
         if let hostID = selectedRemoteHostID {
             return remoteHostStates[hostID]?.isLoading == true
@@ -622,6 +627,10 @@ final class MainWindowModel: NSObject, ObservableObject {
     func reload() {
         PackageHostNotifications.postRefreshRequested()
         reloadRemoteHosts()
+    }
+
+    func showHostManagement() {
+        showsHostManagement = true
     }
 
     @discardableResult

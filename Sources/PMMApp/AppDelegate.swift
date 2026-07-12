@@ -106,6 +106,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(.separator())
         checkForUpdatesItem = appMenu.addItem(withTitle: L10n.string("Check for Updates…"), action: #selector(checkForUpdates(_:)), keyEquivalent: "")
         checkForUpdatesItem?.target = self
+        let manageHostsItem = appMenu.addItem(withTitle: L10n.string("Add / Edit Hosts…"), action: #selector(showHostManagement(_:)), keyEquivalent: "")
+        manageHostsItem.target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: L10n.format("Hide %@", appName), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthers = appMenu.addItem(withTitle: L10n.string("Hide Others"), action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
@@ -172,6 +174,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func checkForUpdates(_ sender: Any?) {
         guard appUpdatePresentation.beginManualCheck() else { return }
         PackageHostNotifications.postAppUpdateCheckRequested()
+    }
+
+    @objc private func showHostManagement(_ sender: Any?) {
+        showMainWindow()
+        mainWindowController?.showHostManagement()
     }
 
     private func syncToolbarItems() {

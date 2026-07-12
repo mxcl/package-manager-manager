@@ -6,48 +6,24 @@ import WebKit
 
 struct MainWindowSidebarView: View {
     @ObservedObject var model: MainWindowModel
-    @State private var expandedHosts = Set<UUID>()
-    @State private var editingHost: RemoteHostEditorItem?
 
     var body: some View {
         List(selection: sidebarSelection) {
             Section {
                 ForEach(MainWindowSection.librarySections) { sidebarRow($0) }
             }
-            Section {
-                ForEach(model.remoteHosts) { host in
-                    DisclosureGroup(isExpanded: expansionBinding(for: host.id)) {
-                        ForEach(RemoteHostSection.allCases) { section in
-                            remoteSidebarRow(section, host: host)
-                        }
-                    } label: {
-                        remoteHostLabel(host)
-                    }
-                    .contextMenu {
-                        Button("Refresh") { model.refreshRemoteHost(host.id) }
-                            .disabled(model.isRunningAction(on: host.id))
-                        Button("Edit…") { editingHost = RemoteHostEditorItem(host: host) }
-                            .disabled(model.isRunningAction(on: host.id))
-                        Divider()
-                        Button("Remove", role: .destructive) { model.removeRemoteHost(host.id) }
-                            .disabled(model.isRunningAction(on: host.id))
-                    }
-                }
-            } header: {
-                HStack {
-                    Text("Hosts")
-                    Spacer()
-                    Button { editingHost = RemoteHostEditorItem(host: nil) } label: {
-                        Image(systemName: "plus")
-                    }
-                    .buttonStyle(.plain)
-                    .help("Add SSH Host")
-                    .accessibilityLabel("Add SSH Host")
+            if !model.visibleManagerSections.isEmpty {
+                Section(model.ecosystemsSidebarTitle) {
+                    ForEach(model.visibleManagerSections) { sidebarRow($0) }
                 }
             }
-            if !model.visibleManagerSections.isEmpty {
-                Section("Ecosystems") {
-                    ForEach(model.visibleManagerSections) { sidebarRow($0) }
+            ForEach(model.remoteHosts) { host in
+                Section {
+                    ForEach(RemoteHostSection.allCases) { section in
+                        remoteSidebarRow(section, host: host)
+                    }
+                } header: {
+                    remoteHostLabel(host)
                 }
             }
             if !model.visibleCategorySections.isEmpty {
@@ -57,11 +33,6 @@ struct MainWindowSidebarView: View {
             }
         }
         .listStyle(.sidebar)
-        .onAppear { expandedHosts.formUnion(model.remoteHosts.map(\.id)) }
-        .onChange(of: model.remoteHosts.map(\.id)) { _, ids in expandedHosts.formUnion(ids) }
-        .sheet(item: $editingHost) { item in
-            RemoteHostEditorView(model: model, host: item.host)
-        }
     }
 
     private var sidebarSelection: Binding<MainWindowSidebarSelection?> {
@@ -136,15 +107,6 @@ struct MainWindowSidebarView: View {
         }
     }
 
-    private func expansionBinding(for hostID: UUID) -> Binding<Bool> {
-        Binding(
-            get: { expandedHosts.contains(hostID) },
-            set: { expanded in
-                if expanded { expandedHosts.insert(hostID) } else { expandedHosts.remove(hostID) }
-            }
-        )
-    }
-
     @ViewBuilder
     private func sidebarIcon(_ section: MainWindowSection) -> some View {
         Group {
@@ -161,6 +123,81 @@ struct MainWindowSidebarView: View {
         }
         .foregroundStyle(model.activeSidebarSection == section ? Color.accentColor : .primary)
         .frame(width: 20, height: 20)
+    }
+}
+
+struct RemoteHostsManagementView: View {
+    @ObservedObject var model: MainWindowModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var editingHost: RemoteHostEditorItem?
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if model.remoteHosts.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Remote Hosts", systemImage: "desktopcomputer")
+                    } description: {
+                        Text("Add a Mac you can already access with SSH.")
+                    } actions: {
+                        Button("Add Host") { editingHost = RemoteHostEditorItem(host: nil) }
+                    }
+                } else {
+                    List(model.remoteHosts) { host in
+                        HStack(spacing: 12) {
+                            Image(systemName: "desktopcomputer")
+                                .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(host.displayName)
+                                if host.name != nil {
+                                    Text(host.destination)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            if model.isLoading(host.id) {
+                                ProgressView().controlSize(.small)
+                            } else if let error = model.error(for: host.id) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                    .help(error)
+                            }
+                            Button { editingHost = RemoteHostEditorItem(host: host) } label: {
+                                Image(systemName: "pencil")
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Edit \(host.displayName)")
+                            .disabled(model.isRunningAction(on: host.id))
+                            Button(role: .destructive) { model.removeRemoteHost(host.id) } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Remove \(host.displayName)")
+                            .disabled(model.isRunningAction(on: host.id))
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+            .navigationTitle("Add / Edit Hosts")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+                if !model.remoteHosts.isEmpty {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button { editingHost = RemoteHostEditorItem(host: nil) } label: {
+                            Label("Add Host", systemImage: "plus")
+                        }
+                    }
+                }
+            }
+        }
+        .frame(width: 520, height: 340)
+        .sheet(item: $editingHost) { item in
+            RemoteHostEditorView(model: model, host: item.host)
+        }
     }
 }
 
