@@ -15,6 +15,10 @@ struct MainWindowSidebarView: View {
                 }
                 Section(MainWindowModel.localSidebarHostName) {
                     sidebarRow(.installed)
+                    ForEach(model.visibleManagerSections) {
+                        sidebarRow($0)
+                            .padding(.leading)
+                    }
                     sidebarRow(.outdated)
                 }
             } else {
@@ -24,9 +28,9 @@ struct MainWindowSidebarView: View {
             }
             if !model.visibleManagerSections.isEmpty {
                 if model.hasMultipleHosts {
-                    Section {
-                        ForEach(model.visibleManagerSections) { sidebarRow($0) }
-                    }
+                    // Section {
+                    //     ForEach(model.visibleManagerSections) { sidebarRow($0) }
+                    // }
                 } else {
                     Section("Ecosystems") {
                         ForEach(model.visibleManagerSections) { sidebarRow($0) }
