@@ -19,6 +19,23 @@ import Testing
     #expect(published.values == ["first\n"])
 }
 
+@Test func lateStartedCommandPreservesAlreadyPublishedOutput() {
+    let runID = UUID()
+    let action = PackageHostRunningAction(
+        runID: runID,
+        kind: .update,
+        packageID: "brew:git",
+        displayName: "git",
+        output: "first output\n"
+    )
+
+    let updated = menuBarAction(action, applyingStartedCommand: "brew upgrade git")
+
+    #expect(updated.runID == runID)
+    #expect(updated.command == "brew upgrade git")
+    #expect(updated.output == "first output\n")
+}
+
 private final class LockedStrings: @unchecked Sendable {
     private let lock = NSLock()
     private var storage = [String]()

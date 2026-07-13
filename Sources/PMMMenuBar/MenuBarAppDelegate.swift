@@ -8,6 +8,12 @@ struct MenuBarActionProgressResult: Equatable {
     let output: String
 }
 
+func menuBarAction(_ action: PackageHostRunningAction, applyingStartedCommand command: String) -> PackageHostRunningAction {
+    var action = action
+    action.command = command
+    return action
+}
+
 final class MenuBarActionProgressRelay: @unchecked Sendable {
     private static let queue = DispatchQueue(label: "dev.mxcl.pmm.action-output", qos: .utility)
     private let limit: Int
@@ -541,10 +547,8 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func applyActionStarted(_ command: String, runID: UUID, kind: PackageHostActionKind, packageID: String) {
-        guard var action = currentAction(runID: runID, kind: kind, packageID: packageID) else { return }
-        action.command = command
-        action.output = ""
-        snapshot.runningAction = action
+        guard let action = currentAction(runID: runID, kind: kind, packageID: packageID) else { return }
+        snapshot.runningAction = menuBarAction(action, applyingStartedCommand: command)
         publishSnapshot()
     }
 
