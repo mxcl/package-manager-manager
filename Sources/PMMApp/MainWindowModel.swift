@@ -421,6 +421,24 @@ private struct PackageActionIdentity: Equatable {
     let packageID: String
 }
 
+private final class CappedActionOutputBuffer: @unchecked Sendable {
+    private let limit: Int
+    private let lock = NSLock()
+    private var output = ""
+
+    init(limit: Int) {
+        self.limit = limit
+    }
+
+    func append(_ chunk: String) -> Bool {
+        guard !chunk.isEmpty else { return false }
+        lock.withLock { output = String((output + chunk).suffix(limit)) }
+        return true
+    }
+
+    var value: String { lock.withLock { output } }
+}
+
 @MainActor
 final class MainWindowModel: NSObject, ObservableObject {
     static let defaultDashboardBlogURL = URL(string: "https://mxcl.dev/package-manager-manager/blog/index.json")!
@@ -475,7 +493,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     private var remoteActionHostID: UUID?
     private var remoteActionID: UUID?
     private var localActionIdentity: PackageActionIdentity?
-    private var remoteActionBufferedOutput = ""
+    private var remoteActionOutputBuffer = CappedActionOutputBuffer(limit: 100_000)
     private var lastRemoteActionOutputPublishAt = Date.distantPast
     private var pendingRemoteActionOutputPublishTask: Task<Void, Never>?
     private var hasUnpublishedRemoteActionOutput = false
@@ -874,9 +892,10 @@ final class MainWindowModel: NSObject, ObservableObject {
         }
         remoteTasks.removeValue(forKey: host.id)?.cancel()
         let actionID = UUID()
+        let outputBuffer = CappedActionOutputBuffer(limit: Self.actionOutputLimit)
         remoteActionHostID = host.id
         remoteActionID = actionID
-        remoteActionBufferedOutput = ""
+        remoteActionOutputBuffer = outputBuffer
         pendingRemoteActionOutputPublishTask?.cancel()
         pendingRemoteActionOutputPublishTask = nil
         lastRemoteActionOutputPublishAt = .distantPast
@@ -896,8 +915,9 @@ final class MainWindowModel: NSObject, ObservableObject {
         }
 
         let remoteClient = remoteClient
-        let progress: @Sendable (String) -> Void = { [weak self] chunk in
-            Task { @MainActor in self?.applyRemoteActionOutput(chunk, actionID: actionID) }
+        let progress: @Sendable (String) -> Void = { [weak self, outputBuffer] chunk in
+            guard outputBuffer.append(chunk) else { return }
+            Task { @MainActor in self?.remoteActionOutputDidChange(actionID: actionID, buffer: outputBuffer) }
         }
         remoteActionTask = Task { [weak self] in
             guard let self else { return }
@@ -929,7 +949,7 @@ final class MainWindowModel: NSObject, ObservableObject {
                 remoteHostStates[host.id] = state
                 packageActionError = error.localizedDescription
             }
-            flushRemoteActionOutput()
+            flushRemoteActionOutput(buffer: outputBuffer)
             updatingPackageName = nil
             uninstallingPackageName = nil
             remoteActionHostID = nil
@@ -938,9 +958,8 @@ final class MainWindowModel: NSObject, ObservableObject {
         }
     }
 
-    private func applyRemoteActionOutput(_ chunk: String, actionID: UUID) {
-        guard remoteActionID == actionID, !chunk.isEmpty else { return }
-        remoteActionBufferedOutput = String((remoteActionBufferedOutput + chunk).suffix(Self.actionOutputLimit))
+    private func remoteActionOutputDidChange(actionID: UUID, buffer: CappedActionOutputBuffer) {
+        guard remoteActionID == actionID, remoteActionOutputBuffer === buffer else { return }
         hasUnpublishedRemoteActionOutput = true
         publishRemoteActionOutputSoon()
     }
@@ -969,12 +988,14 @@ final class MainWindowModel: NSObject, ObservableObject {
         guard hasUnpublishedRemoteActionOutput else { return }
         hasUnpublishedRemoteActionOutput = false
         lastRemoteActionOutputPublishAt = date
-        packageActionOutput = remoteActionBufferedOutput
+        packageActionOutput = remoteActionOutputBuffer.value
     }
 
-    private func flushRemoteActionOutput() {
+    private func flushRemoteActionOutput(buffer: CappedActionOutputBuffer) {
         pendingRemoteActionOutputPublishTask?.cancel()
         pendingRemoteActionOutputPublishTask = nil
+        guard remoteActionOutputBuffer === buffer else { return }
+        hasUnpublishedRemoteActionOutput = true
         publishRemoteActionOutputNow(at: Date())
     }
 
