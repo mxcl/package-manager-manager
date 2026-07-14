@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mxcl/AppUpdater.git",
       "state" : {
-        "revision" : "7c075efdb61028a5d212ab03d2f2d7018c5c069f",
-        "version" : "3.0.2"
+        "revision" : "1d29eace5030cc647a47908a415ee407b52e725c",
+        "version" : "3.0.3"
       }
     },
     {
