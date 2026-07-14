@@ -305,6 +305,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         stack.orientation = .vertical
         stack.alignment = .centerX
         stack.spacing = 12
+        stack.edgeInsets.top = 20
 
         let sheet = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 240, height: 110),
