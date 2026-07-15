@@ -473,6 +473,7 @@ h1 {
 
 .inventory-intro > h2,
 .story-copy h2,
+.faq > h2,
 .final-cta h2 {
   max-width: 940px;
   margin-top: 14px;
@@ -585,6 +586,28 @@ h1 {
 .feature-strip h3 {
   margin-top: 40px;
   font-size: 1.4rem;
+}
+
+.faq {
+  padding: 105px 0;
+  border-top: 1px solid var(--line);
+}
+
+.faq-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px;
+  margin-top: 60px;
+}
+
+.faq-list h3 {
+  font-size: 1.4rem;
+}
+
+.faq-list p {
+  margin-top: 10px;
+  color: var(--muted);
+  line-height: 1.6;
 }
 
 .final-cta {
@@ -711,6 +734,7 @@ h1 {
 
   .inventory-points,
   .package-story,
+  .faq-list,
   .feature-strip {
     grid-template-columns: 1fr;
   }
@@ -731,6 +755,15 @@ h1 {
   .feature-strip {
     gap: 54px;
     padding: 76px 0;
+  }
+
+  .faq {
+    padding: 76px 0;
+  }
+
+  .faq-list {
+    gap: 44px;
+    margin-top: 44px;
   }
 
   .feature-strip h3 {
