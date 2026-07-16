@@ -184,7 +184,7 @@ private struct DashboardDiscoverEditorialCard: View {
     private var foreground: Color { Color(feedHex: boxColors?.foreground ?? "#FFFFFF") }
 
     var body: some View {
-        ZStack(alignment: .leading) {
+        ZStack(alignment: .topLeading) {
             editorialArtwork
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
