@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import subprocess
@@ -17,6 +18,9 @@ from pathlib import Path
 
 CATALOG_URL = "https://www.automicvault.com/db.json"
 SCHEMA_VERSION = 1
+V2_SCHEMA_VERSION = 2
+V2_PAGE_LIMIT = 20
+V2_PAGE_BASE_URL = "https://mxcl.dev/package-manager-manager/feed/v2/pages/"
 SUPPORTED_MANAGERS = {"homebrew", "npm"}
 SUMMARY_WORDS = range(40, 81)
 EDITORIAL_WORDS = range(600, 1001)
@@ -207,6 +211,10 @@ def fetch_catalog() -> dict:
 def root_paths() -> tuple[Path, Path, Path]:
     root = Path(os.environ.get("PMM_FEED_ROOT", Path(__file__).resolve().parent.parent))
     return root, root / "www/feed/v1.json", root / ".feed-work"
+
+
+def v2_path(feed_path: Path) -> Path:
+    return feed_path.with_name("v2.json")
 
 
 def empty_feed(at: datetime) -> dict:
@@ -526,6 +534,117 @@ def apply_response(feed: dict, request: dict, response: dict, root: Path, at: da
     return result
 
 
+def publication_token(at: datetime, values: list[str]) -> str:
+    stamp = timestamp(at).replace("-", "").replace(":", "")
+    digest = hashlib.sha256("\n".join(values).encode()).hexdigest()[:8]
+    return f"{stamp}-{digest}"
+
+
+def v2_package(package: dict) -> dict:
+    return json.loads(json.dumps(package))
+
+
+def v2_blocks_from_v1(feed: dict) -> list[dict]:
+    at = parse_date(feed["generatedAt"])
+    batch_id = publication_token(at, [item["id"] for item in feed["content"]])
+    blocks = []
+    for item in feed["content"]:
+        block = json.loads(json.dumps(item))
+        block["batchID"] = batch_id
+        block["publishedAt"] = block.get("publishedAt") or timestamp(at)
+        if block["type"] == "editorial":
+            block["package"] = v2_package(feed["packages"][block["primaryPackageID"]])
+        elif block["type"] == "newPackages":
+            block["id"] = f"new-packages:{batch_id}"
+            block["packages"] = [v2_package(feed["packages"][identifier]) for identifier in block.pop("packageIDs")]
+        elif block["type"] == "personalizedRecommendations":
+            block["id"] = f"for-you:{batch_id}"
+            identifiers = block.pop("fallbackPackageIDs", None) or block["candidatePackageIDs"]
+            block.pop("candidatePackageIDs", None)
+            block["packages"] = [v2_package(feed["packages"][identifier]) for identifier in identifiers]
+        blocks.append(block)
+    return blocks
+
+
+def v2_head_from_v1(feed: dict) -> dict:
+    blocks = v2_blocks_from_v1(feed)
+    at = parse_date(feed["generatedAt"])
+    return {
+        "content": blocks,
+        "generatedAt": timestamp(at),
+        "nextPageURL": None,
+        "pageID": publication_token(at, [block["id"] for block in blocks]),
+        "schemaVersion": V2_SCHEMA_VERSION,
+    }
+
+
+def v2_blocks_from_update(before: dict, after: dict, response: dict, at: datetime) -> list[dict]:
+    new_ids = response["newPackages"]
+    recommendation_ids = response["recommendations"]
+    old_editorials = {item["id"] for item in content(before, "editorial")}
+    next_editorial = next((item for item in content(after, "editorial") if item["id"] not in old_editorials), None)
+    seed = ([next_editorial["id"]] if next_editorial else []) + new_ids + recommendation_ids
+    if not seed:
+        return []
+    batch_id = publication_token(at, seed)
+    blocks = []
+    if next_editorial:
+        block = json.loads(json.dumps(next_editorial))
+        block["batchID"] = batch_id
+        block["package"] = v2_package(after["packages"][block["primaryPackageID"]])
+        blocks.append(block)
+    if new_ids:
+        blocks.append({
+            "batchID": batch_id,
+            "evidence": json.loads(json.dumps(response["newPackageEvidence"])),
+            "id": f"new-packages:{batch_id}",
+            "packages": [v2_package(after["packages"][identifier]) for identifier in new_ids],
+            "publishedAt": timestamp(at),
+            "title": "New Packages",
+            "type": "newPackages",
+        })
+    if recommendation_ids:
+        shelf = next(iter(content(after, "personalizedRecommendations")))
+        blocks.append({
+            "batchID": batch_id,
+            "id": f"for-you:{batch_id}",
+            "packages": [v2_package(after["packages"][identifier]) for identifier in shelf["fallbackPackageIDs"]],
+            "publishedAt": timestamp(at),
+            "title": "For You",
+            "type": "personalizedRecommendations",
+        })
+    return blocks
+
+
+def append_v2(root: Path, head: dict, blocks: list[dict], at: datetime) -> tuple[dict, list[Path]]:
+    if not blocks:
+        return head, []
+    validate_v2_page(head, root)
+    frozen = []
+    if len(head["content"]) + len(blocks) > V2_PAGE_LIMIT:
+        pages = root / "www/feed/v2/pages"
+        page_path = pages / f"{head['pageID']}.json"
+        if page_path.exists() and read_json(page_path) != head:
+            raise FeedError(f"refusing to rewrite frozen v2 page {page_path.name}")
+        if not page_path.exists():
+            write_json(page_path, head)
+        frozen.append(page_path)
+        token = publication_token(at, [block["id"] for block in blocks])
+        result = {
+            "content": blocks,
+            "generatedAt": timestamp(at),
+            "nextPageURL": V2_PAGE_BASE_URL + page_path.name,
+            "pageID": token,
+            "schemaVersion": V2_SCHEMA_VERSION,
+        }
+    else:
+        result = json.loads(json.dumps(head))
+        result["content"] = blocks + result["content"]
+        result["generatedAt"] = timestamp(at)
+    validate_v2_page(result, root)
+    return result, frozen
+
+
 def validate_feed(feed: dict, root: Path) -> None:
     if set(feed) != {"content", "generatedAt", "packages", "schemaVersion", "source"}:
         raise FeedError("feed has unexpected or missing top-level fields")
@@ -569,32 +688,113 @@ def validate_feed(feed: dict, root: Path) -> None:
     if referenced != set(packages):
         raise FeedError("packages must contain exactly the packages referenced by content")
     for identifier, package in packages.items():
-        if not isinstance(package, dict) or package.get("id") != identifier or package.get("manager") not in SUPPORTED_MANAGERS:
-            raise FeedError(f"invalid package card {identifier}")
-        if package.get("installURL") != install_url(identifier):
-            raise FeedError(f"invalid install URL for {identifier}")
-        if words(package.get("agentSummary")) not in SUMMARY_WORDS:
-            raise FeedError(f"{identifier} summary must be 40–80 words")
-        parse_date(package.get("researchedAt"))
-        source_list(package.get("sources"), f"packages.{identifier}.sources", 2)
-        assessment = package.get("assessment")
-        if not isinstance(assessment, dict) or set(assessment) != set(ASSESSMENT_FIELDS):
-            raise FeedError(f"invalid assessment for {identifier}")
-        for field in ASSESSMENT_FIELDS:
-            clean_strings(assessment[field], f"packages.{identifier}.assessment.{field}")
-        for field in ("homepage", "repository", "docs"):
-            if package.get(field):
-                safe_url(package[field], f"packages.{identifier}.{field}")
+        validate_package_card(package, identifier)
 
 
-def commit_feed(root: Path, feed_path: Path, feed: dict) -> bool:
+def validate_package_card(package: object, identifier: str) -> None:
+    if not isinstance(package, dict) or package.get("id") != identifier or package.get("manager") not in SUPPORTED_MANAGERS:
+        raise FeedError(f"invalid package card {identifier}")
+    if package.get("installURL") != install_url(identifier):
+        raise FeedError(f"invalid install URL for {identifier}")
+    if words(package.get("agentSummary")) not in SUMMARY_WORDS:
+        raise FeedError(f"{identifier} summary must be 40–80 words")
+    parse_date(package.get("researchedAt"))
+    source_list(package.get("sources"), f"packages.{identifier}.sources", 2)
+    assessment = package.get("assessment")
+    if not isinstance(assessment, dict) or set(assessment) != set(ASSESSMENT_FIELDS):
+        raise FeedError(f"invalid assessment for {identifier}")
+    for field in ASSESSMENT_FIELDS:
+        clean_strings(assessment[field], f"packages.{identifier}.assessment.{field}")
+    for field in ("homepage", "repository", "docs"):
+        if package.get(field):
+            safe_url(package[field], f"packages.{identifier}.{field}")
+
+
+def validate_v2_page(page: dict, root: Path) -> None:
+    expected = {"content", "generatedAt", "nextPageURL", "pageID", "schemaVersion"}
+    if set(page) != expected or page.get("schemaVersion") != V2_SCHEMA_VERSION:
+        raise FeedError("invalid v2 page envelope")
+    parse_date(page["generatedAt"])
+    if not isinstance(page["pageID"], str) or not re.fullmatch(r"[0-9TZ]+-[0-9a-f]{8}", page["pageID"]):
+        raise FeedError("invalid v2 pageID")
+    if page["nextPageURL"] is not None:
+        url = safe_url(page["nextPageURL"], "nextPageURL")
+        if not url.startswith(V2_PAGE_BASE_URL) or "/" in url.removeprefix(V2_PAGE_BASE_URL):
+            raise FeedError("nextPageURL must reference a hosted v2 page")
+    items = page["content"]
+    if not isinstance(items, list) or len(items) > V2_PAGE_LIMIT:
+        raise FeedError(f"v2 pages may contain at most {V2_PAGE_LIMIT} blocks")
+    identifiers = [item.get("id") for item in items if isinstance(item, dict)]
+    if len(identifiers) != len(items) or len(set(identifiers)) != len(identifiers):
+        raise FeedError("v2 content IDs must be present and unique")
+    for item in items:
+        if not isinstance(item.get("batchID"), str) or not item["batchID"]:
+            raise FeedError(f"{item['id']} is missing batchID")
+        parse_date(item.get("publishedAt"))
+        kind = item.get("type")
+        if kind == "editorial":
+            if words(item.get("body")) not in EDITORIAL_WORDS or re.search(r"<[A-Za-z/][^>]*>", item.get("body", "")):
+                raise FeedError(f"{item['id']} has invalid editorial body")
+            source_list(item.get("sources"), f"{item['id']}.sources", 4, 2)
+            validate_artwork(item.get("artwork"), root)
+            package = item.get("package")
+            if not isinstance(package, dict) or package.get("id") != item.get("primaryPackageID"):
+                raise FeedError(f"{item['id']} has invalid primary package")
+            validate_package_card(package, package["id"])
+        elif kind in {"newPackages", "personalizedRecommendations"}:
+            packages = item.get("packages")
+            if not isinstance(packages, list) or not packages:
+                raise FeedError(f"{item['id']} must contain package snapshots")
+            package_ids = [package.get("id") for package in packages if isinstance(package, dict)]
+            if len(package_ids) != len(packages) or len(set(package_ids)) != len(package_ids):
+                raise FeedError(f"{item['id']} contains invalid or duplicate packages")
+            for identifier, package in zip(package_ids, packages):
+                validate_package_card(package, identifier)
+            if kind == "newPackages":
+                evidence = item.get("evidence")
+                if evidence is not None and (not isinstance(evidence, dict) or set(evidence) != set(package_ids)):
+                    raise FeedError(f"{item['id']} has invalid new-package evidence")
+                if evidence is not None:
+                    new_package_evidence(evidence, package_ids, parse_date(item["publishedAt"]))
+        else:
+            raise FeedError(f"unknown v2 content type {kind!r}")
+
+
+def validate_v2_chain(root: Path, head: dict) -> None:
+    page = head
+    page_ids, content_ids = set(), set()
+    previous_date = None
+    while True:
+        validate_v2_page(page, root)
+        if page["pageID"] in page_ids:
+            raise FeedError("v2 page chain contains a cycle")
+        page_ids.add(page["pageID"])
+        for item in page["content"]:
+            if item["id"] in content_ids:
+                raise FeedError(f"duplicate v2 content ID {item['id']}")
+            content_ids.add(item["id"])
+            item_date = parse_date(item["publishedAt"])
+            if previous_date is not None and item_date > previous_date:
+                raise FeedError("v2 content is not newest-first")
+            previous_date = item_date
+        next_url = page["nextPageURL"]
+        if next_url is None:
+            return
+        filename = next_url.removeprefix(V2_PAGE_BASE_URL)
+        page_path = root / "www/feed/v2/pages" / filename
+        if not page_path.is_file():
+            raise FeedError(f"missing v2 page {filename}")
+        page = read_json(page_path)
+
+
+def commit_feed(root: Path, feed_path: Path, feed: dict, extra_paths: list[Path] | None = None) -> bool:
     if os.environ.get("PMM_FEED_NO_COMMIT") == "1":
         return True
     artwork = []
     for item in content(feed, "editorial"):
         if item.get("artwork"):
             artwork.append(str(root / "www" / item["artwork"]["path"]))
-    paths = [str(feed_path), *artwork]
+    paths = [str(feed_path), *(str(path) for path in (extra_paths or [])), *artwork]
     subprocess.run(["git", "-C", str(root), "add", "--", *paths], check=True)
     changed = subprocess.run(["git", "-C", str(root), "diff", "--cached", "--quiet", "--", *paths]).returncode != 0
     if changed:
@@ -622,9 +822,11 @@ def backfill_editorial_artwork(feed: dict, raw: object, root: Path) -> dict:
 
 def run() -> int:
     root, feed_path, work = root_paths()
+    archive_path = v2_path(feed_path)
     try:
         if "--check" in sys.argv:
             validate_feed(read_json(feed_path), root)
+            validate_v2_chain(root, read_json(archive_path))
             print("PMM_FEED_STATUS=VALID")
             return 0
         if "--self-test" in sys.argv:
@@ -646,9 +848,15 @@ def run() -> int:
                 print(prompt(request))
                 return 0
             feed = read_json(feed_path) if feed_path.exists() else empty_feed(now())
-            result = apply_response(feed, request, read_json(response_path), root, now())
+            response = read_json(response_path)
+            result = apply_response(feed, request, response, root, now())
+            head = read_json(archive_path) if archive_path.exists() else v2_head_from_v1(feed)
+            blocks = v2_blocks_from_update(feed, result, response, now())
+            next_head, frozen = append_v2(root, head, blocks, now())
+            validate_v2_chain(root, next_head)
             write_json(feed_path, result)
-            changed = commit_feed(root, feed_path, result)
+            write_json(archive_path, next_head)
+            changed = commit_feed(root, feed_path, result, [archive_path, *frozen])
             response_path.unlink()
             request_path.unlink()
             try:
@@ -659,6 +867,14 @@ def run() -> int:
             return 0
         feed = read_json(feed_path) if feed_path.exists() else empty_feed(now())
         validate_feed(feed, root)
+        if not archive_path.exists():
+            head = v2_head_from_v1(feed)
+            validate_v2_chain(root, head)
+            write_json(archive_path, head)
+            changed = commit_feed(root, archive_path, feed)
+            print("PMM_FEED_STATUS=COMMITTED" if changed else "PMM_FEED_STATUS=NOOP")
+            return 0
+        validate_v2_chain(root, read_json(archive_path))
         generated_at, packages = normalize_catalog(fetch_catalog())
         request = build_request(feed, generated_at, packages, now())
         if request is None:
@@ -753,12 +969,14 @@ def self_test() -> None:
         at = datetime(2026, 7, 16, 12, tzinfo=timezone.utc)
         catalog_path = root / "catalog.json"
         write_json(catalog_path, fixture_catalog(at))
-        write_json(root / "www/feed/v1.json", empty_feed(at))
+        initial_feed = empty_feed(at)
+        write_json(root / "www/feed/v1.json", initial_feed)
+        write_json(root / "www/feed/v2.json", v2_head_from_v1(initial_feed))
         subprocess.run(["git", "init", "-q", str(root)], check=True)
         subprocess.run(["git", "-C", str(root), "config", "user.email", "feed@example.com"], check=True)
         subprocess.run(["git", "-C", str(root), "config", "user.name", "Feed Test"], check=True)
         (root / "unrelated.txt").write_text("leave me alone\n")
-        subprocess.run(["git", "-C", str(root), "add", "www/feed/v1.json", "www/feed/assets/fixture.webp", "unrelated.txt"], check=True)
+        subprocess.run(["git", "-C", str(root), "add", "www/feed/v1.json", "www/feed/v2.json", "www/feed/assets/fixture.webp", "unrelated.txt"], check=True)
         subprocess.run(["git", "-C", str(root), "commit", "-qm", "fixture"], check=True)
         (root / "unrelated.txt").write_text("dirty and unrelated\n")
         subprocess.run(["git", "-C", str(root), "add", "unrelated.txt"], check=True)
@@ -792,6 +1010,10 @@ def self_test() -> None:
         assert completed.returncode == 0 and "PMM_FEED_STATUS=COMMITTED" in completed.stdout
         completed_feed = read_json(root / "www/feed/v1.json")
         validate_feed(completed_feed, root)
+        completed_archive = read_json(root / "www/feed/v2.json")
+        validate_v2_chain(root, completed_archive)
+        assert [item["type"] for item in completed_archive["content"]] == ["editorial", "newPackages", "personalizedRecommendations"]
+        assert all(item["batchID"] == completed_archive["content"][0]["batchID"] for item in completed_archive["content"])
         assert completed_feed["content"][0]["artwork"]["boxColors"]["foreground"] == "#FFFFFF"
         missing_artwork_feed = json.loads(json.dumps(completed_feed))
         missing_artwork_feed["content"][0].pop("artwork")
@@ -803,7 +1025,7 @@ def self_test() -> None:
         assert [item["type"] for item in completed_feed["content"][:3]] == ["editorial", "newPackages", "personalizedRecommendations"]
         assert list(completed_feed["packages"]) == sorted(completed_feed["packages"])
         changed = subprocess.run(["git", "-C", str(root), "show", "--pretty=", "--name-only", "HEAD"], text=True, capture_output=True, check=True).stdout.splitlines()
-        assert changed == ["www/feed/v1.json"]
+        assert changed == ["www/feed/v1.json", "www/feed/v2.json"]
         staged = subprocess.run(["git", "-C", str(root), "diff", "--cached", "--name-only"], text=True, capture_output=True, check=True).stdout.splitlines()
         assert staged == ["unrelated.txt"]
         check = subprocess.run(command + ["--check"], env=env, text=True, capture_output=True)
@@ -830,6 +1052,25 @@ def self_test() -> None:
         retained_new = next(item for item in retained["content"] if item["type"] == "newPackages")["packageIDs"]
         assert len(retained_new) == 12
         assert len(content(retained, "editorial")) == 12
+
+        snapshot = completed_archive["content"][-1]
+        crowded = json.loads(json.dumps(completed_archive))
+        crowded["content"] = []
+        for index in range(19):
+            item = json.loads(json.dumps(snapshot))
+            item["id"] = f"for-you:fixture-{index}"
+            item["publishedAt"] = timestamp(at - timedelta(minutes=index))
+            crowded["content"].append(item)
+        new_blocks = json.loads(json.dumps(completed_archive["content"]))
+        for item in new_blocks:
+            item["id"] += ":next"
+            item["batchID"] += ":next"
+            item["publishedAt"] = timestamp(at + timedelta(days=1))
+        rolled, frozen = append_v2(root, crowded, new_blocks, at + timedelta(days=1))
+        assert len(rolled["content"]) == 3 and len(frozen) == 1
+        assert read_json(frozen[0])["content"] == crowded["content"]
+        write_json(root / "www/feed/v2.json", rolled)
+        validate_v2_chain(root, rolled)
 
 
 if __name__ == "__main__":
