@@ -696,7 +696,10 @@ def self_test() -> None:
         write_json(root / ".feed-work/response.json", fixture_response(request))
         completed = subprocess.run(command, env=env, text=True, capture_output=True)
         assert completed.returncode == 0 and "PMM_FEED_STATUS=COMMITTED" in completed.stdout
-        validate_feed(read_json(root / "www/feed/v1.json"), root)
+        completed_feed = read_json(root / "www/feed/v1.json")
+        validate_feed(completed_feed, root)
+        assert [item["type"] for item in completed_feed["content"][:3]] == ["editorial", "newPackages", "personalizedRecommendations"]
+        assert list(completed_feed["packages"]) == sorted(completed_feed["packages"])
         changed = subprocess.run(["git", "-C", str(root), "show", "--pretty=", "--name-only", "HEAD"], text=True, capture_output=True, check=True).stdout.splitlines()
         assert changed == ["www/feed/v1.json"]
         staged = subprocess.run(["git", "-C", str(root), "diff", "--cached", "--name-only"], text=True, capture_output=True, check=True).stdout.splitlines()
@@ -710,6 +713,21 @@ def self_test() -> None:
         assert due.returncode == 0 and "PMM_FEED_STATUS=NEEDS_AGENT" in due.stdout
         later_request = read_json(root / ".feed-work/request.json")
         assert later_request["editorialRequired"] and later_request["recommendationCount"] == 0
+        retention_feed = json.loads(json.dumps(completed_feed))
+        shelf = next(item for item in retention_feed["content"] if item["type"] == "newPackages")
+        shelf["packageIDs"] = list(retention_feed["packages"])[:18]
+        original_editorial = next(item for item in retention_feed["content"] if item["type"] == "editorial")
+        older_editorials = []
+        for days in range(1, 14):
+            item = dict(original_editorial)
+            item["id"] = f"editorial:fixture:{days}"
+            item["publishedAt"] = timestamp(at - timedelta(days=days))
+            older_editorials.append(item)
+        retention_feed["content"].extend(older_editorials)
+        retained = apply_response(retention_feed, later_request, fixture_response(later_request), root, at + timedelta(days=4))
+        retained_new = next(item for item in retained["content"] if item["type"] == "newPackages")["packageIDs"]
+        assert len(retained_new) == 12
+        assert len(content(retained, "editorial")) == 12
 
 
 if __name__ == "__main__":
