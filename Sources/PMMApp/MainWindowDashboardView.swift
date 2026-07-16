@@ -217,10 +217,11 @@ private struct DashboardDiscoverEditorialCard: View {
                     .tint(foreground.opacity(0.18))
             }
             .frame(width: 320, alignment: .leading)
-            .padding(28)
+            .padding(36)
             .frame(maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, minHeight: 320, maxHeight: 360)
+        .frame(maxWidth: .infinity)
+        .frame(height: 360)
         .background(LinearGradient(colors: [Color(feedHex: boxColors?.backgroundStart ?? "#1F1638"), Color(feedHex: boxColors?.backgroundEnd ?? "#481488")], startPoint: .topLeading, endPoint: .bottomTrailing))
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
