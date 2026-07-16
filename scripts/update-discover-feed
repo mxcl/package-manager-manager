@@ -602,6 +602,24 @@ def commit_feed(root: Path, feed_path: Path, feed: dict) -> bool:
     return changed
 
 
+def backfill_editorial_artwork(feed: dict, raw: object, root: Path) -> dict:
+    if not isinstance(raw, dict) or set(raw) != {"editorialID", "artwork"}:
+        raise FeedError("artwork backfill must contain editorialID and artwork")
+    identifier = raw["editorialID"]
+    if not isinstance(identifier, str):
+        raise FeedError("artwork backfill editorialID is required")
+    artwork = validate_artwork(raw["artwork"], root)
+    for item in content(feed, "editorial"):
+        if item.get("id") == identifier:
+            if item.get("artwork"):
+                raise FeedError("editorial already has artwork")
+            result = json.loads(json.dumps(feed))
+            next(item for item in content(result, "editorial") if item["id"] == identifier)["artwork"] = artwork
+            validate_feed(result, root)
+            return result
+    raise FeedError("artwork backfill editorial was not found")
+
+
 def run() -> int:
     root, feed_path, work = root_paths()
     try:
@@ -612,6 +630,14 @@ def run() -> int:
         if "--self-test" in sys.argv:
             self_test()
             print("PMM_FEED_STATUS=SELF_TESTED")
+            return 0
+        if "--backfill-artwork" in sys.argv:
+            payload = read_json(work / "artwork-backfill.json")
+            result = backfill_editorial_artwork(read_json(feed_path), payload, root)
+            write_json(feed_path, result)
+            changed = commit_feed(root, feed_path, result)
+            (work / "artwork-backfill.json").unlink()
+            print("PMM_FEED_STATUS=COMMITTED" if changed else "PMM_FEED_STATUS=NOOP")
             return 0
         request_path, response_path = work / "request.json", work / "response.json"
         if request_path.exists():
@@ -767,6 +793,13 @@ def self_test() -> None:
         completed_feed = read_json(root / "www/feed/v1.json")
         validate_feed(completed_feed, root)
         assert completed_feed["content"][0]["artwork"]["boxColors"]["foreground"] == "#FFFFFF"
+        missing_artwork_feed = json.loads(json.dumps(completed_feed))
+        missing_artwork_feed["content"][0].pop("artwork")
+        backfilled = backfill_editorial_artwork(missing_artwork_feed, {
+            "editorialID": missing_artwork_feed["content"][0]["id"],
+            "artwork": fixture_response(request)["editorial"]["artwork"],
+        }, root)
+        assert backfilled["content"][0]["artwork"]["path"] == "feed/assets/fixture.webp"
         assert [item["type"] for item in completed_feed["content"][:3]] == ["editorial", "newPackages", "personalizedRecommendations"]
         assert list(completed_feed["packages"]) == sorted(completed_feed["packages"])
         changed = subprocess.run(["git", "-C", str(root), "show", "--pretty=", "--name-only", "HEAD"], text=True, capture_output=True, check=True).stdout.splitlines()
