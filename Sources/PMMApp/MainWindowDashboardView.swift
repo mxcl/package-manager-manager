@@ -138,7 +138,7 @@ private struct DashboardDiscoverFeedView: View {
             if let feed {
                 VStack(spacing: 24) {
                     if let editorial = feed.editorial {
-                        DashboardDiscoverEditorialCard(editorial: editorial, package: editorial.primaryPackageID.flatMap { feed.packages[$0] }) {
+                        DashboardDiscoverEditorialCard(editorial: editorial) {
                             selectedEditorial = editorial
                         }
                     }
@@ -178,14 +178,26 @@ private struct DashboardDiscoverFeedView: View {
 
 private struct DashboardDiscoverEditorialCard: View {
     let editorial: DiscoverFeedContent
-    let package: DiscoverFeedPackage?
     let read: () -> Void
 
     private var boxColors: DiscoverFeedArtwork.BoxColors? { editorial.artwork?.boxColors }
     private var foreground: Color { Color(feedHex: boxColors?.foreground ?? "#FFFFFF") }
 
     var body: some View {
-        HStack(spacing: 0) {
+        ZStack(alignment: .leading) {
+            editorialArtwork
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            LinearGradient(
+                colors: [
+                    Color(feedHex: boxColors?.backgroundStart ?? "#1F1638").opacity(0.98),
+                    Color(feedHex: boxColors?.backgroundStart ?? "#1F1638").opacity(0.7),
+                    .clear
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+
             VStack(alignment: .leading, spacing: 14) {
                 Text("EDITORIAL")
                     .font(.caption.weight(.bold))
@@ -205,13 +217,9 @@ private struct DashboardDiscoverEditorialCard: View {
                     .buttonStyle(.borderedProminent)
                     .tint(foreground.opacity(0.18))
             }
-            .frame(width: 264)
-            .frame(maxHeight: .infinity, alignment: .leading)
+            .frame(width: 320, alignment: .leading)
             .padding(28)
-            .layoutPriority(1)
-            editorialArtwork
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .layoutPriority(-1)
+            .frame(maxHeight: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, minHeight: 320, maxHeight: 360)
         .background(LinearGradient(colors: [Color(feedHex: boxColors?.backgroundStart ?? "#1F1638"), Color(feedHex: boxColors?.backgroundEnd ?? "#481488")], startPoint: .topLeading, endPoint: .bottomTrailing))
