@@ -2,6 +2,118 @@
   "content": [
     {
       "artwork": {
+        "alt": "Translucent package blocks flow into a luminous shared vault and branch into several project folders on a dark indigo field.",
+        "attribution": "Generated with OpenAI image generation",
+        "boxColors": {
+          "backgroundEnd": "#06244D",
+          "backgroundStart": "#11183E",
+          "foreground": "#FFFFFF"
+        },
+        "license": "OpenAI terms of use",
+        "path": "feed/assets/pnpm-one-store-many-projects.png"
+      },
+      "body": "JavaScript projects collect dependencies fast. A modest application can pull thousands of files into `node_modules`, and a laptop with ten related repositories may store the same versions ten times. pnpm approaches that waste as a storage problem. It keeps package contents in a shared, content-addressed store, then links the files each project needs into place. The result looks familiar to Node.js tooling while using far less physical space across projects.\n\nThe project dates to 2016 and grew alongside two pressures in JavaScript development: dependency trees became larger, and monorepos moved from unusual infrastructure to an ordinary way of keeping applications, libraries, and configuration together. npm and Yarn have changed a great deal during the same period, so pnpm cannot claim every speed or storage win in every environment. Its lasting contribution is a clear model: identical package content belongs in one store, and a project should access only the dependencies it declares.\n\nThat second property catches teams by surprise. Traditional flat `node_modules` layouts can make transitive dependencies appear importable from application code. The package exists on disk because another dependency requested it, even though your own `package.json` says nothing about it. Code built on that accident can break when the dependency tree changes. pnpm's linked layout makes those undeclared imports harder to get away with. A migration may expose failures on day one, but each failure identifies a missing contract that was already present in the codebase.\n\nThe shared store does not mean projects share mutable package files. pnpm addresses package content by integrity and links it into a virtual store before constructing the dependency view a project expects. Different projects can pin different versions. A changed file gets new content rather than rewriting the old object under another project's feet. Developers still get a `node_modules` directory, lifecycle scripts, registry configuration, and a lockfile. The machinery underneath is different, while the working surface stays close to the npm ecosystem.\n\nWorkspaces make the design more compelling. A repository can declare several packages in `pnpm-workspace.yaml`, run commands across them, and use the `workspace:` protocol when one local package depends on another. The lockfile records the resolved graph for repeatable installs. Teams often pair this with a task runner, but pnpm's filtering and recursive commands cover many release, test, and build routines on their own. The official project site lists Next.js, Vue, Vite, Nuxt, Prisma, and other open-source projects among its users. State of JavaScript's 2024 monorepo results also place pnpm at the front of that survey's respondents. Those examples do not predict performance in your repository, but they show that the layout works beyond small demonstrations.\n\nCI needs deliberate setup. Caching the pnpm store can save downloads, though restoring a huge cache may cost more than fetching the missing packages. A committed lockfile and `--frozen-lockfile` give the build a stable input. Corepack or an explicit setup action can pin the package-manager version so local machines and CI interpret that lockfile with the same release. Container builds need another decision: copy only the manifests first for layer reuse, then install and build, or use pnpm's deployment commands to produce a pruned application tree.\n\nMigration starts with the lockfile and the dependency graph, not the install command. Remove the previous manager's artifacts, generate `pnpm-lock.yaml`, run the complete test suite, and inspect failures for undeclared dependencies or tools that resolve modules through undocumented paths. Native modules and postinstall scripts deserve attention. Deployment platforms may need a package-manager declaration in `package.json`, and contributor documentation should name the expected version. Keep the change separate from dependency upgrades so reviewers can distinguish layout problems from new package behavior.\n\npnpm will not rescue a disorganized workspace. Catalogs, overrides, peer-dependency settings, and filters can become another configuration language if a team adopts them without a concrete need. The symlinked layout can confuse software that assumes every file has a conventional physical path. Security controls around dependency age and script execution help only when teams understand their settings and review exceptions. npm remains a sensible default for many repositories because it ships with Node and asks less of new contributors. Yarn and Bun offer their own workspace, performance, and runtime choices.\n\nThe useful test is small: convert one representative repository, measure clean and warm installs, compare disk use, run CI, and ask maintainers whether the stricter graph exposed real defects or created busywork. pnpm earns its place when the shared store reduces waste and the workspace model clarifies ownership. If those gains do not appear, switching package managers adds churn without improving the software.",
+      "deck": "A package manager built around shared files, stricter dependency boundaries, and the practical demands of JavaScript monorepos.",
+      "id": "editorial:2026-07-16:pnpm-one-store-many-projects",
+      "primaryPackageID": "brew:pnpm",
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "pnpm documentation and project users",
+          "url": "https://pnpm.io/"
+        },
+        {
+          "kind": "primary",
+          "title": "pnpm source repository",
+          "url": "https://github.com/pnpm/pnpm"
+        },
+        {
+          "kind": "primary",
+          "title": "pnpm release history",
+          "url": "https://github.com/pnpm/pnpm/releases"
+        },
+        {
+          "kind": "independent",
+          "title": "State of JavaScript 2024 monorepo tools results",
+          "url": "https://2024.stateofjs.com/en-US/libraries/monorepo_tools/"
+        }
+      ],
+      "title": "pnpm: One Store, Many Projects",
+      "type": "editorial"
+    },
+    {
+      "id": "new-packages",
+      "packageIDs": [
+        "brew:zsh-patina",
+        "brew:faker",
+        "brew:mosdepth",
+        "brew:cyclonedx-npm",
+        "brew:soar",
+        "brew:perlnavigator"
+      ],
+      "title": "New Packages",
+      "type": "newPackages"
+    },
+    {
+      "candidatePackageIDs": [
+        "npm:nanoid",
+        "npm:browserslist",
+        "npm:yaml",
+        "npm:jiti",
+        "npm:eslint",
+        "npm:vite",
+        "npm:rollup",
+        "npm:prettier",
+        "npm:pnpm",
+        "npm:fast-xml-parser",
+        "npm:terser",
+        "npm:autoprefixer",
+        "npm:tsx",
+        "npm:vitest",
+        "npm:playwright",
+        "brew:vals",
+        "brew:dolt",
+        "brew:datasette",
+        "npm:playwright-core",
+        "brew:pnpm",
+        "brew:deno",
+        "brew:ggshield",
+        "brew:topgrade",
+        "brew:kew"
+      ],
+      "fallbackPackageIDs": [
+        "npm:playwright-core",
+        "brew:topgrade",
+        "brew:pnpm",
+        "brew:kew",
+        "brew:ggshield",
+        "brew:deno",
+        "npm:yaml",
+        "npm:vitest",
+        "npm:vite",
+        "npm:tsx",
+        "npm:terser",
+        "npm:rollup",
+        "npm:prettier",
+        "npm:pnpm",
+        "npm:playwright",
+        "npm:nanoid",
+        "npm:jiti",
+        "npm:fast-xml-parser",
+        "npm:eslint",
+        "npm:browserslist",
+        "npm:autoprefixer",
+        "brew:vals",
+        "brew:dolt",
+        "brew:datasette"
+      ],
+      "id": "for-you",
+      "title": "For You",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "artwork": {
         "alt": "Luminous translucent geometric layers resolve into a connected structure against a deep navy background.",
         "attribution": "Generated with OpenAI image generation",
         "boxColors": {
@@ -41,79 +153,9 @@
       ],
       "title": "TypeScript: Static Checking Without a Runtime Rewrite",
       "type": "editorial"
-    },
-    {
-      "id": "new-packages",
-      "packageIDs": [
-        "brew:zsh-patina",
-        "brew:faker",
-        "brew:mosdepth",
-        "brew:cyclonedx-npm",
-        "brew:soar",
-        "brew:perlnavigator"
-      ],
-      "title": "New Packages",
-      "type": "newPackages"
-    },
-    {
-      "candidatePackageIDs": [
-        "npm:semver",
-        "npm:uuid",
-        "npm:esbuild",
-        "npm:js-yaml",
-        "npm:typescript",
-        "npm:acorn",
-        "npm:nanoid",
-        "npm:browserslist",
-        "npm:yaml",
-        "npm:jiti",
-        "npm:eslint",
-        "npm:vite",
-        "npm:rollup",
-        "npm:prettier",
-        "npm:pnpm",
-        "npm:fast-xml-parser",
-        "npm:terser",
-        "npm:autoprefixer",
-        "npm:tsx",
-        "npm:vitest",
-        "npm:playwright",
-        "brew:vals",
-        "brew:dolt",
-        "brew:datasette"
-      ],
-      "fallbackPackageIDs": [
-        "npm:yaml",
-        "npm:vitest",
-        "npm:vite",
-        "npm:uuid",
-        "npm:typescript",
-        "npm:tsx",
-        "npm:terser",
-        "npm:semver",
-        "npm:rollup",
-        "npm:prettier",
-        "npm:pnpm",
-        "npm:playwright",
-        "npm:nanoid",
-        "npm:js-yaml",
-        "npm:jiti",
-        "npm:fast-xml-parser",
-        "npm:eslint",
-        "npm:esbuild",
-        "npm:browserslist",
-        "npm:autoprefixer",
-        "npm:acorn",
-        "brew:vals",
-        "brew:dolt",
-        "brew:datasette"
-      ],
-      "id": "for-you",
-      "title": "For You",
-      "type": "personalizedRecommendations"
     }
   ],
-  "generatedAt": "2026-07-16T17:09:55Z",
+  "generatedAt": "2026-07-16T22:49:02Z",
   "packages": {
     "brew:cyclonedx-npm": {
       "agentSummary": "cyclonedx-npm is a focused package for developers who need creates cyclonedx software bill of materials (sbom) from npm projects. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
@@ -207,6 +249,56 @@
         }
       ],
       "upstreamSummary": "Open source multi-tool for exploring and publishing data",
+      "version": null
+    },
+    "brew:deno": {
+      "agentSummary": "Deno is a JavaScript and TypeScript runtime with an integrated formatter, linter, test runner, package tooling, and permission controls. It can execute npm packages while favoring web-platform APIs and explicit capabilities. It works well for scripts and services that benefit from one toolchain, though Node compatibility, permission flags, deployment targets, and team conventions deserve a trial first.",
+      "assessment": {
+        "alternatives": [
+          "Node.js for broad ecosystem compatibility",
+          "Bun for an integrated runtime with a different compatibility profile"
+        ],
+        "audiences": [
+          "JavaScript and TypeScript developers evaluating an integrated runtime"
+        ],
+        "caveats": [
+          "Node-oriented packages can expose compatibility gaps",
+          "Permission prompts and flags become part of operations"
+        ],
+        "complements": [
+          "Deno Deploy, JSR, web-standard APIs, and project task definitions"
+        ],
+        "prerequisites": [
+          "Review of runtime permissions and compatibility for existing npm dependencies"
+        ],
+        "useCases": [
+          "Writing permission-scoped scripts",
+          "Running web services with built-in TypeScript tooling"
+        ]
+      },
+      "category": "language-runtime",
+      "displayName": "deno",
+      "docs": "https://docs.deno.com/",
+      "homepage": "https://deno.com/",
+      "id": "brew:deno",
+      "installURL": "pkgmgrmgr://install?package=brew%3Adeno",
+      "lastUpdatedAt": "2026-07-15T20:55:35Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/denoland/deno",
+      "researchedAt": "2026-07-16T22:49:02Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "Deno documentation",
+          "url": "https://docs.deno.com/runtime/"
+        },
+        {
+          "kind": "primary",
+          "title": "Deno source repository",
+          "url": "https://github.com/denoland/deno"
+        }
+      ],
+      "upstreamSummary": "Secure runtime for JavaScript and TypeScript",
       "version": null
     },
     "brew:dolt": {
@@ -303,6 +395,108 @@
       "upstreamSummary": "Python-based fake data generator",
       "version": null
     },
+    "brew:ggshield": {
+      "agentSummary": "ggshield scans repositories, commits, files, and CI changes for secrets using GitGuardian's detection engine. It can add a useful guard before code reaches a remote, especially where teams handle many cloud credentials. Useful results depend on authentication, policy tuning, and a response process; treat findings as leads, revoke exposed credentials, and review what content leaves the machine.",
+      "assessment": {
+        "alternatives": [
+          "Gitleaks",
+          "TruffleHog",
+          "Host-provided secret scanning"
+        ],
+        "audiences": [
+          "Developers and security teams preventing credentials from entering source history"
+        ],
+        "caveats": [
+          "False positives need triage",
+          "Cloud-backed scanning requires reviewing data-handling terms"
+        ],
+        "complements": [
+          "Pre-commit hooks, protected secrets stores, key rotation, and repository scanning"
+        ],
+        "prerequisites": [
+          "A GitGuardian account or documented offline configuration, plus a credential response policy"
+        ],
+        "useCases": [
+          "Scanning staged changes and CI pipelines for secrets",
+          "Auditing repository history during incident response"
+        ]
+      },
+      "category": "security",
+      "displayName": "ggshield",
+      "docs": "https://docs.gitguardian.com/ggshield-docs/getting-started",
+      "homepage": "https://www.gitguardian.com",
+      "id": "brew:ggshield",
+      "installURL": "pkgmgrmgr://install?package=brew%3Aggshield",
+      "lastUpdatedAt": "2026-07-16T03:10:05Z",
+      "manager": "homebrew",
+      "repository": null,
+      "researchedAt": "2026-07-16T22:49:02Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "ggshield documentation",
+          "url": "https://docs.gitguardian.com/ggshield-docs/getting-started"
+        },
+        {
+          "kind": "primary",
+          "title": "ggshield source repository",
+          "url": "https://github.com/GitGuardian/ggshield"
+        }
+      ],
+      "upstreamSummary": "Scanner for secrets and sensitive data in code",
+      "version": null
+    },
+    "brew:kew": {
+      "agentSummary": "kew is a terminal music player that indexes a local library and offers playlists, search, gapless playback, album art, and visualizations without a desktop media application. It suits keyboard-driven listening and remote shells connected to audio hardware. Check codec support and terminal capabilities first, and remember that local metadata quality determines how pleasant browsing feels.",
+      "assessment": {
+        "alternatives": [
+          "cmus",
+          "mpd with a terminal client",
+          "A graphical local-library player"
+        ],
+        "audiences": [
+          "Terminal users with a local music collection"
+        ],
+        "caveats": [
+          "Codec and artwork support vary by platform",
+          "It focuses on local files rather than streaming subscriptions"
+        ],
+        "complements": [
+          "Accurate music tags, terminal image protocols, and command-line audio tools"
+        ],
+        "prerequisites": [
+          "Local audio files, a supported audio device, and compatible terminal features"
+        ],
+        "useCases": [
+          "Browsing and playing albums without leaving the terminal",
+          "Controlling music from a keyboard-focused workstation"
+        ]
+      },
+      "category": "media",
+      "displayName": "kew",
+      "docs": "https://github.com/ravachol/kew#readme",
+      "homepage": "https://github.com/ravachol/kew",
+      "id": "brew:kew",
+      "installURL": "pkgmgrmgr://install?package=brew%3Akew",
+      "lastUpdatedAt": "2026-07-16T00:52:22Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/ravachol/kew",
+      "researchedAt": "2026-07-16T22:49:02Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "kew source and documentation",
+          "url": "https://github.com/ravachol/kew"
+        },
+        {
+          "kind": "primary",
+          "title": "kew releases",
+          "url": "https://github.com/ravachol/kew/releases"
+        }
+      ],
+      "upstreamSummary": "Command-line music player",
+      "version": null
+    },
     "brew:mosdepth": {
       "agentSummary": "mosdepth is a focused package for developers who need fast bam/cram depth calculation for wgs, exome, or targeted sequencing. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
       "assessment": {
@@ -397,6 +591,56 @@
       "upstreamSummary": "Perl language server",
       "version": null
     },
+    "brew:pnpm": {
+      "agentSummary": "pnpm installs JavaScript dependencies through a content-addressed store, so projects can reuse package files instead of keeping separate physical copies. Its strict dependency layout also exposes undeclared imports that flatter layouts can hide. It fits monorepos and machines with many Node projects, but teams must align lockfiles, CI caches, deployment tooling, and Node version policy before switching.",
+      "assessment": {
+        "alternatives": [
+          "npm for the Node.js default",
+          "Yarn or Bun for different workspace and runtime tradeoffs"
+        ],
+        "audiences": [
+          "JavaScript and TypeScript teams managing several projects or a monorepo"
+        ],
+        "caveats": [
+          "Some tools still assume a flat dependency tree",
+          "Changing package managers creates a large lockfile and CI review"
+        ],
+        "complements": [
+          "Corepack, committed lockfiles, CI dependency caches, and workspace-aware build tools"
+        ],
+        "prerequisites": [
+          "A supported JavaScript runtime and a project whose tooling accepts pnpm's node_modules layout"
+        ],
+        "useCases": [
+          "Reducing repeated dependency storage",
+          "Running workspace commands across related packages"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "pnpm",
+      "docs": "https://pnpm.io/",
+      "homepage": "https://pnpm.io/",
+      "id": "brew:pnpm",
+      "installURL": "pkgmgrmgr://install?package=brew%3Apnpm",
+      "lastUpdatedAt": "2026-07-16T04:48:52Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/pnpm/pnpm",
+      "researchedAt": "2026-07-16T22:49:02Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "pnpm documentation",
+          "url": "https://pnpm.io/"
+        },
+        {
+          "kind": "primary",
+          "title": "pnpm source repository",
+          "url": "https://github.com/pnpm/pnpm"
+        }
+      ],
+      "upstreamSummary": "Fast, disk space efficient package manager",
+      "version": null
+    },
     "brew:soar": {
       "agentSummary": "soar is a focused package for developers who need fast, modern package manager for static binaries, portable formats and more. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
       "assessment": {
@@ -442,6 +686,55 @@
         }
       ],
       "upstreamSummary": "Fast, modern package manager for Static Binaries, Portable Formats and more",
+      "version": null
+    },
+    "brew:topgrade": {
+      "agentSummary": "Topgrade discovers supported package managers and update tools, then runs their upgrade routines from one command. It can reduce maintenance friction on a developer workstation with several ecosystems. Convenience also widens the blast radius: read the plan, configure exclusions, keep backups, and avoid unattended use on production machines where one incompatible upgrade could interrupt service.",
+      "assessment": {
+        "alternatives": [
+          "Updating each manager directly",
+          "Pinned environments managed by Nix or containers"
+        ],
+        "audiences": [
+          "Developers maintaining workstations with several package ecosystems"
+        ],
+        "caveats": [
+          "One run can change many unrelated tools",
+          "Interactive managers and breaking upgrades still need human attention"
+        ],
+        "complements": [
+          "Version managers, system backups, changelog review, and reproducible project environments"
+        ],
+        "prerequisites": [
+          "Existing package managers, backups, and enough familiarity to inspect their upgrade output"
+        ],
+        "useCases": [
+          "Reviewing and running many routine upgrades from one interface"
+        ]
+      },
+      "category": "system",
+      "displayName": "topgrade",
+      "docs": "https://github.com/topgrade-rs/topgrade#readme",
+      "homepage": "https://github.com/topgrade-rs/topgrade",
+      "id": "brew:topgrade",
+      "installURL": "pkgmgrmgr://install?package=brew%3Atopgrade",
+      "lastUpdatedAt": "2026-07-15T20:49:28Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/topgrade-rs/topgrade",
+      "researchedAt": "2026-07-16T22:49:02Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "Topgrade source and documentation",
+          "url": "https://github.com/topgrade-rs/topgrade"
+        },
+        {
+          "kind": "primary",
+          "title": "Topgrade releases",
+          "url": "https://github.com/topgrade-rs/topgrade/releases"
+        }
+      ],
+      "upstreamSummary": "Upgrade all the things",
       "version": null
     },
     "brew:vals": {
@@ -538,53 +831,6 @@
       "upstreamSummary": "Blazingly fast Zsh syntax highlighter",
       "version": null
     },
-    "npm:acorn": {
-      "agentSummary": "acorn is a focused package for developers who need ecmascript parser. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
-      "assessment": {
-        "alternatives": [
-          "Built-in platform tools or another package in the same category"
-        ],
-        "audiences": [
-          "Developers and teams whose workflow matches the documented scope"
-        ],
-        "caveats": [
-          "Confirm compatibility, update policy, and operational impact before production use"
-        ],
-        "complements": [
-          "Version control, CI, and project-specific documentation"
-        ],
-        "prerequisites": [
-          "A compatible runtime, operating system, or project configuration"
-        ],
-        "useCases": [
-          "Automating the task described by the upstream project"
-        ]
-      },
-      "category": "networking",
-      "displayName": "acorn",
-      "docs": null,
-      "homepage": "https://github.com/acornjs/acorn",
-      "id": "npm:acorn",
-      "installURL": "pkgmgrmgr://install?package=npm%3Aacorn",
-      "lastUpdatedAt": "2026-06-11T16:39:51Z",
-      "manager": "npm",
-      "repository": null,
-      "researchedAt": "2026-07-16T17:09:55Z",
-      "sources": [
-        {
-          "kind": "primary",
-          "title": "acorn documentation",
-          "url": "https://github.com/acornjs/acorn"
-        },
-        {
-          "kind": "primary",
-          "title": "acorn project and release information",
-          "url": "https://www.npmjs.com/package/acorn"
-        }
-      ],
-      "upstreamSummary": "ECMAScript parser",
-      "version": "8.17.0"
-    },
     "npm:autoprefixer": {
       "agentSummary": "autoprefixer is a focused package for developers who need parse css and add vendor prefixes to css rules using values from the can i use website. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
       "assessment": {
@@ -678,53 +924,6 @@
       ],
       "upstreamSummary": "Share target browsers between different front-end tools, like Autoprefixer, Stylelint and babel-env-preset",
       "version": "4.28.6"
-    },
-    "npm:esbuild": {
-      "agentSummary": "esbuild is a focused package for developers who need an extremely fast javascript and css bundler and minifier.. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
-      "assessment": {
-        "alternatives": [
-          "Built-in platform tools or another package in the same category"
-        ],
-        "audiences": [
-          "Developers and teams whose workflow matches the documented scope"
-        ],
-        "caveats": [
-          "Confirm compatibility, update policy, and operational impact before production use"
-        ],
-        "complements": [
-          "Version control, CI, and project-specific documentation"
-        ],
-        "prerequisites": [
-          "A compatible runtime, operating system, or project configuration"
-        ],
-        "useCases": [
-          "Automating the task described by the upstream project"
-        ]
-      },
-      "category": "developer-tools",
-      "displayName": "esbuild",
-      "docs": null,
-      "homepage": "https://github.com/evanw/esbuild#readme",
-      "id": "npm:esbuild",
-      "installURL": "pkgmgrmgr://install?package=npm%3Aesbuild",
-      "lastUpdatedAt": "2026-06-11T22:47:05Z",
-      "manager": "npm",
-      "repository": null,
-      "researchedAt": "2026-07-16T17:09:55Z",
-      "sources": [
-        {
-          "kind": "primary",
-          "title": "esbuild documentation",
-          "url": "https://github.com/evanw/esbuild#readme"
-        },
-        {
-          "kind": "primary",
-          "title": "esbuild project and release information",
-          "url": "https://www.npmjs.com/package/esbuild"
-        }
-      ],
-      "upstreamSummary": "An extremely fast JavaScript and CSS bundler and minifier.",
-      "version": "0.28.1"
     },
     "npm:eslint": {
       "agentSummary": "eslint is a focused package for developers who need an ast-based pattern checker for javascript.. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
@@ -867,53 +1066,6 @@
       "upstreamSummary": "Runtime typescript and ESM support for Node.js",
       "version": "2.7.0"
     },
-    "npm:js-yaml": {
-      "agentSummary": "js-yaml is a focused package for developers who need yaml 1.2 parser and serializer. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
-      "assessment": {
-        "alternatives": [
-          "Built-in platform tools or another package in the same category"
-        ],
-        "audiences": [
-          "Developers and teams whose workflow matches the documented scope"
-        ],
-        "caveats": [
-          "Confirm compatibility, update policy, and operational impact before production use"
-        ],
-        "complements": [
-          "Version control, CI, and project-specific documentation"
-        ],
-        "prerequisites": [
-          "A compatible runtime, operating system, or project configuration"
-        ],
-        "useCases": [
-          "Automating the task described by the upstream project"
-        ]
-      },
-      "category": "data",
-      "displayName": "js-yaml",
-      "docs": null,
-      "homepage": "https://github.com/nodeca/js-yaml#readme",
-      "id": "npm:js-yaml",
-      "installURL": "pkgmgrmgr://install?package=npm%3Ajs-yaml",
-      "lastUpdatedAt": "2026-07-02T00:55:21Z",
-      "manager": "npm",
-      "repository": null,
-      "researchedAt": "2026-07-16T17:09:55Z",
-      "sources": [
-        {
-          "kind": "primary",
-          "title": "js-yaml documentation",
-          "url": "https://github.com/nodeca/js-yaml#readme"
-        },
-        {
-          "kind": "primary",
-          "title": "js-yaml project and release information",
-          "url": "https://www.npmjs.com/package/js-yaml"
-        }
-      ],
-      "upstreamSummary": "YAML 1.2 parser and serializer",
-      "version": "5.2.1"
-    },
     "npm:nanoid": {
       "agentSummary": "nanoid is a focused package for developers who need a tiny (118 bytes), secure url-friendly unique string id generator. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
       "assessment": {
@@ -1003,6 +1155,56 @@
           "kind": "primary",
           "title": "playwright project and release information",
           "url": "https://www.npmjs.com/package/playwright"
+        }
+      ],
+      "upstreamSummary": "A high-level API to automate web browsers",
+      "version": "1.61.1"
+    },
+    "npm:playwright-core": {
+      "agentSummary": "Playwright Core provides the browser-control engine behind Playwright without bundling its test runner. It suits tool authors building crawlers, browser agents, inspection utilities, or custom test harnesses across Chromium, Firefox, and WebKit. Expect browser downloads, frequent compatibility updates, and operational work around sandboxing, timeouts, selectors, and the websites being automated.",
+      "assessment": {
+        "alternatives": [
+          "Puppeteer for Chromium-focused automation",
+          "WebDriver-based clients for standards-oriented remote control"
+        ],
+        "audiences": [
+          "Authors of browser automation tools and custom test infrastructure"
+        ],
+        "caveats": [
+          "Automated sites can change without notice",
+          "Browser binaries increase download and cache size"
+        ],
+        "complements": [
+          "The full Playwright test runner, CI artifacts, and accessibility checks"
+        ],
+        "prerequisites": [
+          "A supported Node.js release and downloaded browser binaries"
+        ],
+        "useCases": [
+          "Driving Chromium, Firefox, or WebKit through one JavaScript API",
+          "Building crawlers, agents, and visual inspection tools"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "playwright-core",
+      "docs": null,
+      "homepage": "https://playwright.dev",
+      "id": "npm:playwright-core",
+      "installURL": "pkgmgrmgr://install?package=npm%3Aplaywright-core",
+      "lastUpdatedAt": "2026-06-23T19:49:07Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T22:49:02Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "Playwright documentation",
+          "url": "https://playwright.dev/docs/intro"
+        },
+        {
+          "kind": "primary",
+          "title": "Microsoft Playwright repository",
+          "url": "https://github.com/microsoft/playwright"
         }
       ],
       "upstreamSummary": "A high-level API to automate web browsers",
@@ -1149,53 +1351,6 @@
       "upstreamSummary": "Next-generation ES module bundler",
       "version": "4.62.2"
     },
-    "npm:semver": {
-      "agentSummary": "semver is a focused package for developers who need the semantic version parser used by npm.. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
-      "assessment": {
-        "alternatives": [
-          "Built-in platform tools or another package in the same category"
-        ],
-        "audiences": [
-          "Developers and teams whose workflow matches the documented scope"
-        ],
-        "caveats": [
-          "Confirm compatibility, update policy, and operational impact before production use"
-        ],
-        "complements": [
-          "Version control, CI, and project-specific documentation"
-        ],
-        "prerequisites": [
-          "A compatible runtime, operating system, or project configuration"
-        ],
-        "useCases": [
-          "Automating the task described by the upstream project"
-        ]
-      },
-      "category": "developer-tools",
-      "displayName": "semver",
-      "docs": null,
-      "homepage": "https://github.com/npm/node-semver#readme",
-      "id": "npm:semver",
-      "installURL": "pkgmgrmgr://install?package=npm%3Asemver",
-      "lastUpdatedAt": "2026-06-19T18:32:48Z",
-      "manager": "npm",
-      "repository": null,
-      "researchedAt": "2026-07-16T17:09:55Z",
-      "sources": [
-        {
-          "kind": "primary",
-          "title": "semver documentation",
-          "url": "https://github.com/npm/node-semver#readme"
-        },
-        {
-          "kind": "primary",
-          "title": "semver project and release information",
-          "url": "https://www.npmjs.com/package/semver"
-        }
-      ],
-      "upstreamSummary": "The semantic version parser used by npm.",
-      "version": "7.8.5"
-    },
     "npm:terser": {
       "agentSummary": "terser is a focused package for developers who need javascript parser, mangler/compressor and beautifier toolkit for es6+. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
       "assessment": {
@@ -1336,53 +1491,6 @@
       ],
       "upstreamSummary": "TypeScript is a language for application scale JavaScript development",
       "version": "7.0.2"
-    },
-    "npm:uuid": {
-      "agentSummary": "uuid is a focused package for developers who need rfc9562 uuids. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
-      "assessment": {
-        "alternatives": [
-          "Built-in platform tools or another package in the same category"
-        ],
-        "audiences": [
-          "Developers and teams whose workflow matches the documented scope"
-        ],
-        "caveats": [
-          "Confirm compatibility, update policy, and operational impact before production use"
-        ],
-        "complements": [
-          "Version control, CI, and project-specific documentation"
-        ],
-        "prerequisites": [
-          "A compatible runtime, operating system, or project configuration"
-        ],
-        "useCases": [
-          "Automating the task described by the upstream project"
-        ]
-      },
-      "category": "developer-tools",
-      "displayName": "uuid",
-      "docs": null,
-      "homepage": "https://github.com/uuidjs/uuid#readme",
-      "id": "npm:uuid",
-      "installURL": "pkgmgrmgr://install?package=npm%3Auuid",
-      "lastUpdatedAt": "2026-06-20T11:56:02Z",
-      "manager": "npm",
-      "repository": null,
-      "researchedAt": "2026-07-16T17:09:55Z",
-      "sources": [
-        {
-          "kind": "primary",
-          "title": "uuid documentation",
-          "url": "https://github.com/uuidjs/uuid#readme"
-        },
-        {
-          "kind": "primary",
-          "title": "uuid project and release information",
-          "url": "https://www.npmjs.com/package/uuid"
-        }
-      ],
-      "upstreamSummary": "RFC9562 UUIDs",
-      "version": "14.0.1"
     },
     "npm:vite": {
       "agentSummary": "vite is a focused package for developers who need native-esm powered web dev build tool. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
