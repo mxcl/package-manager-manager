@@ -32,6 +32,16 @@ struct DiscoverFeedContent: Decodable, Identifiable {
     let primaryPackageID: String?
     let packageIDs: [String]?
     let candidatePackageIDs: [String]?
+    let artwork: DiscoverFeedArtwork?
+
+    var artworkURL: URL? {
+        guard let path = artwork?.path else { return nil }
+        return URL(string: path, relativeTo: URL(string: "https://mxcl.dev/package-manager-manager/")!)?.absoluteURL
+    }
+}
+
+struct DiscoverFeedArtwork: Decodable {
+    let path: String
 }
 
 struct DiscoverFeedPackage: Decodable, Identifiable {

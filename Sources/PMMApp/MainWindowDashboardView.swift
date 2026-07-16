@@ -26,25 +26,12 @@ struct MainWindowDashboardView: View {
         }
     }
 
-    private var dashboardStats: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 110), spacing: dashboardCardSpacing), count: 3), spacing: dashboardCardSpacing) {
-            DashboardMetricCard(title: "Installed packages", value: model.dashboardInstalledCount, detail: model.dashboardInstalledThisWeekText, isLoading: model.dashboardIsLoadingData, tint: AnyShapeStyle(.tertiary)) {
-                model.selectSection(.installed)
-            }
-            DashboardMetricCard(title: "Outdated", value: model.dashboardOutdatedCount, detail: (model.dashboardOutdatedCount ?? 0) > 0 ? "View updates" : nil, isLoading: model.dashboardIsLoadingData, tint: AnyShapeStyle(Color.accentColor)) {
-                model.selectSection(.outdated)
-            }
-            DashboardMetricCard(title: "Ecosystems", value: model.dashboardActiveEcosystemCount, detail: "Active", isLoading: model.dashboardIsLoadingData, tint: AnyShapeStyle(.tertiary)) {
-                if let section = model.visibleManagerSections.first {
-                    model.selectSection(section)
-                }
-            }
-        }
-    }
-
     private var dashboardMainColumn: some View {
-        VStack(spacing: dashboardCardSpacing) {
-            dashboardStats
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Discover")
+                .font(.largeTitle.bold())
+                .foregroundStyle(SystemColor.primaryText)
+                .padding(.horizontal, 8)
             DashboardDiscoverFeedView()
         }
     }
@@ -90,55 +77,6 @@ private struct DashboardCard<Content: View>: View {
         .overlay {
             RoundedRectangle(cornerRadius: dashboardItemCornerRadius, style: .continuous)
                 .stroke(colorScheme == .light ? Color.white : SystemColor.controlBorder, lineWidth: 1)
-        }
-    }
-}
-
-private struct DashboardMetricCard: View {
-    let title: String
-    let value: Int?
-    let detail: String?
-    let isLoading: Bool
-    let tint: AnyShapeStyle
-    var action: (() -> Void)?
-
-    @ViewBuilder
-    var body: some View {
-        if let action {
-            Button(action: action) {
-                card
-            }
-            .buttonStyle(.plain)
-        } else {
-            card
-        }
-    }
-
-    private var card: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 8) {
-                if isLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                        .frame(height: 29, alignment: .leading)
-                } else {
-                    Text((value ?? 0).formatted())
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(SystemColor.primaryText)
-                        .monospacedDigit()
-                }
-                Text(title)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SystemColor.secondaryText)
-                    .lineLimit(1)
-                Text(detail ?? "")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(tint)
-                    .lineLimit(1)
-            }
-            .padding(18)
-            .frame(maxWidth: .infinity, minHeight: 104, alignment: .leading)
-            .contentShape(Rectangle())
         }
     }
 }
@@ -191,7 +129,7 @@ private struct DashboardDiscoverFeedView: View {
     var body: some View {
         Group {
             if let feed {
-                VStack(spacing: dashboardCardSpacing) {
+                VStack(spacing: 24) {
                     if let editorial = feed.editorial {
                         DashboardDiscoverEditorialCard(editorial: editorial, package: editorial.primaryPackageID.flatMap { feed.packages[$0] }) {
                             selectedEditorial = editorial
@@ -237,32 +175,48 @@ private struct DashboardDiscoverEditorialCard: View {
     let read: () -> Void
 
     var body: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Discover", systemImage: "sparkles")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.accentColor)
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("EDITORIAL")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white.opacity(0.7))
                 Text(editorial.title ?? "Featured")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(SystemColor.primaryText)
+                    .font(.title.weight(.bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(4)
                 if let deck = editorial.deck {
                     Text(deck)
-                        .font(.system(size: 14))
-                        .foregroundStyle(SystemColor.secondaryText)
+                        .font(.body)
+                        .foregroundStyle(.white.opacity(0.78))
+                        .lineLimit(4)
                 }
-                if let body = editorial.body {
-                    Text(body)
-                        .font(.system(size: 13))
-                        .foregroundStyle(SystemColor.secondaryText)
-                        .lineLimit(7)
-                }
-                if let package {
-                    DashboardDiscoverPackageLink(package: package, label: "Explore \(package.displayName)")
-                }
+                Spacer(minLength: 0)
                 Button("Read article", action: read)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.white.opacity(0.18))
             }
-            .padding(18)
+            .padding(28)
+            .frame(maxWidth: 300, maxHeight: .infinity, alignment: .leading)
+            editorialArtwork
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, minHeight: 320, maxHeight: 360)
+        .background(LinearGradient(colors: [Color(red: 0.12, green: 0.08, blue: 0.22), Color(red: 0.28, green: 0.07, blue: 0.53)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var editorialArtwork: some View {
+        if let url = editorial.artworkURL {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                Color.white.opacity(0.08)
+            }
+            .clipped()
+        } else {
+            LinearGradient(colors: [.white.opacity(0.16), .white.opacity(0.03)], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
 }
@@ -312,14 +266,13 @@ private struct DashboardDiscoverPackageSection: View {
     let packages: [DiscoverFeedPackage]
 
     var body: some View {
-        DashboardCard {
-            DashboardSectionHeader(title: title, showsViewAll: false)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: dashboardCardSpacing)], spacing: dashboardCardSpacing) {
-                ForEach(packages) { package in
-                    DashboardDiscoverPackageLink(package: package)
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(SystemColor.primaryText)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 12)], spacing: 12) {
+                ForEach(packages) { DashboardDiscoverPackageLink(package: $0) }
             }
-            .padding([.horizontal, .bottom], 18)
         }
     }
 }
@@ -355,10 +308,10 @@ private struct DashboardDiscoverPackageLink: View {
                     .foregroundStyle(Color.accentColor)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 126, alignment: .topLeading)
-        .padding(14)
-        .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
+        .padding(18)
+        .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
