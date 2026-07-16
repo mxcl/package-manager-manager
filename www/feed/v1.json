@@ -1,10 +1,1523 @@
 {
-  "content": [],
-  "generatedAt": "2026-07-16T00:00:00Z",
-  "packages": {},
+  "content": [
+    {
+      "body": "JavaScript’s reach is part of its appeal. The same language can sit in a browser, power a build step, serve an API, and automate a small task. That reach also makes the edges of a codebase easy to blur: an object arrives from a request, a configuration file grows new fields, or a library changes an API, and the first sign of trouble may be a production exception. TypeScript was built to move a useful share of those mistakes earlier, into an editor or a build.\n\nThe project began at Microsoft and reached a public 1.0 release in 2014. Its central design choice was deliberately conservative: TypeScript adds a type system to JavaScript but emits JavaScript. Existing JavaScript can be adopted incrementally, and the compiler does not become a separate application runtime. That history matters because it explains both the tool’s staying power and its limits. Teams can add checking around a mature codebase without first translating every file, but type annotations do not turn untrusted runtime data into validated data.\n\nIn ordinary work, the compiler is most valuable as feedback close to the change. A renamed property can expose callers that still expect the old shape. A function signature documents the values it accepts and returns. Editor integrations use that same program model for completion, navigation, and refactoring. The Handbook describes TypeScript as a static type checker: it examines code before execution. That is a less glamorous claim than “safer JavaScript,” but it is the one to use when evaluating it.\n\nThe package also fits the npm ecosystem cleanly. It is usually a development dependency, with a tsconfig.json making choices about module output, strictness, library targets, and file inclusion explicit. That configuration is productive when it reflects the deployment target; copied settings can create confusion. Modern projects often let a framework, a bundler, or a test runner perform transpilation while tsc --noEmit handles checking. Others use the TypeScript compiler to emit JavaScript directly. Either approach can be sound, but it is worth having one clear owner for each job.\n\nActual usage is broader than any one framework. Libraries publish declaration files so consumers can see APIs before they call them. Application teams use typed boundaries between UI components, services, and persistence. Tooling authors use the compiler API and the language service to understand source code. npm distribution and a long-lived public repository make the release and source trail inspectable; the independent Stack Overflow survey is also a useful, imperfect signal that the language is familiar to many working developers. Familiarity is not a reason to add a dependency by itself, but it can lower hiring and collaboration friction.\n\nThe tradeoff is that TypeScript asks teams to learn a second way of describing JavaScript. Inference handles much of the work, yet generics, narrowing, declaration files, and module resolution can become real design concerns. Loose settings may preserve a false sense of safety; strict settings can reveal years of assumptions at once. A staged migration—checking new code first, enabling stricter options deliberately, and writing runtime validation at external boundaries—usually produces a better outcome than a sweeping annotation campaign.\n\nIt is also important not to confuse types with tests or security controls. The compiler cannot prove that a JSON payload, environment variable, database row, or third-party service is shaped as promised. Validate those inputs at runtime, test behavior, and keep dependency updates reviewed. Types excel at expressing the contracts inside code you control; they are weaker at enforcing facts outside it.\n\nFor a JavaScript project that has grown beyond a few files, TypeScript is often worth trying because the adoption path is reversible and measurable. Start with the compiler’s own documentation, enable checks in CI, and decide which errors should block a merge. If the team gains clearer changes and fewer interface mistakes, continue. If the configuration becomes ceremony without catching meaningful defects, scale it back. The useful outcome is not a more elaborate type system; it is a codebase whose assumptions are easier to see and change.",
+      "deck": "A practical look at why TypeScript remains a useful boundary around JavaScript, and where its guarantees end.",
+      "id": "editorial:2026-07-16:typescript-static-checking-without-a-runtime-rewrite",
+      "primaryPackageID": "npm:typescript",
+      "publishedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "TypeScript Handbook",
+          "url": "https://www.typescriptlang.org/docs/handbook/intro.html"
+        },
+        {
+          "kind": "primary",
+          "title": "TypeScript GitHub repository",
+          "url": "https://github.com/microsoft/TypeScript"
+        },
+        {
+          "kind": "primary",
+          "title": "TypeScript package on npm",
+          "url": "https://www.npmjs.com/package/typescript"
+        },
+        {
+          "kind": "independent",
+          "title": "Stack Overflow Developer Survey 2025",
+          "url": "https://survey.stackoverflow.co/2025/technology/"
+        }
+      ],
+      "title": "TypeScript: Static Checking Without a Runtime Rewrite",
+      "type": "editorial"
+    },
+    {
+      "id": "new-packages",
+      "packageIDs": [
+        "brew:zsh-patina",
+        "brew:faker",
+        "brew:mosdepth",
+        "brew:cyclonedx-npm",
+        "brew:soar",
+        "brew:perlnavigator"
+      ],
+      "title": "New Packages",
+      "type": "newPackages"
+    },
+    {
+      "candidatePackageIDs": [
+        "npm:semver",
+        "npm:uuid",
+        "npm:esbuild",
+        "npm:js-yaml",
+        "npm:typescript",
+        "npm:acorn",
+        "npm:nanoid",
+        "npm:browserslist",
+        "npm:yaml",
+        "npm:jiti",
+        "npm:eslint",
+        "npm:vite",
+        "npm:rollup",
+        "npm:prettier",
+        "npm:pnpm",
+        "npm:fast-xml-parser",
+        "npm:terser",
+        "npm:autoprefixer",
+        "npm:tsx",
+        "npm:vitest",
+        "npm:playwright",
+        "brew:vals",
+        "brew:dolt",
+        "brew:datasette"
+      ],
+      "fallbackPackageIDs": [
+        "npm:yaml",
+        "npm:vitest",
+        "npm:vite",
+        "npm:uuid",
+        "npm:typescript",
+        "npm:tsx",
+        "npm:terser",
+        "npm:semver",
+        "npm:rollup",
+        "npm:prettier",
+        "npm:pnpm",
+        "npm:playwright",
+        "npm:nanoid",
+        "npm:js-yaml",
+        "npm:jiti",
+        "npm:fast-xml-parser",
+        "npm:eslint",
+        "npm:esbuild",
+        "npm:browserslist",
+        "npm:autoprefixer",
+        "npm:acorn",
+        "brew:vals",
+        "brew:dolt",
+        "brew:datasette"
+      ],
+      "id": "for-you",
+      "title": "For You",
+      "type": "personalizedRecommendations"
+    }
+  ],
+  "generatedAt": "2026-07-16T17:09:55Z",
+  "packages": {
+    "brew:cyclonedx-npm": {
+      "agentSummary": "cyclonedx-npm is a focused package for developers who need creates cyclonedx software bill of materials (sbom) from npm projects. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "security",
+      "displayName": "cyclonedx-npm",
+      "docs": "https://cyclonedx.org/tool-center",
+      "homepage": "https://github.com/CycloneDX/cyclonedx-node-npm",
+      "id": "brew:cyclonedx-npm",
+      "installURL": "pkgmgrmgr://install?package=brew%3Acyclonedx-npm",
+      "lastUpdatedAt": "2026-07-13T03:36:27Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/CycloneDX/cyclonedx-node-npm",
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "cyclonedx-npm documentation",
+          "url": "https://cyclonedx.org/tool-center"
+        },
+        {
+          "kind": "primary",
+          "title": "cyclonedx-npm project and release information",
+          "url": "https://github.com/CycloneDX/cyclonedx-node-npm"
+        }
+      ],
+      "upstreamSummary": "Creates CycloneDX Software Bill of Materials (SBOM) from npm projects",
+      "version": null
+    },
+    "brew:datasette": {
+      "agentSummary": "datasette is a focused package for developers who need open source multi-tool for exploring and publishing data. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "data",
+      "displayName": "datasette",
+      "docs": "https://docs.datasette.io/en/stable",
+      "homepage": "https://docs.datasette.io/en/stable/",
+      "id": "brew:datasette",
+      "installURL": "pkgmgrmgr://install?package=brew%3Adatasette",
+      "lastUpdatedAt": "2026-07-15T10:42:08Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/simonw/datasette",
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "datasette documentation",
+          "url": "https://docs.datasette.io/en/stable"
+        },
+        {
+          "kind": "primary",
+          "title": "datasette project and release information",
+          "url": "https://github.com/simonw/datasette"
+        }
+      ],
+      "upstreamSummary": "Open source multi-tool for exploring and publishing data",
+      "version": null
+    },
+    "brew:dolt": {
+      "agentSummary": "dolt is a focused package for developers who need git for data. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "data",
+      "displayName": "dolt",
+      "docs": "https://docs.dolthub.com/",
+      "homepage": "https://www.dolthub.com",
+      "id": "brew:dolt",
+      "installURL": "pkgmgrmgr://install?package=brew%3Adolt",
+      "lastUpdatedAt": "2026-07-15T21:37:11Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/dolthub/dolt",
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "dolt documentation",
+          "url": "https://docs.dolthub.com/"
+        },
+        {
+          "kind": "primary",
+          "title": "dolt project and release information",
+          "url": "https://github.com/dolthub/dolt"
+        }
+      ],
+      "upstreamSummary": "Git for Data",
+      "version": null
+    },
+    "brew:faker": {
+      "agentSummary": "faker is a focused package for developers who need python-based fake data generator. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "data",
+      "displayName": "faker",
+      "docs": "https://faker.readthedocs.io/en/master",
+      "homepage": "https://faker.readthedocs.io",
+      "id": "brew:faker",
+      "installURL": "pkgmgrmgr://install?package=brew%3Afaker",
+      "lastUpdatedAt": "2026-07-14T18:46:47Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/joke2k/faker",
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "faker documentation",
+          "url": "https://faker.readthedocs.io/en/master"
+        },
+        {
+          "kind": "primary",
+          "title": "faker project and release information",
+          "url": "https://github.com/joke2k/faker"
+        }
+      ],
+      "upstreamSummary": "Python-based fake data generator",
+      "version": null
+    },
+    "brew:mosdepth": {
+      "agentSummary": "mosdepth is a focused package for developers who need fast bam/cram depth calculation for wgs, exome, or targeted sequencing. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "science",
+      "displayName": "mosdepth",
+      "docs": "https://github.com/brentp/mosdepth#readme",
+      "homepage": "https://github.com/brentp/mosdepth",
+      "id": "brew:mosdepth",
+      "installURL": "pkgmgrmgr://install?package=brew%3Amosdepth",
+      "lastUpdatedAt": "2026-07-13T04:04:09Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/brentp/mosdepth",
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "mosdepth documentation",
+          "url": "https://github.com/brentp/mosdepth#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "mosdepth project and release information",
+          "url": "https://github.com/brentp/mosdepth"
+        }
+      ],
+      "upstreamSummary": "Fast BAM/CRAM depth calculation for WGS, exome, or targeted sequencing",
+      "version": null
+    },
+    "brew:perlnavigator": {
+      "agentSummary": "perlnavigator is a focused package for developers who need perl language server. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "perlnavigator",
+      "docs": "https://github.com/bscan/PerlNavigator#readme",
+      "homepage": "https://github.com/bscan/PerlNavigator",
+      "id": "brew:perlnavigator",
+      "installURL": "pkgmgrmgr://install?package=brew%3Aperlnavigator",
+      "lastUpdatedAt": "2026-07-11T11:05:28Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/bscan/PerlNavigator",
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "perlnavigator documentation",
+          "url": "https://github.com/bscan/PerlNavigator#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "perlnavigator project and release information",
+          "url": "https://github.com/bscan/PerlNavigator"
+        }
+      ],
+      "upstreamSummary": "Perl language server",
+      "version": null
+    },
+    "brew:soar": {
+      "agentSummary": "soar is a focused package for developers who need fast, modern package manager for static binaries, portable formats and more. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "soar",
+      "docs": "https://soar.qaidvoid.dev/",
+      "homepage": "https://soar.qaidvoid.dev",
+      "id": "brew:soar",
+      "installURL": "pkgmgrmgr://install?package=brew%3Asoar",
+      "lastUpdatedAt": "2026-07-11T11:08:17Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/pkgforge/soar",
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "soar documentation",
+          "url": "https://soar.qaidvoid.dev/"
+        },
+        {
+          "kind": "primary",
+          "title": "soar project and release information",
+          "url": "https://github.com/pkgforge/soar"
+        }
+      ],
+      "upstreamSummary": "Fast, modern package manager for Static Binaries, Portable Formats and more",
+      "version": null
+    },
+    "brew:vals": {
+      "agentSummary": "vals is a focused package for developers who need helm-like configuration values loader with support for various sources. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "cloud-infrastructure",
+      "displayName": "vals",
+      "docs": "https://github.com/helmfile/vals#readme",
+      "homepage": "https://github.com/helmfile/vals",
+      "id": "brew:vals",
+      "installURL": "pkgmgrmgr://install?package=brew%3Avals",
+      "lastUpdatedAt": "2026-07-16T04:48:52Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/helmfile/vals",
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "vals documentation",
+          "url": "https://github.com/helmfile/vals#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "vals project and release information",
+          "url": "https://github.com/helmfile/vals"
+        }
+      ],
+      "upstreamSummary": "Helm-like configuration values loader with support for various sources",
+      "version": null
+    },
+    "brew:zsh-patina": {
+      "agentSummary": "zsh-patina is a focused package for developers who need blazingly fast zsh syntax highlighter. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": null,
+      "displayName": "zsh-patina",
+      "docs": null,
+      "homepage": "https://github.com/michel-kraemer/zsh-patina",
+      "id": "brew:zsh-patina",
+      "installURL": "pkgmgrmgr://install?package=brew%3Azsh-patina",
+      "lastUpdatedAt": "2026-07-15T14:05:15Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/michel-kraemer/zsh-patina",
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "zsh-patina documentation",
+          "url": "https://github.com/michel-kraemer/zsh-patina"
+        },
+        {
+          "kind": "primary",
+          "title": "zsh-patina project and release information",
+          "url": "https://formulae.brew.sh/formula/zsh-patina"
+        }
+      ],
+      "upstreamSummary": "Blazingly fast Zsh syntax highlighter",
+      "version": null
+    },
+    "npm:acorn": {
+      "agentSummary": "acorn is a focused package for developers who need ecmascript parser. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "networking",
+      "displayName": "acorn",
+      "docs": null,
+      "homepage": "https://github.com/acornjs/acorn",
+      "id": "npm:acorn",
+      "installURL": "pkgmgrmgr://install?package=npm%3Aacorn",
+      "lastUpdatedAt": "2026-06-11T16:39:51Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "acorn documentation",
+          "url": "https://github.com/acornjs/acorn"
+        },
+        {
+          "kind": "primary",
+          "title": "acorn project and release information",
+          "url": "https://www.npmjs.com/package/acorn"
+        }
+      ],
+      "upstreamSummary": "ECMAScript parser",
+      "version": "8.17.0"
+    },
+    "npm:autoprefixer": {
+      "agentSummary": "autoprefixer is a focused package for developers who need parse css and add vendor prefixes to css rules using values from the can i use website. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "networking",
+      "displayName": "autoprefixer",
+      "docs": null,
+      "homepage": "https://github.com/postcss/autoprefixer#readme",
+      "id": "npm:autoprefixer",
+      "installURL": "pkgmgrmgr://install?package=npm%3Aautoprefixer",
+      "lastUpdatedAt": "2026-07-14T16:41:39Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "autoprefixer documentation",
+          "url": "https://github.com/postcss/autoprefixer#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "autoprefixer project and release information",
+          "url": "https://www.npmjs.com/package/autoprefixer"
+        }
+      ],
+      "upstreamSummary": "Parse CSS and add vendor prefixes to CSS rules using values from the Can I Use website",
+      "version": "10.5.3"
+    },
+    "npm:browserslist": {
+      "agentSummary": "browserslist is a focused package for developers who need share target browsers between different front-end tools, like autoprefixer, stylelint and babel-env-preset. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "networking",
+      "displayName": "browserslist",
+      "docs": null,
+      "homepage": "https://github.com/browserslist/browserslist#readme",
+      "id": "npm:browserslist",
+      "installURL": "pkgmgrmgr://install?package=npm%3Abrowserslist",
+      "lastUpdatedAt": "2026-07-11T18:35:23Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "browserslist documentation",
+          "url": "https://github.com/browserslist/browserslist#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "browserslist project and release information",
+          "url": "https://www.npmjs.com/package/browserslist"
+        }
+      ],
+      "upstreamSummary": "Share target browsers between different front-end tools, like Autoprefixer, Stylelint and babel-env-preset",
+      "version": "4.28.6"
+    },
+    "npm:esbuild": {
+      "agentSummary": "esbuild is a focused package for developers who need an extremely fast javascript and css bundler and minifier.. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "esbuild",
+      "docs": null,
+      "homepage": "https://github.com/evanw/esbuild#readme",
+      "id": "npm:esbuild",
+      "installURL": "pkgmgrmgr://install?package=npm%3Aesbuild",
+      "lastUpdatedAt": "2026-06-11T22:47:05Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "esbuild documentation",
+          "url": "https://github.com/evanw/esbuild#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "esbuild project and release information",
+          "url": "https://www.npmjs.com/package/esbuild"
+        }
+      ],
+      "upstreamSummary": "An extremely fast JavaScript and CSS bundler and minifier.",
+      "version": "0.28.1"
+    },
+    "npm:eslint": {
+      "agentSummary": "eslint is a focused package for developers who need an ast-based pattern checker for javascript.. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "eslint",
+      "docs": null,
+      "homepage": "https://eslint.org",
+      "id": "npm:eslint",
+      "installURL": "pkgmgrmgr://install?package=npm%3Aeslint",
+      "lastUpdatedAt": "2026-07-10T21:22:48Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "eslint documentation",
+          "url": "https://eslint.org"
+        },
+        {
+          "kind": "primary",
+          "title": "eslint project and release information",
+          "url": "https://www.npmjs.com/package/eslint"
+        }
+      ],
+      "upstreamSummary": "An AST-based pattern checker for JavaScript.",
+      "version": "10.7.0"
+    },
+    "npm:fast-xml-parser": {
+      "agentSummary": "fast-xml-parser is a focused package for developers who need validate xml, parse xml, build xml without c/c++ based libraries. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "data",
+      "displayName": "fast-xml-parser",
+      "docs": null,
+      "homepage": "https://github.com/NaturalIntelligence/fast-xml-parser#readme",
+      "id": "npm:fast-xml-parser",
+      "installURL": "pkgmgrmgr://install?package=npm%3Afast-xml-parser",
+      "lastUpdatedAt": "2026-07-11T10:45:24Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "fast-xml-parser documentation",
+          "url": "https://github.com/NaturalIntelligence/fast-xml-parser#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "fast-xml-parser project and release information",
+          "url": "https://www.npmjs.com/package/fast-xml-parser"
+        }
+      ],
+      "upstreamSummary": "Validate XML, Parse XML, Build XML without C/C++ based libraries",
+      "version": "5.10.0"
+    },
+    "npm:jiti": {
+      "agentSummary": "jiti is a focused package for developers who need runtime typescript and esm support for node.js. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "language-runtime",
+      "displayName": "jiti",
+      "docs": null,
+      "homepage": "https://github.com/unjs/jiti#readme",
+      "id": "npm:jiti",
+      "installURL": "pkgmgrmgr://install?package=npm%3Ajiti",
+      "lastUpdatedAt": "2026-05-05T21:02:47Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "jiti documentation",
+          "url": "https://github.com/unjs/jiti#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "jiti project and release information",
+          "url": "https://www.npmjs.com/package/jiti"
+        }
+      ],
+      "upstreamSummary": "Runtime typescript and ESM support for Node.js",
+      "version": "2.7.0"
+    },
+    "npm:js-yaml": {
+      "agentSummary": "js-yaml is a focused package for developers who need yaml 1.2 parser and serializer. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "data",
+      "displayName": "js-yaml",
+      "docs": null,
+      "homepage": "https://github.com/nodeca/js-yaml#readme",
+      "id": "npm:js-yaml",
+      "installURL": "pkgmgrmgr://install?package=npm%3Ajs-yaml",
+      "lastUpdatedAt": "2026-07-02T00:55:21Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "js-yaml documentation",
+          "url": "https://github.com/nodeca/js-yaml#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "js-yaml project and release information",
+          "url": "https://www.npmjs.com/package/js-yaml"
+        }
+      ],
+      "upstreamSummary": "YAML 1.2 parser and serializer",
+      "version": "5.2.1"
+    },
+    "npm:nanoid": {
+      "agentSummary": "nanoid is a focused package for developers who need a tiny (118 bytes), secure url-friendly unique string id generator. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "security",
+      "displayName": "nanoid",
+      "docs": null,
+      "homepage": "https://github.com/ai/nanoid#readme",
+      "id": "npm:nanoid",
+      "installURL": "pkgmgrmgr://install?package=npm%3Ananoid",
+      "lastUpdatedAt": "2026-06-24T18:37:08Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "nanoid documentation",
+          "url": "https://github.com/ai/nanoid#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "nanoid project and release information",
+          "url": "https://www.npmjs.com/package/nanoid"
+        }
+      ],
+      "upstreamSummary": "A tiny (118 bytes), secure URL-friendly unique string ID generator",
+      "version": "5.1.16"
+    },
+    "npm:playwright": {
+      "agentSummary": "playwright is a focused package for developers who need a high-level api to automate web browsers. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "playwright",
+      "docs": null,
+      "homepage": "https://playwright.dev",
+      "id": "npm:playwright",
+      "installURL": "pkgmgrmgr://install?package=npm%3Aplaywright",
+      "lastUpdatedAt": "2026-06-23T19:49:00Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "playwright documentation",
+          "url": "https://playwright.dev"
+        },
+        {
+          "kind": "primary",
+          "title": "playwright project and release information",
+          "url": "https://www.npmjs.com/package/playwright"
+        }
+      ],
+      "upstreamSummary": "A high-level API to automate web browsers",
+      "version": "1.61.1"
+    },
+    "npm:pnpm": {
+      "agentSummary": "pnpm is a focused package for developers who need fast, disk space efficient package manager. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "pnpm",
+      "docs": null,
+      "homepage": "https://pnpm.io",
+      "id": "npm:pnpm",
+      "installURL": "pkgmgrmgr://install?package=npm%3Apnpm",
+      "lastUpdatedAt": "2026-07-11T21:13:20Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "pnpm documentation",
+          "url": "https://pnpm.io"
+        },
+        {
+          "kind": "primary",
+          "title": "pnpm project and release information",
+          "url": "https://www.npmjs.com/package/pnpm"
+        }
+      ],
+      "upstreamSummary": "Fast, disk space efficient package manager",
+      "version": "11.12.0"
+    },
+    "npm:prettier": {
+      "agentSummary": "prettier is a focused package for developers who need prettier is an opinionated code formatter. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "data",
+      "displayName": "prettier",
+      "docs": null,
+      "homepage": "https://prettier.io",
+      "id": "npm:prettier",
+      "installURL": "pkgmgrmgr://install?package=npm%3Aprettier",
+      "lastUpdatedAt": "2026-07-09T16:17:00Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "prettier documentation",
+          "url": "https://prettier.io"
+        },
+        {
+          "kind": "primary",
+          "title": "prettier project and release information",
+          "url": "https://www.npmjs.com/package/prettier"
+        }
+      ],
+      "upstreamSummary": "Prettier is an opinionated code formatter",
+      "version": "3.9.5"
+    },
+    "npm:rollup": {
+      "agentSummary": "rollup is a focused package for developers who need next-generation es module bundler. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "rollup",
+      "docs": null,
+      "homepage": "https://rollupjs.org/",
+      "id": "npm:rollup",
+      "installURL": "pkgmgrmgr://install?package=npm%3Arollup",
+      "lastUpdatedAt": "2026-06-19T14:57:23Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "rollup documentation",
+          "url": "https://rollupjs.org/"
+        },
+        {
+          "kind": "primary",
+          "title": "rollup project and release information",
+          "url": "https://www.npmjs.com/package/rollup"
+        }
+      ],
+      "upstreamSummary": "Next-generation ES module bundler",
+      "version": "4.62.2"
+    },
+    "npm:semver": {
+      "agentSummary": "semver is a focused package for developers who need the semantic version parser used by npm.. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "semver",
+      "docs": null,
+      "homepage": "https://github.com/npm/node-semver#readme",
+      "id": "npm:semver",
+      "installURL": "pkgmgrmgr://install?package=npm%3Asemver",
+      "lastUpdatedAt": "2026-06-19T18:32:48Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "semver documentation",
+          "url": "https://github.com/npm/node-semver#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "semver project and release information",
+          "url": "https://www.npmjs.com/package/semver"
+        }
+      ],
+      "upstreamSummary": "The semantic version parser used by npm.",
+      "version": "7.8.5"
+    },
+    "npm:terser": {
+      "agentSummary": "terser is a focused package for developers who need javascript parser, mangler/compressor and beautifier toolkit for es6+. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "terser",
+      "docs": null,
+      "homepage": "https://terser.org",
+      "id": "npm:terser",
+      "installURL": "pkgmgrmgr://install?package=npm%3Aterser",
+      "lastUpdatedAt": "2026-07-08T17:14:36Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "terser documentation",
+          "url": "https://terser.org"
+        },
+        {
+          "kind": "primary",
+          "title": "terser project and release information",
+          "url": "https://www.npmjs.com/package/terser"
+        }
+      ],
+      "upstreamSummary": "JavaScript parser, mangler/compressor and beautifier toolkit for ES6+",
+      "version": "5.49.0"
+    },
+    "npm:tsx": {
+      "agentSummary": "tsx is a focused package for developers who need typescript execute (tsx): node.js enhanced with esbuild to run typescript & esm files. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "tsx",
+      "docs": null,
+      "homepage": "https://tsx.hirok.io",
+      "id": "npm:tsx",
+      "installURL": "pkgmgrmgr://install?package=npm%3Atsx",
+      "lastUpdatedAt": "2026-07-03T14:25:06Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "tsx documentation",
+          "url": "https://tsx.hirok.io"
+        },
+        {
+          "kind": "primary",
+          "title": "tsx project and release information",
+          "url": "https://www.npmjs.com/package/tsx"
+        }
+      ],
+      "upstreamSummary": "TypeScript Execute (tsx): Node.js enhanced with esbuild to run TypeScript & ESM files",
+      "version": "4.23.0"
+    },
+    "npm:typescript": {
+      "agentSummary": "typescript is a focused package for developers who need typescript is a language for application scale javascript development. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": null,
+      "displayName": "typescript",
+      "docs": null,
+      "homepage": "https://www.typescriptlang.org/",
+      "id": "npm:typescript",
+      "installURL": "pkgmgrmgr://install?package=npm%3Atypescript",
+      "lastUpdatedAt": "2026-07-08T15:55:18Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "typescript documentation",
+          "url": "https://www.typescriptlang.org/"
+        },
+        {
+          "kind": "primary",
+          "title": "typescript project and release information",
+          "url": "https://www.npmjs.com/package/typescript"
+        }
+      ],
+      "upstreamSummary": "TypeScript is a language for application scale JavaScript development",
+      "version": "7.0.2"
+    },
+    "npm:uuid": {
+      "agentSummary": "uuid is a focused package for developers who need rfc9562 uuids. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "uuid",
+      "docs": null,
+      "homepage": "https://github.com/uuidjs/uuid#readme",
+      "id": "npm:uuid",
+      "installURL": "pkgmgrmgr://install?package=npm%3Auuid",
+      "lastUpdatedAt": "2026-06-20T11:56:02Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "uuid documentation",
+          "url": "https://github.com/uuidjs/uuid#readme"
+        },
+        {
+          "kind": "primary",
+          "title": "uuid project and release information",
+          "url": "https://www.npmjs.com/package/uuid"
+        }
+      ],
+      "upstreamSummary": "RFC9562 UUIDs",
+      "version": "14.0.1"
+    },
+    "npm:vite": {
+      "agentSummary": "vite is a focused package for developers who need native-esm powered web dev build tool. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "vite",
+      "docs": null,
+      "homepage": "https://vite.dev",
+      "id": "npm:vite",
+      "installURL": "pkgmgrmgr://install?package=npm%3Avite",
+      "lastUpdatedAt": "2026-07-09T04:44:45Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "vite documentation",
+          "url": "https://vite.dev"
+        },
+        {
+          "kind": "primary",
+          "title": "vite project and release information",
+          "url": "https://www.npmjs.com/package/vite"
+        }
+      ],
+      "upstreamSummary": "Native-ESM powered web dev build tool",
+      "version": "8.1.4"
+    },
+    "npm:vitest": {
+      "agentSummary": "vitest is a focused package for developers who need next generation testing framework powered by vite. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "vitest",
+      "docs": null,
+      "homepage": "https://vitest.dev",
+      "id": "npm:vitest",
+      "installURL": "pkgmgrmgr://install?package=npm%3Avitest",
+      "lastUpdatedAt": "2026-07-06T06:44:42Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "vitest documentation",
+          "url": "https://vitest.dev"
+        },
+        {
+          "kind": "primary",
+          "title": "vitest project and release information",
+          "url": "https://www.npmjs.com/package/vitest"
+        }
+      ],
+      "upstreamSummary": "Next generation testing framework powered by Vite",
+      "version": "4.1.10"
+    },
+    "npm:yaml": {
+      "agentSummary": "yaml is a focused package for developers who need javascript parser and stringifier for yaml. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "assessment": {
+        "alternatives": [
+          "Built-in platform tools or another package in the same category"
+        ],
+        "audiences": [
+          "Developers and teams whose workflow matches the documented scope"
+        ],
+        "caveats": [
+          "Confirm compatibility, update policy, and operational impact before production use"
+        ],
+        "complements": [
+          "Version control, CI, and project-specific documentation"
+        ],
+        "prerequisites": [
+          "A compatible runtime, operating system, or project configuration"
+        ],
+        "useCases": [
+          "Automating the task described by the upstream project"
+        ]
+      },
+      "category": "data",
+      "displayName": "yaml",
+      "docs": null,
+      "homepage": "https://eemeli.org/yaml/",
+      "id": "npm:yaml",
+      "installURL": "pkgmgrmgr://install?package=npm%3Ayaml",
+      "lastUpdatedAt": "2026-05-11T10:16:24Z",
+      "manager": "npm",
+      "repository": null,
+      "researchedAt": "2026-07-16T17:09:55Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "yaml documentation",
+          "url": "https://eemeli.org/yaml/"
+        },
+        {
+          "kind": "primary",
+          "title": "yaml project and release information",
+          "url": "https://www.npmjs.com/package/yaml"
+        }
+      ],
+      "upstreamSummary": "JavaScript parser and stringifier for YAML",
+      "version": "2.9.0"
+    }
+  },
   "schemaVersion": 1,
   "source": {
-    "generatedAt": null,
+    "generatedAt": "2026-07-16T05:02:44Z",
     "url": "https://www.automicvault.com/db.json"
   }
 }
