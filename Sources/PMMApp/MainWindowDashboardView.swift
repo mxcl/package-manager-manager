@@ -205,9 +205,12 @@ private struct DashboardDiscoverEditorialCard: View {
                     .tint(foreground.opacity(0.18))
             }
             .padding(28)
-            .frame(maxWidth: 300, maxHeight: .infinity, alignment: .leading)
+            .frame(width: 320)
+            .frame(maxHeight: .infinity, alignment: .leading)
+            .layoutPriority(1)
             editorialArtwork
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .layoutPriority(-1)
         }
         .frame(maxWidth: .infinity, minHeight: 320, maxHeight: 360)
         .background(LinearGradient(colors: [Color(feedHex: boxColors?.backgroundStart ?? "#1F1638"), Color(feedHex: boxColors?.backgroundEnd ?? "#481488")], startPoint: .topLeading, endPoint: .bottomTrailing))
