@@ -7,7 +7,8 @@ import Testing
     {"content":[
       {"id":"editorial:one","type":"editorial","title":"Featured","primaryPackageID":"npm:typescript","relatedPackageIDs":["npm:typescript","brew:faker"]},
       {"id":"new","type":"newPackages","packageIDs":["brew:faker"]},
-      {"id":"for-you","type":"personalizedRecommendations","candidatePackageIDs":["npm:typescript"]}
+      {"id":"for-you","type":"personalizedRecommendations","candidatePackageIDs":["npm:typescript"]},
+      {"id":"updated","type":"recentlyUpdated","packageIDs":["npm:typescript","brew:faker"]}
     ],"packages":{
       "brew:faker":{"id":"brew:faker","displayName":"Faker","agentSummary":"Fake data","manager":"homebrew","category":"data","homepage":"https://faker.readthedocs.io/"},
       "npm:typescript":{"id":"npm:typescript","displayName":"TypeScript","agentSummary":"Static checking","homepage":"https://www.typescriptlang.org/"}
@@ -19,6 +20,7 @@ import Testing
     #expect(feed.newPackages.first?.ecosystem == "Homebrew")
     #expect(feed.newPackages.first?.category == "data")
     #expect(feed.recommendations.map(\.displayName) == ["TypeScript"])
+    #expect(feed.recentlyUpdated.map(\.displayName) == ["TypeScript", "Faker"])
     #expect(DiscoverFeedPage(legacy: feed).content.first?.relatedPackages?.map(\.id) == ["npm:typescript", "brew:faker"])
 }
 
@@ -41,7 +43,9 @@ import Testing
     let head = try decodePage("""
     {"pageID":"head","generatedAt":"2026-07-16T12:00:00Z","nextPageURL":"https://example.com/older.json","content":[
       {"id":"editorial:new","type":"editorial","batchID":"batch-2","publishedAt":"2026-07-16T12:00:00Z","title":"Newest"},
+      {"id":"recommendations:new","type":"personalizedRecommendations","batchID":"batch-2","publishedAt":"2026-07-16T12:00:00Z","packages":[]},
       {"id":"new:new","type":"newPackages","batchID":"batch-2","publishedAt":"2026-07-16T12:00:00Z","packages":[]},
+      {"id":"updated:new","type":"recentlyUpdated","batchID":"batch-2","publishedAt":"2026-07-16T12:00:00Z","packages":[]},
       {"id":"recommendations:previous","type":"personalizedRecommendations","batchID":"batch-1","publishedAt":"2026-07-13T12:00:00Z","packages":[]}
     ]}
     """)
@@ -55,7 +59,7 @@ import Testing
     })
 
     await store.loadInitial()
-    #expect(store.newestBatch.map(\.id) == ["editorial:new", "new:new"])
+    #expect(store.newestBatch.map(\.id) == ["editorial:new", "recommendations:new", "new:new", "updated:new"])
     #expect(store.olderContent.map(\.id) == ["recommendations:previous"])
     #expect(store.hasNextPage)
 

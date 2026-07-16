@@ -14,6 +14,7 @@ struct DiscoverFeed: Decodable, Sendable {
     var editorial: DiscoverFeedContent? { content.first { $0.type == "editorial" } }
     var newPackages: [DiscoverFeedPackage] { packages(for: content.first { $0.type == "newPackages" }?.packageIDs ?? []) }
     var recommendations: [DiscoverFeedPackage] { packages(for: content.first { $0.type == "personalizedRecommendations" }?.candidatePackageIDs ?? []) }
+    var recentlyUpdated: [DiscoverFeedPackage] { packages(for: content.first { $0.type == "recentlyUpdated" }?.packageIDs ?? []) }
 
     private func packages(for ids: [String]) -> [DiscoverFeedPackage] {
         ids.compactMap { packages[$0] }

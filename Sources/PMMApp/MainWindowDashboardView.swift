@@ -173,6 +173,8 @@ private struct DashboardDiscoverFeedView: View {
             }
         case "personalizedRecommendations":
             DashboardDiscoverPackageSection(title: item.title ?? "Recommended", packages: item.packages ?? [])
+        case "recentlyUpdated":
+            DashboardDiscoverPackageSection(title: item.title ?? "Recently Updated", packages: item.packages ?? [])
         default:
             EmptyView()
         }

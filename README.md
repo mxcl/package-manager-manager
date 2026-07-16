@@ -127,8 +127,10 @@ commit flow with fixtures.
 
 The generator publishes two contracts. `www/feed/v1.json` remains the rolling
 compatibility snapshot. `www/feed/v2.json` is the newest page of an append-only
-archive: every editorial, new-package shelf, and materially changed
-recommendation shelf is kept as a self-contained block. A page holds at most 20
+archive: every editorial, new-package shelf, recently-updated shelf, and materially changed
+recommendation shelf is kept as a self-contained block. Each editorial publication
+is followed by For You, New Packages, and Recently Updated snapshots before the next
+story. A page holds at most 20
 blocks; when it fills, the generator freezes it under `www/feed/v2/pages/` and
 links to it with `nextPageURL`. Clients can therefore load older pages as the
 human scrolls without needing historical package dictionaries or a server.
