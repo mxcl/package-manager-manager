@@ -131,7 +131,8 @@ archive: every editorial, new-package shelf, recently-updated shelf, and materia
 recommendation shelf is kept as a self-contained block. Each editorial publication
 is followed by For You, New Packages, and Recently Updated snapshots before the next
 story. For You snapshots contain at most ten cards and rotate through the 24-card
-recommendation pool across later sections. A page holds at most 20
+recommendation pool across later sections. Recently Updated does the same in
+five-card rows. A page holds at most 20
 blocks; when it fills, the generator freezes it under `www/feed/v2/pages/` and
 links to it with `nextPageURL`. Clients can therefore load older pages as the
 human scrolls without needing historical package dictionaries or a server.

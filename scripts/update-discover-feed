@@ -21,6 +21,7 @@ SCHEMA_VERSION = 1
 V2_SCHEMA_VERSION = 2
 V2_PAGE_LIMIT = 20
 V2_RECOMMENDATION_LIMIT = 10
+V2_RECENTLY_UPDATED_LIMIT = 5
 V2_PAGE_BASE_URL = "https://mxcl.dev/package-manager-manager/feed/v2/pages/"
 SUPPORTED_MANAGERS = {"homebrew", "npm"}
 SUMMARY_WORDS = range(40, 81)
@@ -572,15 +573,15 @@ def v2_package(package: dict) -> dict:
     return json.loads(json.dumps(package))
 
 
-def recommendation_chunk(feed: dict, head: dict) -> list[str]:
-    shelf = next(iter(content(feed, "personalizedRecommendations")))
-    identifiers = shelf["fallbackPackageIDs"]
-    previous = next(iter(content(head, "personalizedRecommendations")), {})
+def shelf_chunk(feed: dict, head: dict, kind: str, limit: int) -> list[str]:
+    shelf = next(iter(content(feed, kind)))
+    identifiers = shelf.get("fallbackPackageIDs") or shelf["packageIDs"]
+    previous = next(iter(content(head, kind)), {})
     previous_ids = [package.get("id") for package in previous.get("packages", []) if isinstance(package, dict)]
     start = 0
-    if previous_ids and len(previous_ids) <= V2_RECOMMENDATION_LIMIT and previous_ids[-1] in identifiers:
+    if previous_ids and len(previous_ids) <= limit and previous_ids[-1] in identifiers:
         start = (identifiers.index(previous_ids[-1]) + 1) % len(identifiers)
-    return identifiers[start:start + V2_RECOMMENDATION_LIMIT]
+    return identifiers[start:start + limit]
 
 
 def v2_blocks_from_v1(feed: dict) -> list[dict]:
@@ -597,7 +598,10 @@ def v2_blocks_from_v1(feed: dict) -> list[dict]:
         elif block["type"] in {"newPackages", "recentlyUpdated"}:
             prefix = "new-packages" if block["type"] == "newPackages" else "recently-updated"
             block["id"] = f"{prefix}:{batch_id}"
-            block["packages"] = [v2_package(feed["packages"][identifier]) for identifier in block.pop("packageIDs")]
+            identifiers = block.pop("packageIDs")
+            if block["type"] == "recentlyUpdated":
+                identifiers = identifiers[:V2_RECENTLY_UPDATED_LIMIT]
+            block["packages"] = [v2_package(feed["packages"][identifier]) for identifier in identifiers]
         elif block["type"] == "personalizedRecommendations":
             block["id"] = f"for-you:{batch_id}"
             identifiers = block.pop("fallbackPackageIDs", None) or block["candidatePackageIDs"]
@@ -649,7 +653,7 @@ def v2_blocks_from_update(before: dict, after: dict, response: dict, head: dict,
 
     # An editorial is a complete Discover unit: story, then three useful shelves.
     if next_editorial:
-        blocks.append(package_shelf("personalizedRecommendations", "for-you", "For You", recommendation_chunk(after, head)))
+        blocks.append(package_shelf("personalizedRecommendations", "for-you", "For You", shelf_chunk(after, head, "personalizedRecommendations", V2_RECOMMENDATION_LIMIT)))
     if new_ids or (next_editorial and next(iter(content(after, "newPackages")))["packageIDs"]):
         block = package_shelf("newPackages", "new-packages", "New Packages")
         if new_ids and not next_editorial:
@@ -657,9 +661,9 @@ def v2_blocks_from_update(before: dict, after: dict, response: dict, head: dict,
             block["evidence"] = json.loads(json.dumps(response["newPackageEvidence"]))
         blocks.append(block)
     if recommendation_ids and not next_editorial:
-        blocks.append(package_shelf("personalizedRecommendations", "for-you", "For You", recommendation_chunk(after, head)))
+        blocks.append(package_shelf("personalizedRecommendations", "for-you", "For You", shelf_chunk(after, head, "personalizedRecommendations", V2_RECOMMENDATION_LIMIT)))
     if next_editorial:
-        blocks.append(package_shelf("recentlyUpdated", "recently-updated", "Recently Updated"))
+        blocks.append(package_shelf("recentlyUpdated", "recently-updated", "Recently Updated", shelf_chunk(after, head, "recentlyUpdated", V2_RECENTLY_UPDATED_LIMIT)))
     return blocks
 
 
@@ -814,6 +818,8 @@ def validate_v2_page(page: dict, root: Path) -> None:
                     new_package_evidence(evidence, package_ids, parse_date(item["publishedAt"]))
             elif kind == "personalizedRecommendations" and len(packages) > V2_RECOMMENDATION_LIMIT:
                 raise FeedError(f"{item['id']} may contain at most {V2_RECOMMENDATION_LIMIT} recommendations")
+            elif kind == "recentlyUpdated" and len(packages) > V2_RECENTLY_UPDATED_LIMIT:
+                raise FeedError(f"{item['id']} may contain at most {V2_RECENTLY_UPDATED_LIMIT} recently updated packages")
         else:
             raise FeedError(f"unknown v2 content type {kind!r}")
 
@@ -949,8 +955,15 @@ def reflow_discover_variety(feed: dict, head: dict, root: Path) -> tuple[dict, d
 
     editorial_blocks = [item for item in head["content"] if item.get("type") == "editorial"]
     blocks = []
-    recommendation_ids = recommendations["fallbackPackageIDs"]
-    recommendation_start = 0
+    pools = {
+        "personalizedRecommendations": recommendations["fallbackPackageIDs"],
+        "recentlyUpdated": updated["packageIDs"],
+    }
+    limits = {
+        "personalizedRecommendations": V2_RECOMMENDATION_LIMIT,
+        "recentlyUpdated": V2_RECENTLY_UPDATED_LIMIT,
+    }
+    starts = {kind: 0 for kind in limits}
     for editorial_block in editorial_blocks:
         batch_id = editorial_block["batchID"]
         published_at = editorial_block["publishedAt"]
@@ -958,9 +971,9 @@ def reflow_discover_variety(feed: dict, head: dict, root: Path) -> tuple[dict, d
         for item in (recommendations, new_packages, updated):
             kind = item["type"]
             identifiers = item.get("fallbackPackageIDs") or item["packageIDs"]
-            if kind == "personalizedRecommendations":
-                identifiers = recommendation_ids[recommendation_start:recommendation_start + V2_RECOMMENDATION_LIMIT]
-                recommendation_start = (recommendation_start + len(identifiers)) % len(recommendation_ids)
+            if kind in limits:
+                identifiers = pools[kind][starts[kind]:starts[kind] + limits[kind]]
+                starts[kind] = (starts[kind] + len(identifiers)) % len(pools[kind])
             prefix = {"personalizedRecommendations": "for-you", "newPackages": "new-packages", "recentlyUpdated": "recently-updated"}[kind]
             blocks.append({
                 "batchID": batch_id,
@@ -1216,9 +1229,9 @@ def self_test() -> None:
         recommendation_shelf = next(iter(content(completed_archive, "personalizedRecommendations")))
         assert len(recommendation_shelf["packages"]) == V2_RECOMMENDATION_LIMIT
         fallback_ids = next(iter(content(completed_feed, "personalizedRecommendations")))["fallbackPackageIDs"]
-        assert recommendation_chunk(completed_feed, completed_archive) == fallback_ids[10:20]
+        assert shelf_chunk(completed_feed, completed_archive, "personalizedRecommendations", V2_RECOMMENDATION_LIMIT) == fallback_ids[10:20]
         tail_head = {"content": [{"type": "personalizedRecommendations", "packages": [completed_feed["packages"][identifier] for identifier in fallback_ids[10:20]]}]}
-        assert recommendation_chunk(completed_feed, tail_head) == fallback_ids[20:24]
+        assert shelf_chunk(completed_feed, tail_head, "personalizedRecommendations", V2_RECOMMENDATION_LIMIT) == fallback_ids[20:24]
         variety_head = json.loads(json.dumps(completed_archive))
         editorial_template = next(iter(content(completed_archive, "editorial")))
         variety_head["content"] = []
@@ -1232,6 +1245,9 @@ def self_test() -> None:
         varied_shelves = content(varied_head, "personalizedRecommendations")
         assert [len(item["packages"]) for item in varied_shelves] == [10, 10, 4, 10]
         assert [package["id"] for package in varied_shelves[0]["packages"]] == [package["id"] for package in varied_shelves[3]["packages"]]
+        varied_updates = content(varied_head, "recentlyUpdated")
+        assert [len(item["packages"]) for item in varied_updates] == [5, 5, 2, 5]
+        assert [package["id"] for package in varied_updates[0]["packages"]] == [package["id"] for package in varied_updates[3]["packages"]]
         assert all(item["batchID"] == completed_archive["content"][0]["batchID"] for item in completed_archive["content"])
         legacy_feed, legacy_archive = json.loads(json.dumps(completed_feed)), json.loads(json.dumps(completed_archive))
         legacy_paragraph = " ".join(["Package history and actual usage show a practical tool with clear tradeoffs."] * 24)
