@@ -950,7 +950,8 @@ def reflow_discover_variety(feed: dict, head: dict, root: Path) -> tuple[dict, d
     editorial_blocks = [item for item in head["content"] if item.get("type") == "editorial"]
     blocks = []
     recommendation_ids = recommendations["fallbackPackageIDs"]
-    for editorial_index, editorial_block in enumerate(editorial_blocks):
+    recommendation_start = 0
+    for editorial_block in editorial_blocks:
         batch_id = editorial_block["batchID"]
         published_at = editorial_block["publishedAt"]
         blocks.append(editorial_block)
@@ -958,8 +959,8 @@ def reflow_discover_variety(feed: dict, head: dict, root: Path) -> tuple[dict, d
             kind = item["type"]
             identifiers = item.get("fallbackPackageIDs") or item["packageIDs"]
             if kind == "personalizedRecommendations":
-                start = editorial_index * V2_RECOMMENDATION_LIMIT % len(recommendation_ids)
-                identifiers = recommendation_ids[start:start + V2_RECOMMENDATION_LIMIT]
+                identifiers = recommendation_ids[recommendation_start:recommendation_start + V2_RECOMMENDATION_LIMIT]
+                recommendation_start = (recommendation_start + len(identifiers)) % len(recommendation_ids)
             prefix = {"personalizedRecommendations": "for-you", "newPackages": "new-packages", "recentlyUpdated": "recently-updated"}[kind]
             blocks.append({
                 "batchID": batch_id,
@@ -1218,6 +1219,19 @@ def self_test() -> None:
         assert recommendation_chunk(completed_feed, completed_archive) == fallback_ids[10:20]
         tail_head = {"content": [{"type": "personalizedRecommendations", "packages": [completed_feed["packages"][identifier] for identifier in fallback_ids[10:20]]}]}
         assert recommendation_chunk(completed_feed, tail_head) == fallback_ids[20:24]
+        variety_head = json.loads(json.dumps(completed_archive))
+        editorial_template = next(iter(content(completed_archive, "editorial")))
+        variety_head["content"] = []
+        for index in range(4):
+            item = json.loads(json.dumps(editorial_template))
+            item["id"] = f"editorial:variety:{index}"
+            item["batchID"] = f"variety-{index}"
+            item["publishedAt"] = timestamp(at - timedelta(days=index))
+            variety_head["content"].append(item)
+        _, varied_head = reflow_discover_variety(completed_feed, variety_head, root)
+        varied_shelves = content(varied_head, "personalizedRecommendations")
+        assert [len(item["packages"]) for item in varied_shelves] == [10, 10, 4, 10]
+        assert [package["id"] for package in varied_shelves[0]["packages"]] == [package["id"] for package in varied_shelves[3]["packages"]]
         assert all(item["batchID"] == completed_archive["content"][0]["batchID"] for item in completed_archive["content"])
         legacy_feed, legacy_archive = json.loads(json.dumps(completed_feed)), json.loads(json.dumps(completed_archive))
         legacy_paragraph = " ".join(["Package history and actual usage show a practical tool with clear tradeoffs."] * 24)
