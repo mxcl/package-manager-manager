@@ -280,7 +280,7 @@
       "type": "editorial"
     }
   ],
-  "generatedAt": "2026-07-16T22:52:52Z",
+  "generatedAt": "2026-07-17T13:02:28Z",
   "packages": {
     "brew:cyclonedx-npm": {
       "agentSummary": "cyclonedx-npm is a focused package for developers who need creates cyclonedx software bill of materials (sbom) from npm projects. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
@@ -1761,7 +1761,7 @@
   },
   "schemaVersion": 1,
   "source": {
-    "generatedAt": "2026-07-16T05:02:44Z",
+    "generatedAt": "2026-07-17T04:55:43Z",
     "url": "https://www.automicvault.com/db.json"
   }
 }
