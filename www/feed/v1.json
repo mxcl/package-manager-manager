@@ -107,6 +107,7 @@
     {
       "id": "new-packages",
       "packageIDs": [
+        "brew:woxi",
         "brew:zsh-patina",
         "brew:faker",
         "brew:mosdepth",
@@ -120,6 +121,7 @@
     {
       "id": "recently-updated",
       "packageIDs": [
+        "brew:woxi",
         "brew:vals",
         "brew:pnpm",
         "brew:ggshield",
@@ -130,8 +132,7 @@
         "brew:zsh-patina",
         "brew:datasette",
         "brew:faker",
-        "npm:autoprefixer",
-        "brew:mosdepth"
+        "npm:autoprefixer"
       ],
       "title": "Recently Updated",
       "type": "recentlyUpdated"
@@ -280,7 +281,7 @@
       "type": "editorial"
     }
   ],
-  "generatedAt": "2026-07-17T13:02:28Z",
+  "generatedAt": "2026-07-18T13:02:33Z",
   "packages": {
     "brew:cyclonedx-npm": {
       "agentSummary": "cyclonedx-npm is a focused package for developers who need creates cyclonedx software bill of materials (sbom) from npm projects. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
@@ -907,6 +908,61 @@
         }
       ],
       "upstreamSummary": "Helm-like configuration values loader with support for various sources",
+      "version": null
+    },
+    "brew:woxi": {
+      "agentSummary": "Woxi is an early Rust implementation of a subset of the Wolfram Language, offering a command-line evaluator, script runner, and REPL for symbolic-computing experiments. It is worth exploring for developers who want a lightweight, open-source alternative for supported language features. Its documentation explicitly notes gaps from WolframScript, including no direct notebook execution, and its AGPL license may matter for distribution plans.",
+      "assessment": {
+        "alternatives": [
+          "WolframScript for the official Wolfram Language command-line experience",
+          "Other computer algebra systems when Wolfram Language compatibility is not required"
+        ],
+        "audiences": [
+          "Developers experimenting with Wolfram Language syntax and symbolic computing",
+          "Rust and open-source users evaluating an emerging Mathematica-like tool"
+        ],
+        "caveats": [
+          "The project is new and implements only a subset of the language",
+          "It cannot run .nb notebook files directly",
+          "AGPL-3.0 obligations should be reviewed before redistribution or integration"
+        ],
+        "complements": [
+          "A terminal with shell completion support",
+          "The upstream language-compatibility documentation"
+        ],
+        "prerequisites": [
+          "A supported platform and a workflow that does not require direct notebook execution",
+          "Familiarity with the supported subset of Wolfram Language syntax"
+        ],
+        "useCases": [
+          "Evaluating expressions from a terminal",
+          "Running compatible Wolfram Language scripts",
+          "Prototyping symbolic-computing workflows"
+        ]
+      },
+      "category": null,
+      "displayName": "woxi",
+      "docs": null,
+      "homepage": "https://github.com/ad-si/Woxi",
+      "id": "brew:woxi",
+      "installURL": "pkgmgrmgr://install?package=brew%3Awoxi",
+      "lastUpdatedAt": "2026-07-17T08:34:00Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/ad-si/Woxi",
+      "researchedAt": "2026-07-18T13:02:33Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "Woxi source repository and usage documentation",
+          "url": "https://github.com/ad-si/Woxi"
+        },
+        {
+          "kind": "primary",
+          "title": "Woxi project website",
+          "url": "https://woxi.ad-si.com/"
+        }
+      ],
+      "upstreamSummary": "Interpreter for a subset of the Wolfram Language",
       "version": null
     },
     "brew:zsh-patina": {
@@ -1761,7 +1817,7 @@
   },
   "schemaVersion": 1,
   "source": {
-    "generatedAt": "2026-07-17T04:55:43Z",
+    "generatedAt": "2026-07-18T05:08:40Z",
     "url": "https://www.automicvault.com/db.json"
   }
 }

@@ -1,6 +1,77 @@
 {
   "content": [
     {
+      "batchID": "20260718T130233Z-d0da1eff",
+      "evidence": {
+        "brew:woxi": {
+          "firstPublishedAt": "2026-07-16T00:00:00Z",
+          "reason": "The upstream repository lists version 0.2.0, dated July 16, 2026, as its only release, establishing that this Wolfram Language implementation was first publicly released within the past year.",
+          "sourceURL": "https://github.com/ad-si/Woxi/releases/tag/v0.2.0"
+        }
+      },
+      "id": "new-packages:20260718T130233Z-d0da1eff",
+      "packages": [
+        {
+          "agentSummary": "Woxi is an early Rust implementation of a subset of the Wolfram Language, offering a command-line evaluator, script runner, and REPL for symbolic-computing experiments. It is worth exploring for developers who want a lightweight, open-source alternative for supported language features. Its documentation explicitly notes gaps from WolframScript, including no direct notebook execution, and its AGPL license may matter for distribution plans.",
+          "assessment": {
+            "alternatives": [
+              "WolframScript for the official Wolfram Language command-line experience",
+              "Other computer algebra systems when Wolfram Language compatibility is not required"
+            ],
+            "audiences": [
+              "Developers experimenting with Wolfram Language syntax and symbolic computing",
+              "Rust and open-source users evaluating an emerging Mathematica-like tool"
+            ],
+            "caveats": [
+              "The project is new and implements only a subset of the language",
+              "It cannot run .nb notebook files directly",
+              "AGPL-3.0 obligations should be reviewed before redistribution or integration"
+            ],
+            "complements": [
+              "A terminal with shell completion support",
+              "The upstream language-compatibility documentation"
+            ],
+            "prerequisites": [
+              "A supported platform and a workflow that does not require direct notebook execution",
+              "Familiarity with the supported subset of Wolfram Language syntax"
+            ],
+            "useCases": [
+              "Evaluating expressions from a terminal",
+              "Running compatible Wolfram Language scripts",
+              "Prototyping symbolic-computing workflows"
+            ]
+          },
+          "category": null,
+          "displayName": "woxi",
+          "docs": null,
+          "homepage": "https://github.com/ad-si/Woxi",
+          "id": "brew:woxi",
+          "installURL": "pkgmgrmgr://install?package=brew%3Awoxi",
+          "lastUpdatedAt": "2026-07-17T08:34:00Z",
+          "manager": "homebrew",
+          "repository": "https://github.com/ad-si/Woxi",
+          "researchedAt": "2026-07-18T13:02:33Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "Woxi source repository and usage documentation",
+              "url": "https://github.com/ad-si/Woxi"
+            },
+            {
+              "kind": "primary",
+              "title": "Woxi project website",
+              "url": "https://woxi.ad-si.com/"
+            }
+          ],
+          "upstreamSummary": "Interpreter for a subset of the Wolfram Language",
+          "version": null
+        }
+      ],
+      "publishedAt": "2026-07-18T13:02:33Z",
+      "title": "New Packages",
+      "type": "newPackages"
+    },
+    {
       "artwork": {
         "alt": "Three glass browser stages render matching geometric scenes above a luminous automation rail and diagnostic timeline.",
         "attribution": "Generated with OpenAI image generation",
@@ -4743,7 +4814,7 @@
       "type": "recentlyUpdated"
     }
   ],
-  "generatedAt": "2026-07-16T22:52:52Z",
+  "generatedAt": "2026-07-18T13:02:33Z",
   "nextPageURL": null,
   "pageID": "20260716T225252Z-723bde92",
   "schemaVersion": 2
