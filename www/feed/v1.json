@@ -284,7 +284,7 @@
   "generatedAt": "2026-07-19T13:03:12Z",
   "packages": {
     "brew:cyclonedx-npm": {
-      "agentSummary": "cyclonedx-npm is a focused package for developers who need creates cyclonedx software bill of materials (sbom) from npm projects. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "CycloneDX npm creates software bills of materials for npm projects, helping teams inventory dependencies for security review, compliance, and release automation.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -331,7 +331,7 @@
       "version": null
     },
     "brew:datasette": {
-      "agentSummary": "datasette is a focused package for developers who need open source multi-tool for exploring and publishing data. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Datasette turns structured data into an explorable website and JSON API, making SQLite datasets easy to inspect, publish, query, and share.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -378,7 +378,7 @@
       "version": null
     },
     "brew:deno": {
-      "agentSummary": "Deno combines a JavaScript and TypeScript runtime with formatting, linting, testing, package management, and permission controls. It favors web-platform APIs while supporting npm packages and much of the Node.js surface. Try it for scripts or services that benefit from one toolchain, then test compatibility, permission boundaries, deployment targets, and operational support before moving an established Node application.",
+      "agentSummary": "Deno combines JavaScript and TypeScript execution with formatting, linting, testing, package management, and explicit permissions in one cohesive web-platform-oriented runtime.",
       "assessment": {
         "alternatives": [
           "Node.js for the broadest existing ecosystem",
@@ -428,7 +428,7 @@
       "version": null
     },
     "brew:dolt": {
-      "agentSummary": "dolt is a focused package for developers who need git for data. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Dolt is a SQL database with Git-style versioning, enabling teams to branch, diff, merge, and collaborate on structured relational data.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -475,7 +475,7 @@
       "version": null
     },
     "brew:faker": {
-      "agentSummary": "faker is a focused package for developers who need python-based fake data generator. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Faker generates realistic sample data for Python applications, supporting tests, prototypes, database fixtures, and demonstrations without exposing real customer information.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -522,7 +522,7 @@
       "version": null
     },
     "brew:ggshield": {
-      "agentSummary": "ggshield scans repositories, commits, files, and CI changes for secrets using GitGuardian's detection engine. It can add a useful guard before code reaches a remote, especially where teams handle many cloud credentials. Useful results depend on authentication, policy tuning, and a response process; treat findings as leads, revoke exposed credentials, and review what content leaves the machine.",
+      "agentSummary": "ggshield scans repositories, commits, files, and CI changes for exposed secrets using GitGuardian, helping teams catch credentials before they reach production.",
       "assessment": {
         "alternatives": [
           "Gitleaks",
@@ -573,7 +573,7 @@
       "version": null
     },
     "brew:kew": {
-      "agentSummary": "kew is a terminal music player that indexes a local library and offers playlists, search, gapless playback, album art, and visualizations without a desktop media application. It suits keyboard-driven listening and remote shells connected to audio hardware. Check codec support and terminal capabilities first, and remember that local metadata quality determines how pleasant browsing feels.",
+      "agentSummary": "kew is a keyboard-driven terminal music player with library indexing, playlists, search, gapless playback, album art, and visualizations for local collections.",
       "assessment": {
         "alternatives": [
           "cmus",
@@ -624,7 +624,7 @@
       "version": null
     },
     "brew:mosdepth": {
-      "agentSummary": "mosdepth is a focused package for developers who need fast bam/cram depth calculation for wgs, exome, or targeted sequencing. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "mosdepth calculates sequencing depth quickly for BAM and CRAM files, supporting whole-genome, exome, and targeted genomics coverage analysis workflows efficiently.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -671,7 +671,7 @@
       "version": null
     },
     "brew:perlnavigator": {
-      "agentSummary": "perlnavigator is a focused package for developers who need perl language server. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Perl Navigator provides language-server features for Perl editors, including navigation, diagnostics, completion, formatting, and documentation within modern integrated development environments.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -718,7 +718,7 @@
       "version": null
     },
     "brew:pnpm": {
-      "agentSummary": "pnpm installs JavaScript dependencies through a content-addressed store, so projects can reuse package files instead of keeping separate physical copies. Its strict dependency layout also exposes undeclared imports that flatter layouts can hide. It fits monorepos and machines with many Node projects, but teams must align lockfiles, CI caches, deployment tooling, and Node version policy before switching.",
+      "agentSummary": "pnpm installs JavaScript dependencies through a shared content-addressed store, saving disk space while enforcing stricter, more predictable dependency boundaries across projects.",
       "assessment": {
         "alternatives": [
           "npm for the Node.js default",
@@ -768,7 +768,7 @@
       "version": null
     },
     "brew:soar": {
-      "agentSummary": "soar is a focused package for developers who need fast, modern package manager for static binaries, portable formats and more. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Soar manages static binaries and portable application formats, offering fast installation and updates for software distributed outside traditional system package repositories.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -815,7 +815,7 @@
       "version": null
     },
     "brew:topgrade": {
-      "agentSummary": "Topgrade discovers supported package managers and update tools, then runs their upgrade routines from one command. It can reduce maintenance friction on a developer workstation with several ecosystems. Convenience also widens the blast radius: read the plan, configure exclusions, keep backups, and avoid unattended use on production machines where one incompatible upgrade could interrupt service.",
+      "agentSummary": "Topgrade discovers package managers and update tools on your machine, then coordinates their upgrade routines through one configurable command-line workflow.",
       "assessment": {
         "alternatives": [
           "Updating each manager directly",
@@ -864,7 +864,7 @@
       "version": null
     },
     "brew:vals": {
-      "agentSummary": "vals is a focused package for developers who need helm-like configuration values loader with support for various sources. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "vals loads configuration values from secrets managers and other sources, bringing Helm-like external value resolution to deployment and automation workflows.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -911,7 +911,7 @@
       "version": null
     },
     "brew:woxi": {
-      "agentSummary": "Woxi is an early Rust implementation of a subset of the Wolfram Language, offering a command-line evaluator, script runner, and REPL for symbolic-computing experiments. It is worth exploring for developers who want a lightweight, open-source alternative for supported language features. Its documentation explicitly notes gaps from WolframScript, including no direct notebook execution, and its AGPL license may matter for distribution plans.",
+      "agentSummary": "Woxi is an experimental Rust implementation of Wolfram Language features, providing a lightweight command-line evaluator, script runner, and interactive REPL.",
       "assessment": {
         "alternatives": [
           "WolframScript for the official Wolfram Language command-line experience",
@@ -966,7 +966,7 @@
       "version": null
     },
     "brew:zsh-patina": {
-      "agentSummary": "zsh-patina is a Zsh syntax highlighter aimed at interactive shell users who want prompt-time highlighting without a large plugin stack. Its upstream project emphasizes speed and supports automatic installation of shell integration. It is a useful fit for a carefully managed Zsh setup, but it is not a shell framework: evaluate its theme and plugin compatibility before replacing an established highlighter.",
+      "agentSummary": "zsh-patina adds fast syntax highlighting to interactive Zsh sessions, offering prompt-time feedback without requiring a large shell framework or plugin stack.",
       "assessment": {
         "alternatives": [
           "zsh-syntax-highlighting and fast-syntax-highlighting"
@@ -1013,7 +1013,7 @@
       "version": null
     },
     "npm:autoprefixer": {
-      "agentSummary": "autoprefixer is a focused package for developers who need parse css and add vendor prefixes to css rules using values from the can i use website. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Autoprefixer uses current browser compatibility data to add necessary vendor prefixes to CSS, keeping build output aligned with a project's targets.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1060,7 +1060,7 @@
       "version": "10.5.3"
     },
     "npm:browserslist": {
-      "agentSummary": "browserslist is a focused package for developers who need share target browsers between different front-end tools, like autoprefixer, stylelint and babel-env-preset. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Browserslist lets frontend tools share one browser-support policy, keeping Babel, Autoprefixer, Stylelint, and related project build steps consistently and predictably targeted.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1107,7 +1107,7 @@
       "version": "4.28.6"
     },
     "npm:eslint": {
-      "agentSummary": "eslint is a focused package for developers who need an ast-based pattern checker for javascript.. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "ESLint analyzes JavaScript and TypeScript syntax for configurable problems and style rules, helping teams enforce consistent standards before code ships.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1154,7 +1154,7 @@
       "version": "10.7.0"
     },
     "npm:fast-xml-parser": {
-      "agentSummary": "fast-xml-parser is a focused package for developers who need validate xml, parse xml, build xml without c/c++ based libraries. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Fast XML Parser validates, parses, and builds XML in JavaScript without native C or C++ dependencies, simplifying portable Node and browser workflows.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1201,7 +1201,7 @@
       "version": "5.10.0"
     },
     "npm:jiti": {
-      "agentSummary": "jiti is a focused package for developers who need runtime typescript and esm support for node.js. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "jiti loads TypeScript and modern ECMAScript modules in Node.js at runtime, making configuration files and development tooling easier to execute.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1248,7 +1248,7 @@
       "version": "2.7.0"
     },
     "npm:nanoid": {
-      "agentSummary": "nanoid is a focused package for developers who need a tiny (118 bytes), secure url-friendly unique string id generator. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Nano ID generates compact, secure, URL-friendly unique identifiers with a tiny package footprint and customizable alphabets for modern JavaScript applications.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1295,7 +1295,7 @@
       "version": "5.1.16"
     },
     "npm:playwright": {
-      "agentSummary": "playwright is a focused package for developers who need a high-level api to automate web browsers. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Playwright automates Chromium, Firefox, and WebKit through one API, supporting reliable end-to-end testing across browsers, devices, platforms, and isolated contexts.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1342,7 +1342,7 @@
       "version": "1.61.1"
     },
     "npm:playwright-core": {
-      "agentSummary": "Playwright Core supplies the browser-control API beneath Playwright without the opinionated test runner. Tool authors can drive Chromium, Firefox, and WebKit for crawlers, agents, visual checks, and custom harnesses. Budget for browser downloads, CI resources, selector maintenance, timeouts, and frequent compatibility updates. Sites can also detect or prohibit automation, so review their rules before running it.",
+      "agentSummary": "Playwright Core provides cross-browser automation without the bundled test runner, fitting crawlers, agents, visual checks, and fully custom testing harnesses.",
       "assessment": {
         "alternatives": [
           "Puppeteer for Chromium-centered automation",
@@ -1392,7 +1392,7 @@
       "version": "1.61.1"
     },
     "npm:pnpm": {
-      "agentSummary": "pnpm is a focused package for developers who need fast, disk space efficient package manager. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "pnpm is a fast JavaScript package manager that shares dependency files across projects while maintaining strict, reproducible node_modules layouts and lockfiles.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1439,7 +1439,7 @@
       "version": "11.12.0"
     },
     "npm:prettier": {
-      "agentSummary": "prettier is a focused package for developers who need prettier is an opinionated code formatter. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Prettier reformats supported source files with an opinionated style, reducing formatting debates and keeping code consistent across editors and CI.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1486,7 +1486,7 @@
       "version": "3.9.5"
     },
     "npm:rollup": {
-      "agentSummary": "rollup is a focused package for developers who need next-generation es module bundler. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Rollup bundles JavaScript modules with strong tree shaking and plugin support, serving libraries and applications that need optimized distributable output.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1533,7 +1533,7 @@
       "version": "4.62.2"
     },
     "npm:terser": {
-      "agentSummary": "terser is a focused package for developers who need javascript parser, mangler/compressor and beautifier toolkit for es6+. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Terser parses, compresses, mangles, and formats modern JavaScript, reducing production bundle size while preserving configurable runtime compatibility and debugging options.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1580,7 +1580,7 @@
       "version": "5.49.0"
     },
     "npm:tsx": {
-      "agentSummary": "tsx is a focused package for developers who need typescript execute (tsx): node.js enhanced with esbuild to run typescript & esm files. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "tsx runs TypeScript and ECMAScript modules directly through esbuild, providing a quick development runtime for scripts, tools, and Node applications.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1627,7 +1627,7 @@
       "version": "4.23.0"
     },
     "npm:typescript": {
-      "agentSummary": "typescript is a focused package for developers who need typescript is a language for application scale javascript development. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "TypeScript adds static types and tooling to JavaScript, catching mistakes during development while compiling to portable code for browsers and runtimes.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1674,7 +1674,7 @@
       "version": "7.0.2"
     },
     "npm:vite": {
-      "agentSummary": "vite is a focused package for developers who need native-esm powered web dev build tool. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Vite provides a fast development server and optimized production builds for modern web projects, with native modules and a broad plugin ecosystem.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1721,7 +1721,7 @@
       "version": "8.1.4"
     },
     "npm:vitest": {
-      "agentSummary": "vitest is a focused package for developers who need next generation testing framework powered by vite. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "Vitest is a Vite-native testing framework with fast watch mode, TypeScript support, familiar assertions, mocking, coverage, and flexible workspace-aware configuration.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
@@ -1768,7 +1768,7 @@
       "version": "4.1.10"
     },
     "npm:yaml": {
-      "agentSummary": "yaml is a focused package for developers who need javascript parser and stringifier for yaml. It is most useful when its documented workflow matches an existing project rather than as a default dependency. Review the current release notes, platform support, and maintenance model before adopting it, especially where output, compatibility, or security behavior affects automated production work.",
+      "agentSummary": "yaml parses and serializes YAML in JavaScript while preserving documents, comments, aliases, and custom schema behavior for robust configuration tooling.",
       "assessment": {
         "alternatives": [
           "Built-in platform tools or another package in the same category"
