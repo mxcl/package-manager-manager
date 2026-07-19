@@ -630,17 +630,16 @@ def v2_blocks_from_update(before: dict, after: dict, response: dict, head: dict,
     recommendation_ids = response["recommendations"]
     old_editorials = {item["id"] for item in content(before, "editorial")}
     next_editorial = next((item for item in content(after, "editorial") if item["id"] not in old_editorials), None)
-    seed = ([next_editorial["id"]] if next_editorial else []) + new_ids + recommendation_ids
-    if not seed:
+    if not next_editorial:
         return []
+    seed = [next_editorial["id"], *new_ids, *recommendation_ids]
     batch_id = publication_token(at, seed)
     blocks = []
-    if next_editorial:
-        block = json.loads(json.dumps(next_editorial))
-        block["batchID"] = batch_id
-        block["package"] = v2_package(after["packages"][block["primaryPackageID"]])
-        block["relatedPackages"] = [v2_package(after["packages"][identifier]) for identifier in block.pop("relatedPackageIDs")]
-        blocks.append(block)
+    block = json.loads(json.dumps(next_editorial))
+    block["batchID"] = batch_id
+    block["package"] = v2_package(after["packages"][block["primaryPackageID"]])
+    block["relatedPackages"] = [v2_package(after["packages"][identifier]) for identifier in block.pop("relatedPackageIDs")]
+    blocks.append(block)
     def package_shelf(kind: str, identifier: str, title: str, package_ids: list[str] | None = None) -> dict:
         shelf = next(iter(content(after, kind)))
         identifiers = package_ids or shelf.get("fallbackPackageIDs") or shelf["packageIDs"]
@@ -654,18 +653,11 @@ def v2_blocks_from_update(before: dict, after: dict, response: dict, head: dict,
         }
 
     # An editorial is a complete Discover unit: story, then three useful shelves.
-    if next_editorial:
-        blocks.append(package_shelf("personalizedRecommendations", "for-you", "For You", shelf_chunk(after, head, "personalizedRecommendations", V2_RECOMMENDATION_LIMIT)))
-    if new_ids or (next_editorial and next(iter(content(after, "newPackages")))["packageIDs"]):
+    blocks.append(package_shelf("personalizedRecommendations", "for-you", "For You", shelf_chunk(after, head, "personalizedRecommendations", V2_RECOMMENDATION_LIMIT)))
+    if next(iter(content(after, "newPackages")))["packageIDs"]:
         block = package_shelf("newPackages", "new-packages", "New Packages")
-        if new_ids and not next_editorial:
-            block["packages"] = [v2_package(after["packages"][identifier]) for identifier in new_ids]
-            block["evidence"] = json.loads(json.dumps(response["newPackageEvidence"]))
         blocks.append(block)
-    if recommendation_ids and not next_editorial:
-        blocks.append(package_shelf("personalizedRecommendations", "for-you", "For You", shelf_chunk(after, head, "personalizedRecommendations", V2_RECOMMENDATION_LIMIT)))
-    if next_editorial:
-        blocks.append(package_shelf("recentlyUpdated", "recently-updated", "Recently Updated", shelf_chunk(after, head, "recentlyUpdated", V2_RECENTLY_UPDATED_LIMIT)))
+    blocks.append(package_shelf("recentlyUpdated", "recently-updated", "Recently Updated", shelf_chunk(after, head, "recentlyUpdated", V2_RECENTLY_UPDATED_LIMIT)))
     return blocks
 
 
@@ -779,6 +771,8 @@ def validate_v2_page(page: dict, root: Path) -> None:
     items = page["content"]
     if not isinstance(items, list) or len(items) > V2_PAGE_LIMIT:
         raise FeedError(f"v2 pages may contain at most {V2_PAGE_LIMIT} blocks")
+    if items and items[0].get("type") != "editorial":
+        raise FeedError("every non-empty v2 page must begin with an editorial")
     identifiers = [item.get("id") for item in items if isinstance(item, dict)]
     if len(identifiers) != len(items) or len(set(identifiers)) != len(identifiers):
         raise FeedError("v2 content IDs must be present and unique")
@@ -995,6 +989,25 @@ def reflow_discover_variety(feed: dict, head: dict, root: Path) -> tuple[dict, d
     return next_feed, next_head
 
 
+def repair_editorial_first(head: dict, root: Path) -> dict:
+    leading_count = next((index for index, item in enumerate(head["content"]) if item.get("type") == "editorial"), None)
+    if leading_count is None:
+        raise FeedError("cannot repair a v2 head with no editorial")
+    if leading_count == 0:
+        return head
+    result = json.loads(json.dumps(head))
+    leading, remaining = result["content"][:leading_count], result["content"][leading_count:]
+    anchor = remaining[0]
+    batch_end = next((index for index, item in enumerate(remaining) if item["batchID"] != anchor["batchID"]), len(remaining))
+    for item in leading:
+        item["batchID"] = anchor["batchID"]
+        item["publishedAt"] = anchor["publishedAt"]
+    result["content"] = remaining[:batch_end] + leading + remaining[batch_end:]
+    result["pageID"] = publication_token(parse_date(result["generatedAt"]), [item["id"] for item in result["content"]])
+    validate_v2_chain(root, result)
+    return result
+
+
 def run() -> int:
     root, feed_path, work = root_paths()
     archive_path = v2_path(feed_path)
@@ -1034,6 +1047,13 @@ def run() -> int:
             write_json(feed_path, result)
             write_json(archive_path, head)
             changed = commit_feed(root, feed_path, result, [archive_path])
+            print("PMM_FEED_STATUS=COMMITTED" if changed else "PMM_FEED_STATUS=NOOP")
+            return 0
+        if "--repair-editorial-first" in sys.argv:
+            feed = read_json(feed_path)
+            head = repair_editorial_first(read_json(archive_path), root)
+            write_json(archive_path, head)
+            changed = commit_feed(root, feed_path, feed, [archive_path])
             print("PMM_FEED_STATUS=COMMITTED" if changed else "PMM_FEED_STATUS=NOOP")
             return 0
         request_path, response_path = work / "request.json", work / "response.json"
@@ -1228,6 +1248,21 @@ def self_test() -> None:
         completed_archive = read_json(root / "www/feed/v2.json")
         validate_v2_chain(root, completed_archive)
         assert [item["type"] for item in completed_archive["content"]] == ["editorial", "personalizedRecommendations", "newPackages", "recentlyUpdated"]
+        assert v2_blocks_from_update(completed_feed, completed_feed, {"newPackages": ["ignored"], "recommendations": []}, completed_archive, at) == []
+        stray = json.loads(json.dumps(completed_archive["content"][1]))
+        stray["id"] = "for-you:stray"
+        stray["batchID"] = "stray"
+        stray["publishedAt"] = timestamp(at + timedelta(hours=1))
+        broken_head = json.loads(json.dumps(completed_archive))
+        broken_head["content"] = [stray, *broken_head["content"]]
+        try:
+            validate_v2_chain(root, broken_head)
+            raise AssertionError("v2 accepted a package shelf above its editorial")
+        except FeedError:
+            pass
+        repaired_head = repair_editorial_first(broken_head, root)
+        assert repaired_head["content"][0]["type"] == "editorial"
+        assert {item["id"] for item in repaired_head["content"]} == {item["id"] for item in broken_head["content"]}
         recommendation_shelf = next(iter(content(completed_archive, "personalizedRecommendations")))
         assert len(recommendation_shelf["packages"]) == V2_RECOMMENDATION_LIMIT
         fallback_ids = next(iter(content(completed_feed, "personalizedRecommendations")))["fallbackPackageIDs"]
@@ -1318,11 +1353,11 @@ def self_test() -> None:
 
         snapshot = completed_archive["content"][-1]
         crowded = json.loads(json.dumps(completed_archive))
-        crowded["content"] = []
-        for index in range(19):
+        crowded["content"] = [json.loads(json.dumps(editorial_template))]
+        for index in range(18):
             item = json.loads(json.dumps(snapshot))
             item["id"] = f"for-you:fixture-{index}"
-            item["publishedAt"] = timestamp(at - timedelta(minutes=index))
+            item["publishedAt"] = timestamp(at - timedelta(minutes=index + 1))
             crowded["content"].append(item)
         new_blocks = json.loads(json.dumps(completed_archive["content"]))
         for item in new_blocks:

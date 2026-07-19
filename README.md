@@ -127,10 +127,11 @@ commit flow with fixtures.
 
 The generator publishes two contracts. `www/feed/v1.json` remains the rolling
 compatibility snapshot. `www/feed/v2.json` is the newest page of an append-only
-archive: every editorial, new-package shelf, recently-updated shelf, and materially changed
-recommendation shelf is kept as a self-contained block. Each editorial publication
-is followed by For You, New Packages, and Recently Updated snapshots before the next
-story. For You snapshots contain at most ten cards and rotate through the 24-card
+archive: every editorial and its new-package, recently-updated, and recommendation
+shelves are kept as self-contained blocks. Package-only refreshes update v1 and wait
+for the next editorial rather than displacing the story at the top. Each editorial
+publication is followed by For You, New Packages, and Recently Updated snapshots
+before the next story. For You snapshots contain at most ten cards and rotate through the 24-card
 recommendation pool across later sections. Recently Updated does the same in
 five-card rows. A page holds at most 20
 blocks; when it fills, the generator freezes it under `www/feed/v2/pages/` and
