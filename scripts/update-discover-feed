@@ -27,6 +27,17 @@ SUPPORTED_MANAGERS = {"homebrew", "npm"}
 SUMMARY_WORDS = range(20, 31)
 EDITORIAL_WORDS = range(600, 1001)
 NEW_PACKAGE_MAX_AGE = timedelta(days=365)
+EDITORIAL_NEWER_MAX_AGE = timedelta(days=730)
+EDITORIAL_WINDOW = 20
+EDITORIAL_NEWER_TARGET = 13
+EDITORIAL_CANONICAL_COOLDOWN = timedelta(days=90)
+# These are excellent projects, but general introductions to them are already abundant.
+# Keep this deliberately small and explicit: it is a policy list, not a popularity proxy.
+CANONICAL_EDITORIAL_PACKAGE_IDS = {
+    "brew:docker", "brew:node", "brew:python", "brew:react", "brew:typescript",
+    "npm:docker", "npm:node", "npm:react", "npm:typescript",
+}
+EDITORIAL_RATIONALES = {"newer", "underexposed", "canonicalFreshAngle"}
 ASSESSMENT_FIELDS = (
     "audiences",
     "useCases",
@@ -238,6 +249,111 @@ def editorial_due(feed: dict, at: datetime) -> bool:
     return not dates or at - max(dates) >= timedelta(days=3)
 
 
+def is_canonical_editorial(identifier: object) -> bool:
+    return isinstance(identifier, str) and identifier in CANONICAL_EDITORIAL_PACKAGE_IDS
+
+
+def is_underexposed(package: dict) -> bool:
+    """A modest boost for tools outside the catalog's most-visible ranks."""
+    rank = package.get("popularityRank")
+    return rank is None or rank > 100
+
+
+def editorial_history_policy(history: list[dict], at: datetime) -> dict:
+    """The policy state supplied to the researcher and used to validate a response."""
+    recent = sorted(history, key=lambda item: (item.get("publishedAt", ""), item.get("id", "")), reverse=True)[:EDITORIAL_WINDOW]
+    # Reserve one slot for the edition being selected; when the window is already
+    # full, its oldest entry will fall out before the quota is evaluated.
+    retained = recent[:EDITORIAL_WINDOW - 1]
+    newer = sum(
+        isinstance(item.get("selection"), dict) and item["selection"].get("rationale") == "newer"
+        for item in retained
+    )
+    cooldown = []
+    for item in recent:
+        if not is_canonical_editorial(item.get("primaryPackageID")):
+            continue
+        try:
+            published = parse_date(item.get("publishedAt"))
+        except FeedError:
+            continue
+        if at - published < EDITORIAL_CANONICAL_COOLDOWN:
+            cooldown.append(item["primaryPackageID"])
+    return {
+        "canonicalCooldownDays": EDITORIAL_CANONICAL_COOLDOWN.days,
+        "canonicalCooldownPackageIDs": sorted(set(cooldown)),
+        "minimumNewerInRollingWindow": EDITORIAL_NEWER_TARGET,
+        # Until the 13-slot target is met, a non-newer choice is an auditable exception.
+        "newerRequired": newer < EDITORIAL_NEWER_TARGET,
+        "rollingWindow": EDITORIAL_WINDOW,
+    }
+
+
+def validate_editorial_selection(item: dict, history: list[dict], at: datetime) -> None:
+    """Validate policy metadata on a post-policy editorial against older editions."""
+    selection = item.get("selection")
+    if selection is None:
+        # Frozen editions predate this policy. They remain valid, but do not count as newer.
+        return
+    if not isinstance(selection, dict):
+        raise FeedError(f"{item['id']}.selection must be an object")
+    allowed = {"rationale", "firstStableReleaseAt", "firstStableReleaseSourceURL", "newerOverride", "underexposedReason", "freshAngle", "policy_exception"}
+    if set(selection) - allowed or selection.get("rationale") not in EDITORIAL_RATIONALES:
+        raise FeedError(f"{item['id']}.selection has invalid fields or rationale")
+    rationale = selection["rationale"]
+    if rationale == "newer":
+        release = selection.get("firstStableReleaseAt")
+        override = selection.get("newerOverride")
+        if release is None:
+            if not isinstance(override, dict) or set(override) != {"reason", "sourceURL"}:
+                raise FeedError(f"{item['id']}.selection.newer needs firstStableReleaseAt or an explicit newerOverride")
+            if not isinstance(override["reason"], str) or len(override["reason"].strip()) < 20:
+                raise FeedError(f"{item['id']}.selection.newerOverride.reason is too short")
+            safe_url(override["sourceURL"], f"{item['id']}.selection.newerOverride.sourceURL")
+        else:
+            released = parse_date(release)
+            safe_url(selection.get("firstStableReleaseSourceURL"), f"{item['id']}.selection.firstStableReleaseSourceURL")
+            if released > at or at - released > EDITORIAL_NEWER_MAX_AGE:
+                if not isinstance(override, dict) or set(override) != {"reason", "sourceURL"}:
+                    raise FeedError(f"{item['id']}.selection.firstStableReleaseAt is older than 24 months; newerOverride is required")
+                if not isinstance(override["reason"], str) or len(override["reason"].strip()) < 20:
+                    raise FeedError(f"{item['id']}.selection.newerOverride.reason is too short")
+                safe_url(override["sourceURL"], f"{item['id']}.selection.newerOverride.sourceURL")
+    elif selection.get("firstStableReleaseAt") is not None or selection.get("firstStableReleaseSourceURL") is not None or selection.get("newerOverride") is not None:
+        raise FeedError(f"{item['id']}.selection release fields are only valid for newer editorials")
+    if rationale == "underexposed":
+        if not isinstance(selection.get("underexposedReason"), str) or len(selection["underexposedReason"].strip()) < 20:
+            raise FeedError(f"{item['id']}.selection.underexposedReason is required")
+    elif selection.get("underexposedReason") is not None:
+        raise FeedError(f"{item['id']}.selection.underexposedReason is only valid for underexposed editorials")
+    if is_canonical_editorial(item.get("primaryPackageID")):
+        if rationale != "canonicalFreshAngle" or not isinstance(selection.get("freshAngle"), str) or len(selection["freshAngle"].strip()) < 20:
+            raise FeedError(f"{item['id']} is canonical and needs a specific freshAngle")
+    elif selection.get("freshAngle") is not None:
+        raise FeedError(f"{item['id']}.selection.freshAngle is only valid for canonical editorials")
+
+    policy = editorial_history_policy(history, at)
+    breaches = []
+    if policy["newerRequired"] and rationale != "newer":
+        breaches.append("rolling newer-tool target")
+    if item.get("primaryPackageID") in policy["canonicalCooldownPackageIDs"]:
+        breaches.append("canonical-tool cooldown")
+    exception = selection.get("policy_exception")
+    if breaches:
+        if not isinstance(exception, dict) or set(exception) != {"reason"} or not isinstance(exception["reason"], str) or len(exception["reason"].strip()) < 20:
+            raise FeedError(f"{item['id']} breaches {', '.join(breaches)} and needs selection.policy_exception.reason")
+    elif exception is not None:
+        raise FeedError(f"{item['id']}.selection.policy_exception is only valid for a quota or cooldown breach")
+
+
+def validate_editorial_history_policy(editorials: list[dict]) -> None:
+    """Validate oldest to newest so each edition sees its actual preceding window."""
+    history: list[dict] = []
+    for item in sorted(editorials, key=lambda item: (item.get("publishedAt", ""), item.get("id", ""))):
+        validate_editorial_selection(item, history, parse_date(item["publishedAt"]))
+        history.append(item)
+
+
 def candidate_pool(packages: dict[str, dict], new_ids: list[str], limit: int = 160) -> list[dict]:
     popular = sorted(
         packages.values(),
@@ -253,7 +369,11 @@ def candidate_pool(packages: dict[str, dict], new_ids: list[str], limit: int = 1
     recent = []
     for category in sorted(by_category):
         recent.extend(sorted(by_category[category], key=lambda package: (package.get("lastUpdatedAt") or "", package["id"]), reverse=True)[:8])
-    ordered = [packages[identifier] for identifier in new_ids] + popular + recent
+    underexposed = [package for package in packages.values() if is_underexposed(package)]
+    underexposed.sort(key=lambda package: (package.get("lastUpdatedAt") or "", package["id"]), reverse=True)
+    # The researcher still verifies the rationale, but this ordering makes newer and
+    # less-covered tools the default editorial starting point.
+    ordered = [packages[identifier] for identifier in new_ids] + underexposed + popular + recent
     seen, result = set(), []
     for package in ordered:
         if package["id"] not in seen:
@@ -269,6 +389,7 @@ def build_request(
     at: datetime,
     force_editorial: bool = False,
     force_recommendations: int = 0,
+    editorial_history: list[dict] | None = None,
 ) -> dict | None:
     is_bootstrap = not feed.get("packages")
     watermark = feed.get("source", {}).get("generatedAt")
@@ -299,10 +420,14 @@ def build_request(
     pool = candidate_pool(packages, new_ids)
     excluded = set(current_recommendations) - set(replace)
     recommendation_candidates = [package for package in pool if package["id"] not in excluded]
+    history = editorial_history if editorial_history is not None else content(feed, "editorial")
+    history = sorted(history, key=lambda item: (item.get("publishedAt", ""), item.get("id", "")), reverse=True)[:EDITORIAL_WINDOW]
     return {
         "catalog": {"generatedAt": generated_at, "url": CATALOG_URL},
         "createdAt": timestamp(at),
         "editorialCandidates": pool,
+        "editorialHistory": history,
+        "editorialPolicy": editorial_history_policy(history, at),
         "editorialRequired": needs_editorial,
         "existingEditorialPackageIDs": [item.get("primaryPackageID") for item in content(feed, "editorial")],
         "newCandidateLimit": min(8 if is_bootstrap else 6, len(new_ids)),
@@ -327,9 +452,10 @@ Write .feed-work/response.json as one JSON object with:
 - newPackageEvidence: an object for every chosen newPackages ID. Each value needs firstPublishedAt (an ISO 8601 timestamp), a concise reason, and one primary source URL proving the upstream project or package was first published within the last year. A catalog, formula, cask, or registry listing date alone does not prove a package is new; do not select a longstanding project newly added to a manager.
 - recommendations: exactly {request['recommendationCount']} IDs chosen only from recommendationCandidates.
 - packages: an object containing a card for every chosen ID and every editorial relatedPackageIDs entry. Each card needs agentSummary (20–30 words), all six assessment arrays (audiences, useCases, prerequisites, complements, alternatives, caveats), and at least two unique sources with title, https URL, and kind primary or independent.
-- editorial: {"null" if not request['editorialRequired'] else "an object with slug, title, deck, body, primaryPackageID, 2–4 relatedPackageIDs including the primary package, coverage containing history and actualUsage, at least four sources including two primary, and required artwork"}.
+- editorial: {"null" if not request['editorialRequired'] else "an object with slug, title, deck, body, primaryPackageID, 2–4 relatedPackageIDs including the primary package, coverage containing history and actualUsage, sources, artwork, and selection"}.
 
-{editorial} Structure the body as readable Markdown with at least three descriptive `##` subheadings and inline formatting or a list. Raw HTML is not allowed. For every editorial, use image_gen to create a wide, text-free editorial illustration that reflects the story. Save it under www/feed/assets/ and set artwork.path to its feed/assets/ path. Artwork must contain alt, attribution, license, and boxColors. Derive boxColors by visually sampling the generated image: backgroundStart and backgroundEnd are the two dominant colors the app should use behind the editorial box, and foreground is a high-contrast text color. All three colors must be #RRGGBB. Do not use a generic placeholder or a package icon.
+{editorial} The editorial selection policy is {json.dumps(request['editorialPolicy'], sort_keys=True)}. Choose in this order: a newer tool, then an underexposed tool, then another substantiated candidate. A newer tool means its first stable release is within 24 months: selection must use rationale "newer", firstStableReleaseAt, and firstStableReleaseSourceURL. A documented new major direction may instead use newerOverride with a reason and primary source URL. Underexposed tools use rationale "underexposed" and a concrete underexposedReason. Canonical tools on the cooldown list should not be chosen; if one is truly necessary, it needs rationale "canonicalFreshAngle", a concrete freshAngle, and a policy_exception explaining the cooldown. If newerRequired is true and you cannot substantiate a newer tool, any other rationale needs a policy_exception explaining the quota breach. Do not invent an exception.
+Structure the body as readable Markdown with at least three descriptive `##` subheadings and inline formatting or a list. Raw HTML is not allowed. For every editorial, use image_gen to create a wide, text-free editorial illustration that reflects the story. Save it under www/feed/assets/ and set artwork.path to its feed/assets/ path. Artwork must contain alt, attribution, license, and boxColors. Derive boxColors by visually sampling the generated image: backgroundStart and backgroundEnd are the two dominant colors the app should use behind the editorial box, and foreground is a high-contrast text color. All three colors must be #RRGGBB. Do not use a generic placeholder or a package icon.
 Do not add install URLs, publication dates, researched dates, or catalog metadata; the script derives those.
 
 When the response is ready, reentrantly run exactly:
@@ -472,6 +598,12 @@ def editorial(raw: object, request: dict, catalog: dict[str, dict], root: Path, 
         "type": "editorial",
         "body": body,
     }
+    selection = raw.get("selection")
+    result["selection"] = selection
+    history = request.get("editorialHistory", [])
+    if not isinstance(history, list):
+        raise FeedError("request editorialHistory must be an array")
+    validate_editorial_selection(result, history, at)
     artwork = validate_artwork(raw.get("artwork"), root)
     if not artwork:
         raise FeedError("editorial.artwork is required")
@@ -822,7 +954,7 @@ def validate_v2_page(page: dict, root: Path) -> None:
 
 def validate_v2_chain(root: Path, head: dict) -> None:
     page = head
-    page_ids, content_ids = set(), set()
+    page_ids, content_ids, editorials = set(), set(), []
     previous_date = None
     while True:
         validate_v2_page(page, root)
@@ -837,14 +969,29 @@ def validate_v2_chain(root: Path, head: dict) -> None:
             if previous_date is not None and item_date > previous_date:
                 raise FeedError("v2 content is not newest-first")
             previous_date = item_date
+            if item.get("type") == "editorial":
+                editorials.append(item)
         next_url = page["nextPageURL"]
         if next_url is None:
+            validate_editorial_history_policy(editorials)
             return
         filename = next_url.removeprefix(V2_PAGE_BASE_URL)
         page_path = root / "www/feed/v2/pages" / filename
         if not page_path.is_file():
             raise FeedError(f"missing v2 page {filename}")
         page = read_json(page_path)
+
+
+def v2_editorial_history(root: Path, head: dict) -> list[dict]:
+    """Return the permanent archive's editorials, newest first, after validation."""
+    validate_v2_chain(root, head)
+    result, page = [], head
+    while True:
+        result.extend(item for item in page["content"] if item.get("type") == "editorial")
+        next_url = page["nextPageURL"]
+        if next_url is None:
+            return result
+        page = read_json(root / "www/feed/v2/pages" / next_url.removeprefix(V2_PAGE_BASE_URL))
 
 
 def commit_feed(root: Path, feed_path: Path, feed: dict, extra_paths: list[Path] | None = None) -> bool:
@@ -1124,7 +1271,8 @@ def run() -> int:
             changed = commit_feed(root, archive_path, feed)
             print("PMM_FEED_STATUS=COMMITTED" if changed else "PMM_FEED_STATUS=NOOP")
             return 0
-        validate_v2_chain(root, read_json(archive_path))
+        archive = read_json(archive_path)
+        editorial_history = v2_editorial_history(root, archive)
         force_recommendations = 0
         for argument in sys.argv[1:]:
             if argument.startswith("--force-recommendations="):
@@ -1142,6 +1290,7 @@ def run() -> int:
             now(),
             force_editorial="--force-editorial" in sys.argv,
             force_recommendations=force_recommendations,
+            editorial_history=editorial_history,
         )
         if request is None:
             print("PMM_FEED_STATUS=NOOP")
@@ -1208,6 +1357,11 @@ def fixture_response(request: dict) -> dict:
             "deck": "A researched fixture editorial.",
             "primaryPackageID": editorial_id,
             "relatedPackageIDs": related_ids,
+            "selection": {
+                "firstStableReleaseAt": timestamp(fixture_at - timedelta(days=1)),
+                "firstStableReleaseSourceURL": "https://example.com/releases",
+                "rationale": "newer",
+            },
             "slug": "fixture-tool",
             "sources": [
                 {"kind": "primary", "title": "Docs", "url": "https://example.com/docs"},
@@ -1271,6 +1425,56 @@ def self_test() -> None:
             raise AssertionError("stale new-package evidence was accepted")
         except FeedError:
             pass
+        policy_item = {
+            "id": "editorial:policy:underexposed",
+            "primaryPackageID": "brew:tool-00",
+            "publishedAt": timestamp(at),
+            "selection": {"rationale": "underexposed", "underexposedReason": "The fixture represents a focused tool outside the catalog's most prominent popularity ranks."},
+        }
+        try:
+            validate_editorial_selection(policy_item, [], at)
+            raise AssertionError("quota breach without policy_exception was accepted")
+        except FeedError:
+            pass
+        policy_item["selection"]["policy_exception"] = {"reason": "No candidate with a documented recent stable release was available in this catalog run."}
+        validate_editorial_selection(policy_item, [], at)
+        canonical = {
+            "id": "editorial:policy:typescript",
+            "primaryPackageID": "npm:typescript",
+            "publishedAt": timestamp(at),
+            "selection": {"rationale": "canonicalFreshAngle", "freshAngle": "This edition examines a newly documented package-manager workflow rather than TypeScript fundamentals."},
+        }
+        cooldown_history = [{"id": "editorial:previous:typescript", "primaryPackageID": "npm:typescript", "publishedAt": timestamp(at - timedelta(days=1))}]
+        try:
+            validate_editorial_selection(canonical, cooldown_history, at)
+            raise AssertionError("canonical cooldown without policy_exception was accepted")
+        except FeedError:
+            pass
+        canonical["selection"]["policy_exception"] = {"reason": "The documented package-manager change is time-sensitive and cannot wait for the normal cooldown."}
+        validate_editorial_selection(canonical, cooldown_history, at)
+        overridden = {
+            "id": "editorial:policy:override",
+            "primaryPackageID": "brew:tool-01",
+            "publishedAt": timestamp(at),
+            "selection": {"rationale": "newer", "firstStableReleaseAt": timestamp(at - EDITORIAL_NEWER_MAX_AGE - timedelta(days=1)), "firstStableReleaseSourceURL": "https://example.com/releases"},
+        }
+        try:
+            validate_editorial_selection(overridden, [], at)
+            raise AssertionError("stale newer classification without override was accepted")
+        except FeedError:
+            pass
+        overridden["selection"]["newerOverride"] = {"reason": "A newly stable major direction substantially changes the package's intended audience and workflow.", "sourceURL": "https://example.com/releases"}
+        validate_editorial_selection(overridden, [], at)
+        rolling_history = []
+        for index in range(EDITORIAL_WINDOW):
+            newer_rationale = index < 12 or index == EDITORIAL_WINDOW - 1
+            rolling_history.append({
+                "id": f"editorial:policy:rolling:{index}",
+                "primaryPackageID": f"brew:tool-{index:02}",
+                "publishedAt": timestamp(at - timedelta(days=index)),
+                "selection": {"rationale": "newer" if newer_rationale else "underexposed"},
+            })
+        assert editorial_history_policy(rolling_history, at)["newerRequired"], "the expiring newer editorial must be replaced to preserve 13/20"
         original = (root / "www/feed/v1.json").read_bytes()
         write_json(root / ".feed-work/response.json", {})
         invalid = subprocess.run(command, env=env, text=True, capture_output=True)
@@ -1323,6 +1527,7 @@ def self_test() -> None:
             item["id"] = f"editorial:variety:{index}"
             item["batchID"] = f"variety-{index}"
             item["publishedAt"] = timestamp(at - timedelta(days=index))
+            item["selection"]["firstStableReleaseAt"] = timestamp(at - timedelta(days=index + 1))
             variety_head["content"].append(item)
         _, varied_head = reflow_discover_variety(completed_feed, variety_head, root)
         varied_shelves = content(varied_head, "personalizedRecommendations")
