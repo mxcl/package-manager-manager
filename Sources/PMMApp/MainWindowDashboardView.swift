@@ -27,7 +27,6 @@ struct MainWindowDashboardView: View {
                 .padding(.horizontal, 8)
             DashboardDiscoverFeedView(
                 posts: model.dashboardBlogPosts,
-                packs: model.dashboardInstallPacks,
                 supportingContentIsLoading: model.dashboardBlogEntriesAreLoading,
                 openPackage: { model.openDiscoverPackage($0) },
                 installPackage: { model.openDiscoverPackage($0, installing: true) }
@@ -68,7 +67,6 @@ private struct DashboardCard<Content: View>: View {
 
 private struct DashboardDiscoverFeedView: View {
     let posts: [DashboardBlogEntry]
-    let packs: [DashboardBlogEntry]
     let supportingContentIsLoading: Bool
     let openPackage: (DiscoverFeedPackage) -> Void
     let installPackage: (DiscoverFeedPackage) -> Void
@@ -84,8 +82,13 @@ private struct DashboardDiscoverFeedView: View {
                         discoverBlock(item, isInNewestBatch: true)
                     }
 
-                    DashboardBlogPostsSection(posts: posts, isLoading: supportingContentIsLoading)
-                    DashboardInstallPacksSection(packs: packs, isLoading: supportingContentIsLoading)
+                    DashboardBlogAndPackageSection(
+                        post: posts.first,
+                        package: spotlightPackage,
+                        isLoading: supportingContentIsLoading,
+                        openPackage: openPackage,
+                        installPackage: installPackage
+                    )
 
                     ForEach(store.olderContent) { item in
                         discoverBlock(item, isInNewestBatch: false)
@@ -151,15 +154,32 @@ private struct DashboardDiscoverFeedView: View {
             )
         case "recentlyUpdated":
             packageSection(title: item.title ?? "Recently Updated", packages: item.packages ?? [])
+        case "installPack":
+            packageSection(
+                title: item.title ?? "Install Pack",
+                packages: item.packages ?? [],
+                maximumPackageCount: nil
+            )
         default:
             EmptyView()
         }
     }
 
-    private func packageSection(title: String, packages: [DiscoverFeedPackage]) -> some View {
+    private var spotlightPackage: DiscoverFeedPackage? {
+        (store.newestBatch + store.olderContent)
+            .first { $0.type == "personalizedRecommendations" }?
+            .packages?.first
+    }
+
+    private func packageSection(
+        title: String,
+        packages: [DiscoverFeedPackage],
+        maximumPackageCount: Int? = 5
+    ) -> some View {
         DashboardDiscoverPackageSection(
             title: title,
             packages: packages,
+            maximumPackageCount: maximumPackageCount,
             openPackage: openPackage,
             installPackage: installPackage
         )
@@ -308,6 +328,7 @@ private struct DashboardDiscoverEditorialReader: View {
                         DashboardDiscoverPackageSection(
                             title: "Related Packages",
                             packages: relatedPackages,
+                            maximumPackageCount: 5,
                             openPackage: { package in
                                 dismiss()
                                 openPackage(package)
@@ -393,8 +414,13 @@ private struct DashboardDiscoverMarkdown: View {
 private struct DashboardDiscoverPackageSection: View {
     let title: String
     let packages: [DiscoverFeedPackage]
+    let maximumPackageCount: Int?
     let openPackage: (DiscoverFeedPackage) -> Void
     let installPackage: (DiscoverFeedPackage) -> Void
+
+    private var visiblePackages: [DiscoverFeedPackage] {
+        maximumPackageCount.map { Array(packages.prefix($0)) } ?? packages
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -402,7 +428,7 @@ private struct DashboardDiscoverPackageSection: View {
                 .font(.title2.weight(.bold))
                 .foregroundStyle(SystemColor.primaryText)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 12)], spacing: 12) {
-                ForEach(packages.prefix(5)) { package in
+                ForEach(visiblePackages) { package in
                     DashboardDiscoverPackageLink(
                         package: package,
                         open: { openPackage(package) },
@@ -416,7 +442,7 @@ private struct DashboardDiscoverPackageSection: View {
 
 private struct DashboardDiscoverPackageLink: View {
     let package: DiscoverFeedPackage
-    var label: String? = nil
+    var eyebrow: String? = nil
     let open: () -> Void
     let install: () -> Void
 
@@ -424,7 +450,12 @@ private struct DashboardDiscoverPackageLink: View {
         VStack(alignment: .leading, spacing: 7) {
             Button(action: open) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(label ?? package.displayName)
+                    if let eyebrow {
+                        Text(eyebrow)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    Text(package.displayName)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(SystemColor.primaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -542,80 +573,64 @@ private struct DashboardSponsoredCard: View {
     }
 }
 
-private struct DashboardBlogPostsSection: View {
-    let posts: [DashboardBlogEntry]
+private struct DashboardBlogAndPackageSection: View {
+    let post: DashboardBlogEntry?
+    let package: DiscoverFeedPackage?
     let isLoading: Bool
+    let openPackage: (DiscoverFeedPackage) -> Void
+    let installPackage: (DiscoverFeedPackage) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             DashboardFeedSectionHeading(title: "Blog & Updates")
-            if isLoading {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(maxWidth: .infinity, minHeight: 160)
-            } else if posts.isEmpty {
-                Text("No blog posts yet")
-                    .font(.callout)
-                    .foregroundStyle(SystemColor.secondaryText)
-                    .frame(maxWidth: .infinity, minHeight: 120)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 12)], spacing: 12) {
-                    ForEach(posts.prefix(5)) { post in
-                        DashboardBlogPostCard(post: post)
-                    }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 12) {
+                    blogContent
+                        .frame(minWidth: 420)
+                    packageContent
+                        .frame(width: 220)
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    blogContent
+                    packageContent
                 }
             }
         }
     }
-}
 
-private struct DashboardInstallPacksSection: View {
-    let packs: [DashboardBlogEntry]
-    let isLoading: Bool
+    @ViewBuilder
+    private var blogContent: some View {
+        if isLoading {
+            ProgressView()
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, minHeight: 250)
+                .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        } else if let post {
+            DashboardBlogPostCard(post: post)
+        } else {
+            Text("No blog posts yet")
+                .font(.callout)
+                .foregroundStyle(SystemColor.secondaryText)
+                .frame(maxWidth: .infinity, minHeight: 250)
+                .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+    }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            DashboardFeedSectionHeading(title: "Install Packs")
-            if isLoading {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(maxWidth: .infinity, minHeight: 150)
-            } else if packs.isEmpty {
-                Text("No install packs yet")
-                    .font(.callout)
-                    .foregroundStyle(SystemColor.secondaryText)
-                    .frame(maxWidth: .infinity, minHeight: 120)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 12)], spacing: 12) {
-                    ForEach(packs) { pack in
-                        Link(destination: pack.url) {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Image(systemName: pack.systemImage)
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                                    .background(Color.accentColor.opacity(0.78), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                Text(pack.title)
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(SystemColor.primaryText)
-                                    .lineLimit(2)
-                                Text(pack.subtitle)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(SystemColor.secondaryText)
-                                    .lineLimit(3)
-                                Spacer(minLength: 0)
-                                Text("View pack")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(Color.accentColor)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-                            .padding(18)
-                            .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
+    @ViewBuilder
+    private var packageContent: some View {
+        if let package {
+            DashboardDiscoverPackageLink(
+                package: package,
+                eyebrow: "FOR YOU",
+                open: { openPackage(package) },
+                install: { installPackage(package) }
+            )
+            .frame(minHeight: 250)
+        } else {
+            ProgressView()
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, minHeight: 250)
+                .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
     }
 }

@@ -729,7 +729,39 @@ def catalog_v2_package(package: dict) -> dict:
     }
 
 
-def catalog_shelf_blocks(packages: dict[str, dict], published_at: datetime) -> list[dict]:
+def install_pack_blocks(root: Path, packages: dict[str, dict], published_at: datetime) -> list[dict]:
+    index_path = root / "www/packs/index.json"
+    if not index_path.exists():
+        return []
+    entries = read_json(index_path).get("packs")
+    if not isinstance(entries, list):
+        raise FeedError("pack index is missing packs")
+    batch_id = publication_token(published_at, ["install-packs"])
+    blocks = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise FeedError("pack index contains an invalid pack")
+        identifiers = entry.get("packages")
+        if not isinstance(identifiers, list) or not identifiers or not all(isinstance(identifier, str) for identifier in identifiers):
+            raise FeedError(f"install pack {entry.get('slug')} is missing packageIDs")
+        if len(identifiers) != len(set(identifiers)):
+            raise FeedError(f"install pack {entry.get('slug')} repeats packages")
+        missing = [identifier for identifier in identifiers if identifier not in packages]
+        if missing:
+            raise FeedError(f"install pack {entry.get('slug')} contains unknown packages: {', '.join(missing)}")
+        blocks.append({
+            "batchID": batch_id,
+            "deck": entry.get("subtitle"),
+            "id": f"install-pack:{entry['slug']}:{batch_id}",
+            "packages": [catalog_v2_package(packages[identifier]) for identifier in identifiers],
+            "publishedAt": timestamp(published_at),
+            "title": entry["title"],
+            "type": "installPack",
+        })
+    return blocks
+
+
+def catalog_shelf_blocks(root: Path, packages: dict[str, dict], published_at: datetime) -> list[dict]:
     """Build stable, category-specific shelves without repeating a section identity."""
     by_category: dict[str, list[dict]] = {}
     for package in packages.values():
@@ -772,6 +804,7 @@ def catalog_shelf_blocks(packages: dict[str, dict], published_at: datetime) -> l
         shelf("personalizedRecommendations", "for-you", "For You", category, popular)
         shelf("newPackages", "new-packages", "New Packages", category, new)
         shelf("recentlyUpdated", "recently-updated", "Recently Updated", category, updated)
+    blocks.extend((block, f"pack:{block['id']}") for block in install_pack_blocks(root, packages, published_at))
     random.Random(batch_id).shuffle(blocks)
     varied, last_category, last_kind = [], None, None
     while blocks:
@@ -799,14 +832,22 @@ def rebuild_v2_catalog(
             seen_editorials.add(identity)
             editorials.append(editorial)
     published_at = parse_date(editorials[0]["publishedAt"]) if editorials else at
-    shelves = catalog_shelf_blocks(packages, published_at)
+    shelves = catalog_shelf_blocks(root, packages, published_at)
     blocks = []
     if editorials:
         offset = 0
+        group_random = random.Random(publication_token(published_at, [editorial["id"] for editorial in editorials] + [shelf["id"] for shelf in shelves]))
         for index, editorial in enumerate(editorials):
             blocks.append(editorial)
             remaining_editorials = len(editorials) - index
-            shelf_count = (len(shelves) - offset + remaining_editorials - 1) // remaining_editorials
+            remaining_shelves = len(shelves) - offset
+            if remaining_editorials == 1:
+                shelf_count = remaining_shelves
+            else:
+                target = remaining_shelves // remaining_editorials
+                minimum = max(1, target - 3)
+                maximum = min(target + 3, remaining_shelves - remaining_editorials + 1)
+                shelf_count = group_random.randint(minimum, maximum)
             for shelf in shelves[offset:offset + shelf_count]:
                 shelf = json.loads(json.dumps(shelf))
                 shelf["batchID"] = publication_token(parse_date(editorial["publishedAt"]), ["catalog-shelves", editorial["id"]])
@@ -1073,7 +1114,7 @@ def validate_v2_page(page: dict, root: Path) -> None:
                 raise FeedError(f"{item['id']} contains invalid related packages")
             for identifier, related_package in zip(related_ids, related):
                 validate_package_card(related_package, identifier)
-        elif kind in {"newPackages", "personalizedRecommendations", "recentlyUpdated"}:
+        elif kind in {"installPack", "newPackages", "personalizedRecommendations", "recentlyUpdated"}:
             packages = item.get("packages")
             if not isinstance(packages, list) or not packages:
                 raise FeedError(f"{item['id']} must contain package snapshots")
@@ -1082,7 +1123,10 @@ def validate_v2_page(page: dict, root: Path) -> None:
                 raise FeedError(f"{item['id']} contains invalid or duplicate packages")
             for identifier, package in zip(package_ids, packages):
                 validate_v2_package_card(package, identifier)
-            if kind == "newPackages":
+            if kind == "installPack":
+                if not isinstance(item.get("title"), str) or not item["title"].strip():
+                    raise FeedError(f"{item['id']} is missing an install-pack title")
+            elif kind == "newPackages":
                 evidence = item.get("evidence")
                 if evidence is not None and (not isinstance(evidence, dict) or set(evidence) != set(package_ids)):
                     raise FeedError(f"{item['id']} has invalid new-package evidence")
@@ -1553,9 +1597,18 @@ def self_test() -> None:
         fixture_artwork.parent.mkdir(parents=True)
         fixture_artwork.write_bytes(b"fixture artwork")
         (root / "scripts").mkdir()
+        (root / "www/packs").mkdir()
         at = datetime(2026, 7, 16, 12, tzinfo=timezone.utc)
         catalog_path = root / "catalog.json"
         write_json(catalog_path, fixture_catalog(at))
+        write_json(root / "www/packs/index.json", {
+            "packs": [{
+                "packages": ["brew:tool-00", "brew:tool-01", "brew:tool-02"],
+                "slug": "fixture-pack",
+                "subtitle": "Three fixture tools",
+                "title": "Fixture Pack",
+            }],
+        })
         initial_feed = empty_feed(at)
         write_json(root / "www/feed/v1.json", initial_feed)
         write_json(root / "www/feed/v2.json", v2_head_from_v1(initial_feed))
@@ -1650,6 +1703,9 @@ def self_test() -> None:
         completed_archive = read_json(root / "www/feed/v2.json")
         validate_v2_chain(root, completed_archive)
         assert completed_archive["content"][0]["type"] == "editorial"
+        fixture_pack = next(iter(content(completed_archive, "installPack")))
+        assert fixture_pack["title"] == "Fixture Pack"
+        assert [package["id"] for package in fixture_pack["packages"]] == ["brew:tool-00", "brew:tool-01", "brew:tool-02"]
         shelf_keys = [(item["type"], item["title"]) for item in completed_archive["content"] if item["type"] != "editorial"]
         assert len(shelf_keys) == len(set(shelf_keys))
         assert sum(len(item.get("packages", [])) for item in completed_archive["content"]) >= 35

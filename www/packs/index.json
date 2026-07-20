@@ -43,7 +43,7 @@
       "url": "https://mxcl.dev/package-manager-manager/blog/agent-pack/",
       "packages": [
         "brew:cask:codex",
-        "brew:claude-code",
+        "brew:cask:claude-code",
         "brew:block-goose-cli",
         "brew:aider",
         "brew:opencode",
@@ -57,7 +57,7 @@
     {
       "slug": "unix-plus-plus",
       "title": "UNIX++ Pack",
-      "subtitle": "23 modern shell tools",
+      "subtitle": "22 modern shell tools",
       "systemImage": "terminal",
       "url": "https://mxcl.dev/package-manager-manager/blog/unix-plus-plus/",
       "packages": [
@@ -76,7 +76,6 @@
         "brew:git-delta",
         "brew:hyperfine",
         "brew:tokei",
-        "brew:choose",
         "brew:jq",
         "brew:yq",
         "brew:xh",

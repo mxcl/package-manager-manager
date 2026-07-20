@@ -28,7 +28,8 @@ import Testing
     let page = try decodePage("""
     {"pageID":"head","generatedAt":"2026-07-16T12:00:00Z","nextPageURL":"https://example.com/older.json","content":[
       {"id":"editorial:one","type":"editorial","batchID":"batch-2","publishedAt":"2026-07-16T12:00:00Z","title":"Featured","package":{"id":"npm:typescript","displayName":"TypeScript","agentSummary":"Static checking","manager":"npm","installURL":"pkgmgrmgr://install?package=npm%3Atypescript"},"relatedPackages":[{"id":"npm:typescript","displayName":"TypeScript","agentSummary":"Static checking","manager":"npm","installURL":"pkgmgrmgr://install?package=npm%3Atypescript"},{"id":"brew:faker","displayName":"Faker","agentSummary":"Fake data","manager":"homebrew","installURL":"pkgmgrmgr://install?package=brew%3Afaker"}]},
-      {"id":"new:one","type":"newPackages","batchID":"batch-2","publishedAt":"2026-07-16T12:00:00Z","packages":[{"id":"brew:faker","displayName":"Faker","agentSummary":"Fake data","manager":"homebrew","homepage":"https://example.com","installURL":"pkgmgrmgr://install?package=brew%3Afaker"}]}
+      {"id":"new:one","type":"newPackages","batchID":"batch-2","publishedAt":"2026-07-16T12:00:00Z","packages":[{"id":"brew:faker","displayName":"Faker","agentSummary":"Fake data","manager":"homebrew","homepage":"https://example.com","installURL":"pkgmgrmgr://install?package=brew%3Afaker"}]},
+      {"id":"pack:one","type":"installPack","batchID":"batch-2","publishedAt":"2026-07-16T12:00:00Z","title":"Fixture Pack","packages":[{"id":"brew:faker","displayName":"Faker","agentSummary":"Fake data","manager":"homebrew","homepage":"https://example.com","installURL":"pkgmgrmgr://install?package=brew%3Afaker"}]}
     ]}
     """)
 
@@ -36,6 +37,8 @@ import Testing
     #expect(page.nextPageURL == URL(string: "https://example.com/older.json"))
     #expect(page.content.first?.package?.installURL?.scheme == "pkgmgrmgr")
     #expect(page.content.first?.relatedPackages?.map(\.id) == ["npm:typescript", "brew:faker"])
+    #expect(page.content.last?.type == "installPack")
+    #expect(page.content.last?.title == "Fixture Pack")
     #expect(page.content.last?.packages?.first?.ecosystem == "Homebrew")
 }
 
