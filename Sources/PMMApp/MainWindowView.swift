@@ -323,9 +323,8 @@ struct MainWindowPackageListView: View {
                     }
                 }
             }
-            .onChange(of: model.packageIDToScrollIntoView) { _, id in
-                scrollToSelectedPackage(id, proxy: proxy)
-                model.consumePackageScrollRequest()
+            .task(id: model.discoverPackageIDToScrollIntoView) {
+                await scrollToDiscoverPackage(model.discoverPackageIDToScrollIntoView, proxy: proxy)
             }
         }
         .safeAreaBar(edge: .top, alignment: .leading, spacing: 0) {
@@ -343,13 +342,15 @@ struct MainWindowPackageListView: View {
         .ignoresSafeArea(.container, edges: .top)
     }
 
-    private func scrollToSelectedPackage(_ id: String?, proxy: ScrollViewProxy) {
+    @MainActor
+    private func scrollToDiscoverPackage(_ id: String?, proxy: ScrollViewProxy) async {
         guard let id else { return }
-        DispatchQueue.main.async {
-            withAnimation {
-                proxy.scrollTo(id, anchor: .center)
-            }
+        await Task.yield()
+        guard !Task.isCancelled, model.discoverPackageIDToScrollIntoView == id else { return }
+        withAnimation {
+            proxy.scrollTo(id, anchor: .center)
         }
+        model.consumeDiscoverPackageScrollRequest()
     }
 }
 

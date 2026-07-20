@@ -478,7 +478,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var packageActionCommand: String?
     @Published private(set) var packageActionOutput = ""
     @Published private(set) var packageActionError: String?
-    @Published private(set) var packageIDToScrollIntoView: String?
+    @Published private(set) var discoverPackageIDToScrollIntoView: String?
     @Published private(set) var dashboardBlogEntries: [DashboardBlogEntry] = []
     @Published private(set) var dashboardBlogEntriesAreLoading = false
     @Published private(set) var pendingInstallPackConfirmation: MainWindowInstallPackConfirmation?
@@ -492,6 +492,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     private var installedPackageFirstSeenAtByID: [String: Date]?
     private var hasInventory = false
     private var pendingPackageURLCommand: MainWindowPackageURLCommand?
+    private var pendingDiscoverPackageScroll = false
     private var newUpdatedLastClickedAt: Date?
     private var newUpdatedSelectionDisplayCount: Int?
     private let userDefaults: UserDefaults
@@ -767,7 +768,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func selectSection(_ section: MainWindowSection) {
-        packageIDToScrollIntoView = nil
+        cancelDiscoverPackageScroll()
         if section == .newUpdated {
             newUpdatedSelectionDisplayCount = newUpdatedUnreadCount
             recordNewUpdatedSidebarClick()
@@ -784,6 +785,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     func selectRemoteHost(_ hostID: UUID, section: RemoteHostSection) {
         guard remoteHosts.contains(where: { $0.id == hostID }) else { return }
+        cancelDiscoverPackageScroll()
         selectedRemoteHostID = hostID
         selectedRemoteSection = section
         selectedPackage = nil
@@ -792,6 +794,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func select(_ package: ManagedPackage) {
+        cancelDiscoverPackageScroll()
         selectedPackage = package
         selectedLinkTab = nil
         loadDossier(for: package)
@@ -802,7 +805,6 @@ final class MainWindowModel: NSObject, ObservableObject {
         selectSection(section)
         let package = packageIndex.packagesBySection[section]?.first { $0.id == package.id } ?? package
         select(package)
-        packageIDToScrollIntoView = package.id
     }
 
     @discardableResult
@@ -810,18 +812,36 @@ final class MainWindowModel: NSObject, ObservableObject {
         guard let request = MainWindowPackageURLRequest(identifier: package.id) else { return false }
         let command: MainWindowPackageURLCommand = installing ? .install([request]) : .select(request)
         pendingPackageURLCommand = command
-        return openPackageURLCommand(command)
+        pendingDiscoverPackageScroll = false
+        let didOpen = openPackageURLCommand(command)
+        if didOpen {
+            requestDiscoverPackageScroll()
+        } else {
+            pendingDiscoverPackageScroll = true
+        }
+        return didOpen
     }
 
     @discardableResult
     func openPackageURL(_ url: URL) -> Bool {
         guard let command = MainWindowPackageURLCommand(url: url) else { return false }
+        cancelDiscoverPackageScroll()
         pendingPackageURLCommand = command
         return openPackageURLCommand(command)
     }
 
-    func consumePackageScrollRequest() {
-        packageIDToScrollIntoView = nil
+    func consumeDiscoverPackageScrollRequest() {
+        discoverPackageIDToScrollIntoView = nil
+    }
+
+    private func requestDiscoverPackageScroll() {
+        discoverPackageIDToScrollIntoView = selectedPackage?.id
+        pendingDiscoverPackageScroll = false
+    }
+
+    private func cancelDiscoverPackageScroll() {
+        discoverPackageIDToScrollIntoView = nil
+        pendingDiscoverPackageScroll = false
     }
 
     func selectAdjacentPackage(offset: Int) -> Bool {
@@ -1134,7 +1154,6 @@ final class MainWindowModel: NSObject, ObservableObject {
         selectSection(section)
         let resolvedPackage = packageIndex.packagesBySection[section]?.first { $0.id == package.id } ?? package
         select(resolvedPackage)
-        packageIDToScrollIntoView = resolvedPackage.id
         pendingPackageURLCommand = nil
         return true
     }
@@ -1191,7 +1210,16 @@ final class MainWindowModel: NSObject, ObservableObject {
         errors = next.errors
         selectedPackage = selectedPackage.flatMap { selected in displayedPackages.first { $0.id == selected.id } }
         if let pendingPackageURLCommand {
-            openPackageURLCommand(pendingPackageURLCommand)
+            let shouldScroll = pendingDiscoverPackageScroll
+            if shouldScroll {
+                if openPackageURLCommand(pendingPackageURLCommand) {
+                    requestDiscoverPackageScroll()
+                } else {
+                    pendingDiscoverPackageScroll = true
+                }
+            } else {
+                openPackageURLCommand(pendingPackageURLCommand)
+            }
         }
         if selectedPackage == nil { clearDossier() }
     }

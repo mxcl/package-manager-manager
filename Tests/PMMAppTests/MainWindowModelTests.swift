@@ -468,7 +468,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     model.select(second)
 
     #expect(model.selectedLinkTab == nil)
-    #expect(model.packageIDToScrollIntoView == nil)
+    #expect(model.discoverPackageIDToScrollIntoView == nil)
 }
 
 @MainActor
@@ -487,7 +487,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(model.openPackageURL(URL(string: "pkgmgrmgr://brew/zsh")!))
     #expect(model.selectedSection == .homebrew)
     #expect(model.selectedPackage == zsh)
-    #expect(model.packageIDToScrollIntoView == zsh.id)
+    #expect(model.discoverPackageIDToScrollIntoView == nil)
 }
 
 @MainActor
@@ -617,13 +617,58 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(model.openDiscoverPackage(discovered))
     #expect(model.selectedPackage == package)
     #expect(model.pendingInstallPackConfirmation == nil)
+    #expect(model.discoverPackageIDToScrollIntoView == package.id)
+
+    model.select(package)
+    #expect(model.discoverPackageIDToScrollIntoView == nil)
 
     #expect(model.openDiscoverPackage(discovered, installing: true))
     #expect(model.selectedPackage == package)
+    #expect(model.discoverPackageIDToScrollIntoView == package.id)
     #expect(model.pendingInstallPackConfirmation == MainWindowInstallPackConfirmation(
         packageIDs: [package.id],
         packageCount: 1
     ))
+}
+
+@MainActor
+@Test func discoverPackageScrollRequestSurvivesInventoryLoading() {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = MainWindowModel(
+        userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
+        store: PackageHostStore(directory: root),
+        bundledCatalog: []
+    )
+    let package = ManagedPackage(
+        manager: .homebrew,
+        identifier: "brew:bat",
+        installedVersion: nil,
+        latestVersion: "1",
+        category: "developer-tools"
+    )
+    let discovered = DiscoverFeedPackage(
+        id: package.identifier,
+        displayName: package.displayName,
+        agentSummary: "A better cat",
+        manager: "homebrew",
+        category: "developer-tools",
+        homepage: nil,
+        installURL: nil
+    )
+
+    #expect(!model.openDiscoverPackage(discovered))
+    #expect(model.discoverPackageIDToScrollIntoView == nil)
+
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: [package],
+        isRefreshing: false
+    ))
+
+    #expect(model.selectedPackage == package)
+    #expect(model.discoverPackageIDToScrollIntoView == package.id)
 }
 
 @Test func installedSectionSortsPackagesAlphabetically() {
@@ -934,11 +979,11 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(model.selectedSection == .developerTools)
     #expect(model.selectedPackage == package)
     #expect(model.displayedPackages == [package])
-    #expect(model.packageIDToScrollIntoView == package.id)
+    #expect(model.discoverPackageIDToScrollIntoView == nil)
 
-    model.consumePackageScrollRequest()
+    model.consumeDiscoverPackageScrollRequest()
 
-    #expect(model.packageIDToScrollIntoView == nil)
+    #expect(model.discoverPackageIDToScrollIntoView == nil)
 }
 
 @MainActor
