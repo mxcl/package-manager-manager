@@ -292,48 +292,48 @@
       "id": "recently-updated:media:20260720T130253Z-ed71d9e2",
       "packages": [
         {
-          "agentSummary": "Convert SVG into PDF, PNG, JPEG or SF Symbol",
+          "agentSummary": "Command driven spotify player",
           "category": "media",
-          "displayName": "swiftdraw",
-          "homepage": "https://github.com/swhitty/SwiftDraw",
-          "id": "brew:swiftdraw",
-          "installURL": "pkgmgrmgr://install?package=brew%3Aswiftdraw",
+          "displayName": "spotify_player",
+          "homepage": "https://github.com/aome510/spotify-player",
+          "id": "brew:spotify_player",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aspotify_player",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Command-line downloader for image-hosting site galleries and collections",
+          "agentSummary": "Full-Featured Open-Source Framework for Image Processing",
           "category": "media",
-          "displayName": "gallery-dl",
-          "homepage": "https://codeberg.org/mikf/gallery-dl",
-          "id": "brew:gallery-dl",
-          "installURL": "pkgmgrmgr://install?package=brew%3Agallery-dl",
+          "displayName": "gmic",
+          "homepage": "https://gmic.eu/",
+          "id": "brew:gmic",
+          "installURL": "pkgmgrmgr://install?package=brew%3Agmic",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Command-line music player",
+          "agentSummary": "Monkey's Audio lossless codec",
           "category": "media",
-          "displayName": "kew",
-          "homepage": "https://github.com/ravachol/kew",
-          "id": "brew:kew",
-          "installURL": "pkgmgrmgr://install?package=brew%3Akew",
+          "displayName": "mac",
+          "homepage": "https://www.monkeysaudio.com",
+          "id": "brew:mac",
+          "installURL": "pkgmgrmgr://install?package=brew%3Amac",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Converts a ttyrec file into gif files",
+          "agentSummary": "On-device audio transcription using Speech.framework",
           "category": "media",
-          "displayName": "ttygif",
-          "homepage": "https://github.com/icholy/ttygif",
-          "id": "brew:ttygif",
-          "installURL": "pkgmgrmgr://install?package=brew%3Attygif",
+          "displayName": "yap",
+          "homepage": "https://github.com/finnvoor/yap",
+          "id": "brew:yap",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ayap",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Effort free video editing!",
+          "agentSummary": "Audio metadata library",
           "category": "media",
-          "displayName": "auto-editor",
-          "homepage": "https://auto-editor.com",
-          "id": "brew:auto-editor",
-          "installURL": "pkgmgrmgr://install?package=brew%3Aauto-editor",
+          "displayName": "taglib",
+          "homepage": "https://taglib.org/",
+          "id": "brew:taglib",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ataglib",
           "manager": "homebrew"
         }
       ],
@@ -400,39 +400,21 @@
       "id": "recently-updated:productivity:20260720T130253Z-ed71d9e2",
       "packages": [
         {
-          "agentSummary": "Library for converting legacy Mac document formats",
+          "agentSummary": "Web search from the terminal",
           "category": "productivity",
-          "displayName": "libmwaw",
-          "homepage": "https://sourceforge.net/p/libmwaw/wiki/Home/",
-          "id": "brew:libmwaw",
-          "installURL": "pkgmgrmgr://install?package=brew%3Alibmwaw",
+          "displayName": "s-search",
+          "homepage": "https://github.com/zquestz/s",
+          "id": "brew:s-search",
+          "installURL": "pkgmgrmgr://install?package=brew%3As-search",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Resumes as code in YAML",
+          "agentSummary": "Terminal user interface client for Discord",
           "category": "productivity",
-          "displayName": "yamlresume",
-          "homepage": "https://github.com/yamlresume/yamlresume",
-          "id": "brew:yamlresume",
-          "installURL": "pkgmgrmgr://install?package=brew%3Ayamlresume",
-          "manager": "homebrew"
-        },
-        {
-          "agentSummary": "Multipurpose automation tool for content",
-          "category": "productivity",
-          "displayName": "flexget",
-          "homepage": "https://www.flexget.com",
-          "id": "brew:flexget",
-          "installURL": "pkgmgrmgr://install?package=brew%3Aflexget",
-          "manager": "homebrew"
-        },
-        {
-          "agentSummary": "Signal Messenger client for terminal",
-          "category": "productivity",
-          "displayName": "gurk",
-          "homepage": "https://github.com/boxdot/gurk-rs",
-          "id": "brew:gurk",
-          "installURL": "pkgmgrmgr://install?package=brew%3Agurk",
+          "displayName": "concord",
+          "homepage": "https://github.com/chojs23/concord",
+          "id": "brew:concord",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aconcord",
           "manager": "homebrew"
         },
         {
@@ -442,6 +424,24 @@
           "homepage": "https://github.com/tw93/Pake",
           "id": "brew:pake",
           "installURL": "pkgmgrmgr://install?package=brew%3Apake",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Multi-modal AI tool to extract and summarize content",
+          "category": "productivity",
+          "displayName": "summarize",
+          "homepage": "https://summarize.sh",
+          "id": "brew:summarize",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asummarize",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Library for converting legacy Mac document formats",
+          "category": "productivity",
+          "displayName": "libmwaw",
+          "homepage": "https://sourceforge.net/p/libmwaw/wiki/Home/",
+          "id": "brew:libmwaw",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alibmwaw",
           "manager": "homebrew"
         }
       ],
@@ -698,48 +698,48 @@
       "id": "recently-updated:data:20260720T130253Z-ed71d9e2",
       "packages": [
         {
-          "agentSummary": "CLI for MySQL with auto-completion and syntax highlighting",
+          "agentSummary": "Python-based fake data generator",
           "category": "data",
-          "displayName": "mycli",
-          "homepage": "https://www.mycli.net/",
-          "id": "brew:mycli",
-          "installURL": "pkgmgrmgr://install?package=brew%3Amycli",
+          "displayName": "faker",
+          "homepage": "https://faker.readthedocs.io",
+          "id": "brew:faker",
+          "installURL": "pkgmgrmgr://install?package=brew%3Afaker",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Time Zone Database",
+          "agentSummary": "Plugin-driven server agent for collecting & reporting metrics",
           "category": "data",
-          "displayName": "tzdb",
-          "homepage": "https://www.iana.org/time-zones",
-          "id": "brew:tzdb",
-          "installURL": "pkgmgrmgr://install?package=brew%3Atzdb",
+          "displayName": "telegraf",
+          "homepage": "https://www.influxdata.com/time-series-platform/telegraf/",
+          "id": "brew:telegraf",
+          "installURL": "pkgmgrmgr://install?package=brew%3Atelegraf",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Simplify and accelerate development on any Postgres application, existing or new",
+          "agentSummary": "PostgreSQL replication with DDL changes",
           "category": "data",
-          "displayName": "prestd",
-          "homepage": "https://github.com/prest/prest",
-          "id": "brew:prestd",
-          "installURL": "pkgmgrmgr://install?package=brew%3Aprestd",
+          "displayName": "pgstream",
+          "homepage": "https://github.com/xataio/pgstream",
+          "id": "brew:pgstream",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apgstream",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Command-line interface for DBX database connections, schema, and safe queries",
+          "agentSummary": "Manage files with git without checking in file contents",
           "category": "data",
-          "displayName": "dbx-cli",
-          "homepage": "https://dbxio.com",
-          "id": "brew:dbx-cli",
-          "installURL": "pkgmgrmgr://install?package=brew%3Adbx-cli",
+          "displayName": "git-annex",
+          "homepage": "https://git-annex.branchable.com/",
+          "id": "brew:git-annex",
+          "installURL": "pkgmgrmgr://install?package=brew%3Agit-annex",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Fast, distributed, high performance gradient boosting framework",
+          "agentSummary": "Cost-effective and scalable monitoring solution and time series database",
           "category": "data",
-          "displayName": "lightgbm",
-          "homepage": "https://lightgbm.readthedocs.io/en/latest/",
-          "id": "brew:lightgbm",
-          "installURL": "pkgmgrmgr://install?package=brew%3Alightgbm",
+          "displayName": "victoriametrics",
+          "homepage": "https://victoriametrics.com/",
+          "id": "brew:victoriametrics",
+          "installURL": "pkgmgrmgr://install?package=brew%3Avictoriametrics",
           "manager": "homebrew"
         }
       ],
@@ -779,6 +779,24 @@
       "id": "recently-updated:games:20260720T130253Z-ed71d9e2",
       "packages": [
         {
+          "agentSummary": "Collection of one-player puzzle games",
+          "category": "games",
+          "displayName": "puzzles",
+          "homepage": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+          "id": "brew:puzzles",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apuzzles",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Classic 2D jump'n run sidescroller game",
+          "category": "games",
+          "displayName": "supertux",
+          "homepage": "https://www.supertux.org/",
+          "id": "brew:supertux",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asupertux",
+          "manager": "homebrew"
+        },
+        {
           "agentSummary": "Open-source Android/Desktop remake of Civ V",
           "category": "games",
           "displayName": "unciv",
@@ -803,24 +821,6 @@
           "homepage": "https://slashem.sourceforge.net/",
           "id": "brew:slashem",
           "installURL": "pkgmgrmgr://install?package=brew%3Aslashem",
-          "manager": "homebrew"
-        },
-        {
-          "agentSummary": "Rolls an amount of virtual dice",
-          "category": "games",
-          "displayName": "rolldice",
-          "homepage": "https://github.com/sstrickl/rolldice",
-          "id": "brew:rolldice",
-          "installURL": "pkgmgrmgr://install?package=brew%3Arolldice",
-          "manager": "homebrew"
-        },
-        {
-          "agentSummary": "Poker evaluation and enumeration software",
-          "category": "games",
-          "displayName": "pokerstove",
-          "homepage": "https://github.com/andrewprock/pokerstove",
-          "id": "brew:pokerstove",
-          "installURL": "pkgmgrmgr://install?package=brew%3Apokerstove",
           "manager": "homebrew"
         }
       ],
@@ -1126,49 +1126,49 @@
       "id": "recently-updated:cloud-infrastructure:20260720T130253Z-ed71d9e2",
       "packages": [
         {
-          "agentSummary": "Command-line interface for Vercel",
+          "agentSummary": "CLI for PlanetScale Database",
           "category": "cloud-infrastructure",
-          "displayName": "vercel-cli",
-          "homepage": "https://vercel.com/home",
-          "id": "brew:vercel-cli",
-          "installURL": "pkgmgrmgr://install?package=brew%3Avercel-cli",
+          "displayName": "pscale",
+          "homepage": "https://www.planetscale.com/",
+          "id": "brew:pscale",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apscale",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "MCP Server for kubernetes management commands",
+          "agentSummary": "Official Amazon AWS command-line interface",
           "category": "cloud-infrastructure",
-          "displayName": "mcp-server-kubernetes",
-          "homepage": "https://github.com/Flux159/mcp-server-kubernetes",
-          "id": "brew:mcp-server-kubernetes",
-          "installURL": "pkgmgrmgr://install?package=brew%3Amcp-server-kubernetes",
+          "displayName": "awscli",
+          "homepage": "https://aws.amazon.com/cli/",
+          "id": "brew:awscli",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aawscli",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Free, open-source local AWS cloud emulator for integration testing",
+          "agentSummary": "CLI to facilitate terraforming your existing Cloudflare resources",
           "category": "cloud-infrastructure",
-          "displayName": "fakecloud",
-          "homepage": "https://fakecloud.dev/",
-          "id": "brew:fakecloud",
-          "installURL": "pkgmgrmgr://install?package=brew%3Afakecloud",
+          "displayName": "cf-terraforming",
+          "homepage": "https://github.com/cloudflare/cf-terraforming",
+          "id": "brew:cf-terraforming",
+          "installURL": "pkgmgrmgr://install?package=brew%3Acf-terraforming",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Offers a Cloud-Native Dev Environment that connects to your K8s cluster network",
+          "agentSummary": "Synchronize your DNS to multiple providers from a simple DSL",
           "category": "cloud-infrastructure",
-          "displayName": "kubevpn",
-          "homepage": "https://www.kubevpn.dev",
-          "id": "brew:kubevpn",
-          "installURL": "pkgmgrmgr://install?package=brew%3Akubevpn",
+          "displayName": "dnscontrol",
+          "homepage": "https://dnscontrol.org/",
+          "id": "brew:dnscontrol",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adnscontrol",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Static Web Publishing",
+          "agentSummary": "Command-line tools for fly.io services",
           "category": "cloud-infrastructure",
-          "displayName": "surge",
-          "homepage": "https://github.com/sintaxi/surge#readme",
-          "id": "npm:surge",
-          "installURL": "pkgmgrmgr://install?package=npm%3Asurge",
-          "manager": "npm"
+          "displayName": "flyctl",
+          "homepage": "https://fly.io",
+          "id": "brew:flyctl",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aflyctl",
+          "manager": "homebrew"
         }
       ],
       "publishedAt": "2026-07-16T22:52:52Z",
@@ -1207,48 +1207,48 @@
       "id": "recently-updated:networking:20260720T130253Z-ed71d9e2",
       "packages": [
         {
-          "agentSummary": "Privacy important, fast, recursive dns resolver server with dnssec support",
+          "agentSummary": "Send push notifications to your phone or desktop via PUT/POST",
           "category": "networking",
-          "displayName": "sdns",
-          "homepage": "https://sdns.dev/",
-          "id": "brew:sdns",
-          "installURL": "pkgmgrmgr://install?package=brew%3Asdns",
+          "displayName": "ntfy",
+          "homepage": "https://ntfy.sh/",
+          "id": "brew:ntfy",
+          "installURL": "pkgmgrmgr://install?package=brew%3Antfy",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "XBee communication libraries and utilities",
+          "agentSummary": "Tiny command-line DNS client with support for UDP, TCP, DoT, DoH, DoQ and ODoH",
           "category": "networking",
-          "displayName": "xbee-comm",
-          "homepage": "https://github.com/guyzmo/xbee-comm",
-          "id": "brew:xbee-comm",
-          "installURL": "pkgmgrmgr://install?package=brew%3Axbee-comm",
+          "displayName": "q",
+          "homepage": "https://github.com/natesales/q",
+          "id": "brew:q",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aq",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Multi-part HTTP download manager",
+          "agentSummary": "Full-featured C++ implementation of I2P client",
           "category": "networking",
-          "displayName": "getparty",
-          "homepage": "https://github.com/vbauerster/getparty",
-          "id": "brew:getparty",
-          "installURL": "pkgmgrmgr://install?package=brew%3Agetparty",
+          "displayName": "i2pd",
+          "homepage": "https://i2pd.website/",
+          "id": "brew:i2pd",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ai2pd",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Peer-to-peer network for easily sharing various kinds of data",
+          "agentSummary": "Simple SSL/TLS proxy with mutual authentication",
           "category": "networking",
-          "displayName": "veilid",
-          "homepage": "https://veilid.com/",
-          "id": "brew:veilid",
-          "installURL": "pkgmgrmgr://install?package=brew%3Aveilid",
+          "displayName": "ghostunnel",
+          "homepage": "https://ghostunnel.dev/",
+          "id": "brew:ghostunnel",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aghostunnel",
           "manager": "homebrew"
         },
         {
-          "agentSummary": "Extensible IRC client",
+          "agentSummary": "Easiest, most secure way to use WireGuard and 2FA",
           "category": "networking",
-          "displayName": "weechat",
-          "homepage": "https://weechat.org/",
-          "id": "brew:weechat",
-          "installURL": "pkgmgrmgr://install?package=brew%3Aweechat",
+          "displayName": "tailscale",
+          "homepage": "https://tailscale.com",
+          "id": "brew:tailscale",
+          "installURL": "pkgmgrmgr://install?package=brew%3Atailscale",
           "manager": "homebrew"
         }
       ],
@@ -1523,6 +1523,33 @@
       "id": "recently-updated:system:20260720T130253Z-ed71d9e2",
       "packages": [
         {
+          "agentSummary": "View disk space usage and delete unwanted data, fast",
+          "category": "system",
+          "displayName": "dua-cli",
+          "homepage": "https://lib.rs/crates/dua-cli",
+          "id": "brew:dua-cli",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adua-cli",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Yet another cross-platform graphical process/system monitor",
+          "category": "system",
+          "displayName": "bottom",
+          "homepage": "https://clementtsang.github.io/bottom/",
+          "id": "brew:bottom",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abottom",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Modern, advanced, portable, multiprotocol bootloader and boot manager",
+          "category": "system",
+          "displayName": "limine",
+          "homepage": "https://github.com/Limine-Bootloader/Limine",
+          "id": "brew:limine",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alimine",
+          "manager": "homebrew"
+        },
+        {
           "agentSummary": "Modify keymaps and pointer button mappings in X",
           "category": "system",
           "displayName": "xmodmap",
@@ -1538,33 +1565,6 @@
           "homepage": "https://gitlab.freedesktop.org/xorg/app/xwininfo",
           "id": "brew:xwininfo",
           "installURL": "pkgmgrmgr://install?package=brew%3Axwininfo",
-          "manager": "homebrew"
-        },
-        {
-          "agentSummary": "Backup program for disk arrays",
-          "category": "system",
-          "displayName": "snapraid",
-          "homepage": "https://www.snapraid.it/",
-          "id": "brew:snapraid",
-          "installURL": "pkgmgrmgr://install?package=brew%3Asnapraid",
-          "manager": "homebrew"
-        },
-        {
-          "agentSummary": "Advanced system and process monitor for Linux using process events",
-          "category": "system",
-          "displayName": "atop",
-          "homepage": "https://www.atoptool.nl",
-          "id": "brew:atop",
-          "installURL": "pkgmgrmgr://install?package=brew%3Aatop",
-          "manager": "homebrew"
-        },
-        {
-          "agentSummary": "Cross-platform system diagnostics TUI",
-          "category": "system",
-          "displayName": "syswatch",
-          "homepage": "https://www.netwatchlabs.com/labs/syswatch",
-          "id": "brew:syswatch",
-          "installURL": "pkgmgrmgr://install?package=brew%3Asyswatch",
           "manager": "homebrew"
         }
       ],
@@ -1870,48 +1870,48 @@
       "id": "recently-updated:language-runtime:20260720T130253Z-ed71d9e2",
       "packages": [
         {
-          "agentSummary": "Language inspired by Rust that compiles to Go",
-          "category": "language-runtime",
-          "displayName": "lisette",
-          "homepage": "https://lisette.run",
-          "id": "brew:lisette",
-          "installURL": "pkgmgrmgr://install?package=brew%3Alisette",
-          "manager": "homebrew"
-        },
-        {
-          "agentSummary": "Fast and statically typed, compiled language with Ruby-like syntax",
-          "category": "language-runtime",
-          "displayName": "crystal",
-          "homepage": "https://crystal-lang.org/",
-          "id": "brew:crystal",
-          "installURL": "pkgmgrmgr://install?package=brew%3Acrystal",
-          "manager": "homebrew"
-        },
-        {
-          "agentSummary": "👷 workerd, Cloudflare's JavaScript/Wasm Runtime",
-          "category": "language-runtime",
-          "displayName": "workerd",
-          "homepage": "https://github.com/cloudflare/workerd#readme",
-          "id": "npm:workerd",
-          "installURL": "pkgmgrmgr://install?package=npm%3Aworkerd",
-          "manager": "npm"
-        },
-        {
-          "agentSummary": "Python version management",
-          "category": "language-runtime",
-          "displayName": "pyenv",
-          "homepage": "https://github.com/pyenv/pyenv",
-          "id": "brew:pyenv",
-          "installURL": "pkgmgrmgr://install?package=brew%3Apyenv",
-          "manager": "homebrew"
-        },
-        {
           "agentSummary": "Asynchronous I/O for Lua",
           "category": "language-runtime",
           "displayName": "luvit",
           "homepage": "https://luvit.io",
           "id": "brew:luvit",
           "installURL": "pkgmgrmgr://install?package=brew%3Aluvit",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Just-In-Time Compiler (JIT) for the Lua programming language",
+          "category": "language-runtime",
+          "displayName": "luajit",
+          "homepage": "https://luajit.org/luajit.html",
+          "id": "brew:luajit",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aluajit",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Safe and concurrent object-oriented programming language",
+          "category": "language-runtime",
+          "displayName": "inko",
+          "homepage": "https://inko-lang.org/",
+          "id": "brew:inko",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ainko",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Rye is a homoiconic programming language focused on fluid expressions",
+          "category": "language-runtime",
+          "displayName": "ryelang",
+          "homepage": "https://ryelang.org/",
+          "id": "brew:ryelang",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aryelang",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Language inspired by Rust that compiles to Go",
+          "category": "language-runtime",
+          "displayName": "lisette",
+          "homepage": "https://lisette.run",
+          "id": "brew:lisette",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alisette",
           "manager": "homebrew"
         }
       ],
@@ -1920,8 +1920,8 @@
       "type": "recentlyUpdated"
     }
   ],
-  "generatedAt": "2026-07-20T14:33:15Z",
-  "nextPageURL": "https://mxcl.dev/package-manager-manager/feed/v2/pages/20260720T143315Z-c1670e01.json",
-  "pageID": "20260720T143315Z-a7af0ed3",
+  "generatedAt": "2026-07-21T13:01:09Z",
+  "nextPageURL": "https://mxcl.dev/package-manager-manager/feed/v2/pages/20260721T130109Z-c1670e01.json",
+  "pageID": "20260721T130109Z-a7af0ed3",
   "schemaVersion": 2
 }

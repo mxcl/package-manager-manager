@@ -107,6 +107,7 @@
     {
       "id": "new-packages",
       "packageIDs": [
+        "brew:advai-cli",
         "brew:zsh-patina",
         "brew:woxi",
         "brew:faker",
@@ -121,6 +122,7 @@
     {
       "id": "recently-updated",
       "packageIDs": [
+        "brew:advai-cli",
         "brew:zsh-patina",
         "brew:woxi",
         "brew:vals",
@@ -131,8 +133,7 @@
         "brew:deno",
         "brew:topgrade",
         "brew:datasette",
-        "brew:faker",
-        "npm:autoprefixer"
+        "brew:faker"
       ],
       "title": "Recently Updated",
       "type": "recentlyUpdated"
@@ -328,8 +329,61 @@
       "type": "editorial"
     }
   ],
-  "generatedAt": "2026-07-20T13:02:53Z",
+  "generatedAt": "2026-07-21T13:01:08Z",
   "packages": {
+    "brew:advai-cli": {
+      "agentSummary": "advai-cli is a local-first command line tool that combines skill management, external CLI workflows, browser-bridge automation, and a terminal AI chat interface.",
+      "assessment": {
+        "alternatives": [
+          "Dedicated skill managers, browser automation frameworks, or standalone terminal AI clients"
+        ],
+        "audiences": [
+          "Developers who want one local command surface for skills, external tools, browser work, and terminal AI assistance"
+        ],
+        "caveats": [
+          "The project is newly released, so its integration surface may change quickly",
+          "Browser features require a companion extension and local bridge rather than working as a self-contained browser client",
+          "External CLI workflows depend on OpenCLI being installed separately"
+        ],
+        "complements": [
+          "OpenCLI for registering and running external CLIs",
+          "A supported browser extension and local bridge for browser automation"
+        ],
+        "prerequisites": [
+          "Python 3.10 or later",
+          "The optional OpenCLI dependency on PATH for external CLI management",
+          "A configured compatible AI provider for terminal chat features"
+        ],
+        "useCases": [
+          "Inspecting and managing local skills or registered external command-line tools",
+          "Driving a configured browser bridge from a terminal session"
+        ]
+      },
+      "category": null,
+      "displayName": "advai-cli",
+      "docs": null,
+      "homepage": "https://github.com/Advai-X/advai-cli",
+      "id": "brew:advai-cli",
+      "installURL": "pkgmgrmgr://install?package=brew%3Aadvai-cli",
+      "lastUpdatedAt": "2026-07-20T06:25:46Z",
+      "manager": "homebrew",
+      "repository": null,
+      "researchedAt": "2026-07-21T13:01:08Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "advai-cli repository and usage documentation",
+          "url": "https://github.com/Advai-X/advai-cli"
+        },
+        {
+          "kind": "primary",
+          "title": "advai-cli PyPI package and release history",
+          "url": "https://pypi.org/project/advai-cli/"
+        }
+      ],
+      "upstreamSummary": "CLI for managing skills and external CLIs",
+      "version": null
+    },
     "brew:cyclonedx-npm": {
       "agentSummary": "CycloneDX npm creates software bills of materials for npm projects, helping teams inventory dependencies for security review, compliance, and release automation.",
       "assessment": {
@@ -1911,7 +1965,7 @@
   },
   "schemaVersion": 1,
   "source": {
-    "generatedAt": "2026-07-20T01:29:23Z",
+    "generatedAt": "2026-07-21T01:26:27Z",
     "url": "https://www.automicvault.com/db.json"
   }
 }

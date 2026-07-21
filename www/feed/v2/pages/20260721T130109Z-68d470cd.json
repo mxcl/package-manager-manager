@@ -1,0 +1,116 @@
+{
+  "content": [
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "recently-updated:toys:20260720T130253Z-ed71d9e2",
+      "packages": [
+        {
+          "agentSummary": "Creates ASCII Art from text. A full implementation of the FIGfont spec.",
+          "category": "toys",
+          "displayName": "figlet",
+          "homepage": "https://github.com/patorjk/figlet.js#readme",
+          "id": "npm:figlet",
+          "installURL": "pkgmgrmgr://install?package=npm%3Afiglet",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Cowsay but with ponies",
+          "category": "toys",
+          "displayName": "ponysay",
+          "homepage": "https://github.com/erkin/ponysay/",
+          "id": "brew:ponysay",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aponysay",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Generates ASCII tractor art",
+          "category": "toys",
+          "displayName": "tractorgen",
+          "homepage": "https://vergenet.net/~conrad/software/tractorgen/",
+          "id": "brew:tractorgen",
+          "installURL": "pkgmgrmgr://install?package=brew%3Atractorgen",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Small, configurable CLI that displays Japanese quotes in the terminal",
+          "category": "toys",
+          "displayName": "kotofetch",
+          "homepage": "https://github.com/hxpe-dev/kotofetch",
+          "id": "brew:kotofetch",
+          "installURL": "pkgmgrmgr://install?package=brew%3Akotofetch",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Infamous electronic fortune-cookie generator",
+          "category": "toys",
+          "displayName": "fortune",
+          "homepage": "https://www.ibiblio.org/pub/linux/games/amusements/fortune/!INDEX.html",
+          "id": "brew:fortune",
+          "installURL": "pkgmgrmgr://install?package=brew%3Afortune",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "Recently Updated in Toys",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "for-you:other:20260720T130253Z-ed71d9e2",
+      "packages": [
+        {
+          "agentSummary": "opencontrol is available through npm for installation and management in Package Manager Manager.",
+          "category": "other",
+          "displayName": "opencontrol",
+          "homepage": null,
+          "id": "npm:opencontrol",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aopencontrol",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "dooboolab welcome console message.",
+          "category": "other",
+          "displayName": "dooboolab-welcome",
+          "homepage": null,
+          "id": "npm:dooboolab-welcome",
+          "installURL": "pkgmgrmgr://install?package=npm%3Adooboolab-welcome",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "conjure-lite is available through npm for installation and management in Package Manager Manager.",
+          "category": "other",
+          "displayName": "conjure-lite",
+          "homepage": null,
+          "id": "npm:conjure-lite",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aconjure-lite",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "xnft is available through npm for installation and management in Package Manager Manager.",
+          "category": "other",
+          "displayName": "xnft",
+          "homepage": null,
+          "id": "npm:xnft",
+          "installURL": "pkgmgrmgr://install?package=npm%3Axnft",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "bluefairy is available through npm for installation and management in Package Manager Manager.",
+          "category": "other",
+          "displayName": "bluefairy",
+          "homepage": null,
+          "id": "npm:bluefairy",
+          "installURL": "pkgmgrmgr://install?package=npm%3Abluefairy",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "For You in Other",
+      "type": "personalizedRecommendations"
+    }
+  ],
+  "generatedAt": "2026-07-21T13:01:09Z",
+  "nextPageURL": null,
+  "pageID": "20260721T130109Z-68d470cd",
+  "schemaVersion": 2
+}
