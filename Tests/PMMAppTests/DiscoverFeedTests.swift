@@ -148,6 +148,21 @@ import Testing
     #expect(store.olderContent.flatMap { $0.packages ?? [] }.map(\.id) == ["brew:ffmpeg", "brew:ffmpeg"])
 }
 
+@Test @MainActor func discoverFeedStoreKeepsLeadEditorialWhenShelfBatchDiffers() async throws {
+    let head = try decodePage("""
+    {"pageID":"head","generatedAt":"2026-07-22T12:00:00Z","nextPageURL":null,"content":[
+      {"id":"editorial:new","type":"editorial","batchID":"editorial-batch","title":"Newest"},
+      {"id":"new:new","type":"newPackages","batchID":"shelf-batch","title":"New Packages","packages":[]}
+    ]}
+    """)
+    let store = DiscoverFeedStore(pageLoader: { _ in head })
+
+    await store.loadInitial()
+
+    #expect(store.newestBatch.map(\.id) == ["editorial:new"])
+    #expect(store.olderContent.map(\.id) == ["new:new"])
+}
+
 private func decodePage(_ json: String) throws -> DiscoverFeedPage {
     try JSONDecoder().decode(DiscoverFeedPage.self, from: Data(json.utf8))
 }

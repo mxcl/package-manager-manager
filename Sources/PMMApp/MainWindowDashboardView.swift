@@ -101,8 +101,10 @@ private struct DashboardDiscoverFeedView: View {
         Group {
             if !store.pages.isEmpty {
                 LazyVStack(spacing: 24) {
-                    ForEach(store.newestBatch) { item in
-                        discoverBlock(item, isInNewestBatch: true)
+                    leadContent
+
+                    ForEach(newestContentAfterLead) { item in
+                        discoverBlock(item)
                     }
 
                     DashboardBlogAndPackageSection(
@@ -115,7 +117,7 @@ private struct DashboardDiscoverFeedView: View {
                     )
 
                     ForEach(store.olderContent) { item in
-                        discoverBlock(item, isInNewestBatch: false)
+                        discoverBlock(item)
                     }
 
                     paginationFooter
@@ -152,7 +154,35 @@ private struct DashboardDiscoverFeedView: View {
     }
 
     @ViewBuilder
-    private func discoverBlock(_ item: DiscoverFeedContent, isInNewestBatch: Bool) -> some View {
+    private var leadContent: some View {
+        if let editorial = leadEditorial {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 24) {
+                    DashboardDiscoverEditorialCard(editorial: editorial) { selectedEditorial = editorial }
+                    DashboardSponsoredCard()
+                        .frame(width: 310, height: 360)
+                }
+                VStack(spacing: 24) {
+                    DashboardSponsoredCard()
+                    DashboardDiscoverEditorialCard(editorial: editorial) { selectedEditorial = editorial }
+                }
+            }
+        } else {
+            DashboardSponsoredCard()
+        }
+    }
+
+    private var leadEditorial: DiscoverFeedContent? {
+        store.newestBatch.first { $0.type == "editorial" }
+    }
+
+    private var newestContentAfterLead: [DiscoverFeedContent] {
+        guard let leadEditorial else { return store.newestBatch }
+        return store.newestBatch.filter { $0.id != leadEditorial.id }
+    }
+
+    @ViewBuilder
+    private func discoverBlock(_ item: DiscoverFeedContent) -> some View {
         switch item.type {
         case "editorial":
             DashboardDiscoverEditorialCard(editorial: item) { selectedEditorial = item }
@@ -162,15 +192,7 @@ private struct DashboardDiscoverFeedView: View {
                 item.title ?? "New Packages",
                 packages: packages
             )
-            if isInNewestBatch {
-                HStack(alignment: .top, spacing: 24) {
-                    packageSection(title: title, packages: packages)
-                    DashboardSponsoredCard()
-                        .frame(width: 310)
-                }
-            } else {
-                packageSection(title: title, packages: packages)
-            }
+            packageSection(title: title, packages: packages)
         case "personalizedRecommendations":
             let packages = item.packages ?? []
             packageSection(
