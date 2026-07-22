@@ -95,7 +95,7 @@ private final class LockedStrings: @unchecked Sendable {
 
 @Test func menuBarEcosystemIconsMatchPackageCategoriesAndAppSources() {
     #expect(menuBarEcosystemIcon(for: ManagedPackage(manager: .homebrew, identifier: "brew:cask:fork", displayName: "Fork", installedVersion: "1", latestVersion: "2")) == .system(name: "macwindow"))
-    #expect(menuBarEcosystemIcon(for: ManagedPackage(manager: .macApp, name: "Store", installedVersion: "1", latestVersion: "2", appProvenance: .appStore)) == .system(name: "appstore"))
+    #expect(menuBarEcosystemIcon(for: ManagedPackage(manager: .macApp, name: "Store", installedVersion: "1", latestVersion: "2", appProvenance: .appStore)) == .asset(name: "EcosystemAppStore", fallbackSystemName: "storefront"))
     #expect(menuBarEcosystemIcon(for: ManagedPackage(manager: .mise, name: "python", installedVersion: "1", latestVersion: "2")) == .asset(name: "EcosystemPython", fallbackSystemName: "arrow.forward.to.line"))
 }
 

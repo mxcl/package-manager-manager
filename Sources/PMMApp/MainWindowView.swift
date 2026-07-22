@@ -1025,20 +1025,8 @@ struct PackageEcosystemMark: View {
 
     var body: some View {
         Group {
-            if package.manager == .macApp, package.appProvenance == .appStore {
-                Image(systemName: "appstore")
-                    .symbolRenderingMode(.monochrome)
-                    .font(.system(size: size * 0.9, weight: .semibold))
-                    .offset(y: isBaselineAligned ? 1 : 0)
-            } else if package.manager == .macApp {
-                Text((package.appProvenance ?? .unknown).title.uppercased())
-                    .font(.system(size: 7, weight: .black, design: .rounded))
-                    .tracking(0.35)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 2)
-                    .background(color.opacity(0.12), in: Capsule())
+            if package.manager == .macApp {
+                macAppMark(mainWindowMacAppMark(for: package.appProvenance))
             } else if let image = section.sidebarImage {
                 Image(image)
                     .renderingMode(.template)
@@ -1054,6 +1042,33 @@ struct PackageEcosystemMark: View {
         .foregroundStyle(color)
         .frame(height: size + 1)
         .accessibilityLabel(package.manager == .macApp ? (package.appProvenance ?? .unknown).title : section.title)
+    }
+
+    @ViewBuilder
+    private func macAppMark(_ mark: MainWindowMacAppMark) -> some View {
+        switch mark {
+        case .asset(let name):
+            Image(name)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .offset(y: isBaselineAligned ? 1 : 0)
+        case .system(let name):
+            Image(systemName: name)
+                .symbolRenderingMode(.monochrome)
+                .font(.system(size: size * 0.9, weight: .semibold))
+                .offset(y: isBaselineAligned ? 1 : 0)
+        case .text(let title):
+            Text(title)
+                    .font(.system(size: 7, weight: .black, design: .rounded))
+                    .tracking(0.35)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(color.opacity(0.12), in: Capsule())
+        }
     }
 
     private var section: MainWindowSection { mainWindowManagerSection(for: package) }

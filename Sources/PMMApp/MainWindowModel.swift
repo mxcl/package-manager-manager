@@ -171,6 +171,22 @@ enum MainWindowLinkTab: String, CaseIterable, Identifiable {
     }
 }
 
+enum MainWindowMacAppMark: Equatable {
+    case asset(String)
+    case system(String)
+    case text(String)
+}
+
+func mainWindowMacAppMark(for provenance: MacAppProvenance?) -> MainWindowMacAppMark {
+    switch provenance ?? .unknown {
+    case .appStore: .asset("EcosystemAppStore")
+    case .homebrew: .system("macwindow")
+    case .setapp: .text(MacAppProvenance.setapp.title.uppercased())
+    case .direct: .text(MacAppProvenance.direct.title.uppercased())
+    case .unknown: .text(MacAppProvenance.unknown.title.uppercased())
+    }
+}
+
 struct MainWindowPackageLink: Equatable, Identifiable {
     let tab: MainWindowLinkTab
     let url: URL

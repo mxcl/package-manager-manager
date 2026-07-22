@@ -832,6 +832,11 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(index.packagesBySection[.skills]?.map(\.displayName) == ["example"])
 }
 
+@Test func appStoreAppsUseTheBundledEcosystemMark() {
+    #expect(mainWindowMacAppMark(for: .appStore) == .asset("EcosystemAppStore"))
+    #expect(mainWindowMacAppMark(for: .direct) == .text("DIY"))
+}
+
 @Test func outdatedSectionSortsMostOutdatedFirst() {
     let packages = [
         package(.npm, "patch", installedVersion: "1.0.0", latestVersion: "1.0.5"),

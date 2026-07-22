@@ -90,7 +90,7 @@ func menuBarEcosystemIcon(for package: ManagedPackage) -> MenuBarEcosystemIcon {
     case .macApp:
         return switch package.appProvenance ?? .unknown {
         case .homebrew: .system(name: "macwindow")
-        case .appStore: .system(name: "appstore")
+        case .appStore: .asset(name: "EcosystemAppStore", fallbackSystemName: "storefront")
         case .setapp: .system(name: "square.grid.2x2")
         case .direct: .system(name: "wrench.and.screwdriver")
         case .unknown: .system(name: "questionmark.app")
