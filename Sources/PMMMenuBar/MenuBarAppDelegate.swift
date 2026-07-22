@@ -95,7 +95,7 @@ final class MenuBarActionProgressRelay: @unchecked Sendable {
 
 @MainActor
 final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
-    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    private let statusItem = NSStatusBar.system.statusItem(withLength: 20)
     private let store = PackageHostStore()
     private let notificationCenter = DistributedNotificationCenter.default()
     private var state = MenuBarMenuState()
