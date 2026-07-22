@@ -4,10 +4,16 @@ import PMMCore
 let menuBarRefreshInterval: TimeInterval = 55 * 60
 
 struct MenuBarPackageRow: Equatable {
-    let managerTitle: String
+    let ecosystemTitle: String
+    let ecosystemIcon: MenuBarEcosystemIcon
     let name: String
     let installedVersion: String
     let latestVersion: String
+}
+
+enum MenuBarEcosystemIcon: Equatable {
+    case asset(name: String, fallbackSystemName: String)
+    case system(name: String)
 }
 
 enum MenuBarMenuRow: Equatable {
@@ -54,7 +60,8 @@ struct MenuBarMenuState: Equatable {
             }
             .map {
                 MenuBarPackageRow(
-                    managerTitle: $0.appProvenance?.title ?? $0.manager.title,
+                    ecosystemTitle: $0.appProvenance?.title ?? $0.manager.title,
+                    ecosystemIcon: menuBarEcosystemIcon(for: $0),
                     name: $0.displayName,
                     installedVersion: $0.installedVersion ?? "?",
                     latestVersion: $0.latestVersion ?? "?"
@@ -64,6 +71,37 @@ struct MenuBarMenuState: Equatable {
 
     private var actionableOutdatedPackages: [ManagedPackage] {
         (inventory?.outdatedPackages ?? []).filter(PackageUpdater.supports)
+    }
+}
+
+func menuBarEcosystemIcon(for package: ManagedPackage) -> MenuBarEcosystemIcon {
+    if package.identifier.hasPrefix("brew:cask:") { return .system(name: "macwindow") }
+    switch package.manager {
+    case .homebrew:
+        return .asset(name: "EcosystemHomebrew", fallbackSystemName: "mug")
+    case .npm, .npx:
+        return .asset(name: "EcosystemJavaScript", fallbackSystemName: "curlybraces")
+    case .uv, .uvx:
+        return .asset(name: "EcosystemPython", fallbackSystemName: "arrow.forward.to.line")
+    case .cargoInstall, .rustup:
+        return .asset(name: "EcosystemRust", fallbackSystemName: "hammer")
+    case .skills:
+        return .system(name: "wand.and.stars")
+    case .macApp:
+        return switch package.appProvenance ?? .unknown {
+        case .homebrew: .system(name: "macwindow")
+        case .appStore: .system(name: "appstore")
+        case .setapp: .system(name: "square.grid.2x2")
+        case .direct: .system(name: "wrench.and.screwdriver")
+        case .unknown: .system(name: "questionmark.app")
+        }
+    case .mise:
+        return switch package.packageToken.lowercased() {
+        case "node", "bun", "deno": .asset(name: "EcosystemJavaScript", fallbackSystemName: "curlybraces")
+        case "python": .asset(name: "EcosystemPython", fallbackSystemName: "arrow.forward.to.line")
+        case "rust": .asset(name: "EcosystemRust", fallbackSystemName: "hammer")
+        default: .system(name: "curlybraces")
+        }
     }
 }
 

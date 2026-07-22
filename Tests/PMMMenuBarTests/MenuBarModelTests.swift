@@ -69,9 +69,9 @@ private final class LockedStrings: @unchecked Sendable {
 
     #expect(state.statusSymbolName == "shippingbox.fill")
     #expect(state.rows == [
-        .package(MenuBarPackageRow(managerTitle: "Homebrew", name: "git", installedVersion: "1.0.0", latestVersion: "1.2.0")),
-        .package(MenuBarPackageRow(managerTitle: "npm", name: "alpha", installedVersion: "1.0.0", latestVersion: "3.0.0")),
-        .package(MenuBarPackageRow(managerTitle: "npm", name: "zeta", installedVersion: "1.0.0", latestVersion: "2.0.0")),
+        .package(MenuBarPackageRow(ecosystemTitle: "Homebrew", ecosystemIcon: .asset(name: "EcosystemHomebrew", fallbackSystemName: "mug"), name: "git", installedVersion: "1.0.0", latestVersion: "1.2.0")),
+        .package(MenuBarPackageRow(ecosystemTitle: "npm", ecosystemIcon: .asset(name: "EcosystemJavaScript", fallbackSystemName: "curlybraces"), name: "alpha", installedVersion: "1.0.0", latestVersion: "3.0.0")),
+        .package(MenuBarPackageRow(ecosystemTitle: "npm", ecosystemIcon: .asset(name: "EcosystemJavaScript", fallbackSystemName: "curlybraces"), name: "zeta", installedVersion: "1.0.0", latestVersion: "2.0.0")),
     ])
 }
 
@@ -89,8 +89,14 @@ private final class LockedStrings: @unchecked Sendable {
 
     #expect(state.statusSymbolName == "shippingbox")
     #expect(state.rows == [
-        .package(MenuBarPackageRow(managerTitle: "DIY", name: "Fork", installedVersion: "1.0.0", latestVersion: "2.0.0"))
+        .package(MenuBarPackageRow(ecosystemTitle: "DIY", ecosystemIcon: .system(name: "wrench.and.screwdriver"), name: "Fork", installedVersion: "1.0.0", latestVersion: "2.0.0"))
     ])
+}
+
+@Test func menuBarEcosystemIconsMatchPackageCategoriesAndAppSources() {
+    #expect(menuBarEcosystemIcon(for: ManagedPackage(manager: .homebrew, identifier: "brew:cask:fork", displayName: "Fork", installedVersion: "1", latestVersion: "2")) == .system(name: "macwindow"))
+    #expect(menuBarEcosystemIcon(for: ManagedPackage(manager: .macApp, name: "Store", installedVersion: "1", latestVersion: "2", appProvenance: .appStore)) == .system(name: "appstore"))
+    #expect(menuBarEcosystemIcon(for: ManagedPackage(manager: .mise, name: "python", installedVersion: "1", latestVersion: "2")) == .asset(name: "EcosystemPython", fallbackSystemName: "arrow.forward.to.line"))
 }
 
 @Test func menuBarCommandValidationAcceptsSupportedActions() throws {

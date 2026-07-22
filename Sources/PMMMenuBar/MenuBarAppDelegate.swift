@@ -436,7 +436,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             case .error(let message):
                 menu.addItem(disabledItem("Error: \(message)"))
             case .package(let package):
-                menu.addItem(disabledItem("\(package.managerTitle): \(package.name) \(package.installedVersion) -> \(package.latestVersion)"))
+                menu.addItem(packageItem(package))
             }
         }
 
@@ -629,6 +629,33 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
+    }
+
+    private func packageItem(_ package: MenuBarPackageRow) -> NSMenuItem {
+        let title = "\(package.name) \(package.installedVersion) -> \(package.latestVersion)"
+        let item = disabledItem(title)
+        item.image = ecosystemImage(package.ecosystemIcon, accessibilityDescription: package.ecosystemTitle)
+        item.toolTip = package.ecosystemTitle
+        item.setAccessibilityLabel("\(package.ecosystemTitle): \(title)")
+        return item
+    }
+
+    private func ecosystemImage(
+        _ icon: MenuBarEcosystemIcon,
+        accessibilityDescription: String
+    ) -> NSImage? {
+        let source: NSImage?
+        switch icon {
+        case .asset(let name, let fallbackSystemName):
+            source = NSImage(named: name)
+                ?? NSImage(systemSymbolName: fallbackSystemName, accessibilityDescription: accessibilityDescription)
+        case .system(let name):
+            source = NSImage(systemSymbolName: name, accessibilityDescription: accessibilityDescription)
+        }
+        guard let image = source?.copy() as? NSImage else { return nil }
+        image.isTemplate = true
+        image.size = NSSize(width: 16, height: 16)
+        return image
     }
 
     private func loadingItem() -> NSMenuItem {
