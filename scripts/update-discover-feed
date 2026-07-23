@@ -1450,14 +1450,15 @@ def run() -> int:
             if not response_path.exists():
                 print(prompt(request))
                 return 0
+            published_at = parse_date(request["createdAt"])
             feed = read_json(feed_path) if feed_path.exists() else empty_feed(now())
             response = read_json(response_path)
-            result = apply_response(feed, request, response, root, now())
+            result = apply_response(feed, request, response, root, published_at)
             head = read_json(archive_path) if archive_path.exists() else v2_head_from_v1(feed)
-            blocks = v2_blocks_from_update(feed, result, response, head, now())
-            next_head, frozen = append_v2(root, head, blocks, now())
+            blocks = v2_blocks_from_update(feed, result, response, head, published_at)
+            next_head, frozen = append_v2(root, head, blocks, published_at)
             _, catalog_packages = normalize_catalog(fetch_catalog())
-            next_head, catalog_pages = rebuild_v2_catalog(root, next_head, catalog_packages, now())
+            next_head, catalog_pages = rebuild_v2_catalog(root, next_head, catalog_packages, published_at)
             write_json(feed_path, result)
             write_json(archive_path, next_head)
             changed = commit_feed(root, feed_path, result, [archive_path, *frozen, *catalog_pages])
@@ -1696,9 +1697,10 @@ def self_test() -> None:
         invalid = subprocess.run(command, env=env, text=True, capture_output=True)
         assert invalid.returncode == 1 and (root / "www/feed/v1.json").read_bytes() == original
         write_json(root / ".feed-work/response.json", fixture_response(request))
-        completed = subprocess.run(command, env=env, text=True, capture_output=True)
+        completed = subprocess.run(command, env=env | {"PMM_FEED_NOW": timestamp(at + timedelta(seconds=5))}, text=True, capture_output=True)
         assert completed.returncode == 0 and "PMM_FEED_STATUS=COMMITTED" in completed.stdout, completed.stderr
         completed_feed = read_json(root / "www/feed/v1.json")
+        assert next(iter(content(completed_feed, "editorial")))["publishedAt"] == timestamp(at)
         validate_feed(completed_feed, root)
         completed_archive = read_json(root / "www/feed/v2.json")
         validate_v2_chain(root, completed_archive)
@@ -1800,7 +1802,7 @@ def self_test() -> None:
         forced_request = read_json(root / ".feed-work/request.json")
         assert forced_request["editorialRequired"] and forced_request["recommendationCount"] == 2
         (root / ".feed-work/request.json").unlink()
-        later_env = env | {"PMM_FEED_NOW": timestamp(at + timedelta(days=4))}
+        later_env = env | {"PMM_FEED_NOW": timestamp(at + timedelta(days=3))}
         due = subprocess.run(command, env=later_env, text=True, capture_output=True)
         assert due.returncode == 0 and "PMM_FEED_STATUS=NEEDS_AGENT" in due.stdout
         later_request = read_json(root / ".feed-work/request.json")
