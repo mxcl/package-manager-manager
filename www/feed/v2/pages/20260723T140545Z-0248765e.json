@@ -1,0 +1,1759 @@
+{
+  "content": [
+    {
+      "batchID": "20260716T225252Z-72f77757",
+      "deck": "26 tools for agent workflows",
+      "id": "install-pack:agentic-toolkit:20260723T140545Z-b4efaed3",
+      "packages": [
+        {
+          "agentSummary": "Play, record, convert, and stream many audio and video codecs",
+          "category": "media",
+          "displayName": "ffmpeg-full",
+          "homepage": "https://ffmpeg.org/",
+          "id": "brew:ffmpeg-full",
+          "installURL": "pkgmgrmgr://install?package=brew%3Affmpeg-full",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Tools and libraries to manipulate images in many formats",
+          "category": "media",
+          "displayName": "imagemagick-full",
+          "homepage": "https://imagemagick.org",
+          "id": "brew:imagemagick-full",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aimagemagick-full",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Open-source, cross-platform JavaScript runtime environment",
+          "category": "language-runtime",
+          "displayName": "node",
+          "homepage": "https://nodejs.org/",
+          "id": "brew:node",
+          "installURL": "pkgmgrmgr://install?package=brew%3Anode",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Extremely fast Python package installer and resolver, written in Rust",
+          "category": "developer-tools",
+          "displayName": "uv",
+          "homepage": "https://docs.astral.sh/uv/",
+          "id": "brew:uv",
+          "installURL": "pkgmgrmgr://install?package=brew%3Auv",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Interpreted, interactive, object-oriented programming language",
+          "category": "language-runtime",
+          "displayName": "python@3.13",
+          "homepage": "https://www.python.org/",
+          "id": "brew:python@3.13",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apython%403.13",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Bourne-Again SHell, a UNIX command interpreter",
+          "category": "system",
+          "displayName": "bash",
+          "homepage": "https://www.gnu.org/software/bash/",
+          "id": "brew:bash",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abash",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Search tool like grep and The Silver Searcher",
+          "category": "developer-tools",
+          "displayName": "ripgrep",
+          "homepage": "https://github.com/BurntSushi/ripgrep",
+          "id": "brew:ripgrep",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aripgrep",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Fast, disk space efficient package manager",
+          "category": "developer-tools",
+          "displayName": "pnpm",
+          "homepage": "https://pnpm.io/",
+          "id": "brew:pnpm",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apnpm",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Process YAML, JSON, XML, CSV and properties documents from the CLI",
+          "category": "developer-tools",
+          "displayName": "yq",
+          "homepage": "https://github.com/mikefarah/yq",
+          "id": "brew:yq",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ayq",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "GitHub command-line tool",
+          "category": "developer-tools",
+          "displayName": "gh",
+          "homepage": "https://cli.github.com/",
+          "id": "brew:gh",
+          "installURL": "pkgmgrmgr://install?package=brew%3Agh",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Tool for glamorous shell scripts",
+          "category": "developer-tools",
+          "displayName": "gum",
+          "homepage": "https://github.com/charmbracelet/gum",
+          "id": "brew:gum",
+          "installURL": "pkgmgrmgr://install?package=brew%3Agum",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Simple, fast and user-friendly alternative to find",
+          "category": "system",
+          "displayName": "fd",
+          "homepage": "https://github.com/sharkdp/fd",
+          "id": "brew:fd",
+          "installURL": "pkgmgrmgr://install?package=brew%3Afd",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Clone of cat(1) with syntax highlighting and Git integration",
+          "category": "developer-tools",
+          "displayName": "bat",
+          "homepage": "https://github.com/sharkdp/bat",
+          "id": "brew:bat",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abat",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Display directories as trees (with optional color/HTML output)",
+          "category": "system",
+          "displayName": "tree",
+          "homepage": "https://oldmanprogrammer.net/source.php?dir=projects/tree",
+          "id": "brew:tree",
+          "installURL": "pkgmgrmgr://install?package=brew%3Atree",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Syntax-highlighting pager for git and diff output",
+          "category": "developer-tools",
+          "displayName": "git-delta",
+          "homepage": "https://dandavison.github.io/delta/",
+          "id": "brew:git-delta",
+          "installURL": "pkgmgrmgr://install?package=brew%3Agit-delta",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Static analysis and lint tool, for (ba)sh scripts",
+          "category": "developer-tools",
+          "displayName": "shellcheck",
+          "homepage": "https://www.shellcheck.net/",
+          "id": "brew:shellcheck",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ashellcheck",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Autoformat shell script source code",
+          "category": "developer-tools",
+          "displayName": "shfmt",
+          "homepage": "https://github.com/mvdan/sh",
+          "id": "brew:shfmt",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ashfmt",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Command-line benchmarking tool",
+          "category": "developer-tools",
+          "displayName": "hyperfine",
+          "homepage": "https://github.com/sharkdp/hyperfine",
+          "id": "brew:hyperfine",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ahyperfine",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Secure runtime for JavaScript and TypeScript",
+          "category": "language-runtime",
+          "displayName": "deno",
+          "homepage": "https://deno.com/",
+          "id": "brew:deno",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adeno",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Open source programming language to build simple/reliable/efficient software",
+          "category": "language-runtime",
+          "displayName": "go",
+          "homepage": "https://go.dev/",
+          "id": "brew:go",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ago",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Package compiler and linker metadata toolkit",
+          "category": "developer-tools",
+          "displayName": "pkgconf",
+          "homepage": "https://github.com/pkgconf/pkgconf",
+          "id": "brew:pkgconf",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apkgconf",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Cross-platform make",
+          "category": "developer-tools",
+          "displayName": "cmake",
+          "homepage": "https://www.cmake.org/",
+          "id": "brew:cmake",
+          "installURL": "pkgmgrmgr://install?package=brew%3Acmake",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "PDF rendering library (based on the xpdf-3.0 code base)",
+          "category": "media",
+          "displayName": "poppler",
+          "homepage": "https://poppler.freedesktop.org/",
+          "id": "brew:poppler",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apoppler",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "OCR (Optical Character Recognition) engine",
+          "category": "ai",
+          "displayName": "tesseract",
+          "homepage": "https://tesseract-ocr.github.io/",
+          "id": "brew:tesseract",
+          "installURL": "pkgmgrmgr://install?package=brew%3Atesseract",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Perl lib for reading and writing EXIF metadata",
+          "category": "media",
+          "displayName": "exiftool",
+          "homepage": "https://exiftool.org",
+          "id": "brew:exiftool",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aexiftool",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Swiss-army knife of markup format conversion",
+          "category": "developer-tools",
+          "displayName": "pandoc",
+          "homepage": "https://pandoc.org/",
+          "id": "brew:pandoc",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apandoc",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:52:52Z",
+      "title": "Agentic Toolkit",
+      "type": "installPack"
+    },
+    {
+      "batchID": "20260716T225252Z-72f77757",
+      "id": "for-you:games:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Query for the status of any game server in Node.JS",
+          "category": "games",
+          "displayName": "gamedig",
+          "homepage": "https://github.com/gamedig/node-gamedig#readme",
+          "id": "npm:gamedig",
+          "installURL": "pkgmgrmgr://install?package=npm%3Agamedig",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "The Stockfish chess engine in Web Assembly (WASM)",
+          "category": "games",
+          "displayName": "stockfish",
+          "homepage": "https://github.com/nmrugg/stockfish.js#readme",
+          "id": "npm:stockfish",
+          "installURL": "pkgmgrmgr://install?package=npm%3Astockfish",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Rom manager for AdvanceMAME/MESS",
+          "category": "games",
+          "displayName": "advancescan",
+          "homepage": "https://www.advancemame.it/scan-readme.html",
+          "id": "brew:advancescan",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aadvancescan",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Near-future Sci-Fi roguelike and tactical squad combat game",
+          "category": "games",
+          "displayName": "allureofthestars",
+          "homepage": "https://allureofthestars.com/",
+          "id": "brew:allureofthestars",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aallureofthestars",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Dungeon exploration game",
+          "category": "games",
+          "displayName": "angband",
+          "homepage": "https://rephial.org/",
+          "id": "brew:angband",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aangband",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:52:52Z",
+      "title": "For You in Games",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "artwork": {
+        "alt": "A luminous runtime core sits inside a transparent sphere, with gated beams connecting files, a network, and an isolated environment.",
+        "attribution": "Generated with OpenAI image generation",
+        "boxColors": {
+          "backgroundEnd": "#123B33",
+          "backgroundStart": "#071413",
+          "foreground": "#FFFFFF"
+        },
+        "license": "OpenAI terms of use",
+        "path": "feed/assets/deno-permissioned-runtime.png"
+      },
+      "batchID": "20260716T225102Z-c61179bc",
+      "body": "## Authority on the Command Line\n\nA small automation script can read every file your account can reach, open a network connection, inspect environment variables, and launch another process. Node.js grants those abilities because operating-system access made server-side JavaScript useful. Deno asks the caller to name them. A script that needs the network runs with network permission; one that reads a configuration directory receives access to that path. The command line records part of the program's security boundary.\n\nRyan Dahl presented the first public version of Deno in 2018, nine years after creating Node.js. The team released Deno 1.0 in May 2020. Its early design reacted to several costs that had accumulated around Node: a centralized package installation convention, legacy callback APIs, a split between JavaScript tools, and unrestricted access to the host machine. Deno used Rust, V8, and Tokio underneath, adopted promises throughout its APIs, and treated browser standards such as `fetch`, `Request`, `Response`, and web streams as the common surface. TypeScript support arrived as part of the runtime rather than a separate project setup.\n\n## Permissions and Their Limits\n\nPermissions gave the project its sharpest identity. Deno denies file, network, environment, subprocess, foreign-function, and system access unless a command grants it. Flags can cover a whole capability or narrow it to hosts, paths, or variables. That model helps most when an operator knows what the program should touch. A web service might receive access to one listening address and a short list of environment variables. A formatter may need read and write access to the current repository without network access. The permission line makes unexpected expansion visible in a code review or deployment manifest.\n\nThe boundary has limits. Permission to run a subprocess can hand control to a program with broader operating-system access. Reading a sensitive file lets application code transmit its contents through any allowed network destination. A broad `--allow-all` restores the conventional runtime posture. Deno's controls reduce ambient authority; they do not inspect intent, sanitize untrusted input, or replace operating-system isolation. Containers, service accounts, filesystem permissions, and network policy still carry the production security load.\n\n## One Executable, Familiar Packages\n\nDeno also ships a formatter, linter, test runner, documentation generator, language server, compiler, task runner, and dependency commands. One executable can take a TypeScript file from edit to test without a local transpiler configuration. Teams gain consistent defaults and fewer versioned tools. They also accept the runtime's choices. A repository with specialized lint rules, a mature Jest setup, or a bundler tuned around a framework may gain little from replacing working parts. Integrated tooling has the most value in new scripts, services, and libraries where the team can keep the setup small.\n\nCompatibility changed the project more than its original clean-slate pitch suggested. JavaScript developers rely on npm's registry and Node's APIs, and asking every library to publish a Deno-specific build constrained adoption. Deno added npm package support, `package.json` workflows, Node built-ins, and familiar `node_modules` options. Deno 2 made that compatibility central while retaining permissions, web APIs, TypeScript, and the built-in tools. Current releases can run a much larger share of existing projects, though compatibility claims deserve a test against each application's native modules, install scripts, module resolution, and framework adapters.\n\n## Where Deno Fits\n\nDevelopers use Deno for command-line tools, build scripts, HTTP services, edge functions, and distributable single executables. The project repository shows an active release stream, and developer surveys continue to include Deno among the runtimes and web technologies respondents report using or wanting to use. Deno Deploy and the JSR registry extend the same ecosystem into hosting and package publication. Those signals establish real use without putting Deno near Node's installed base. Operational familiarity, third-party support, and hiring remain easier in the older ecosystem.\n\nA fair evaluation starts with a bounded program. Pick a script that touches the filesystem and one API, express the exact permissions it needs, and put its test and format commands under Deno's task runner. Then try a representative npm dependency and the deployment environment. Record every compatibility shim and every permission that must widen. The experiment shows whether Deno's defaults remove maintenance or move it into unfamiliar places.\n\n## Run a Bounded Trial\n\nDeno offers the clearest payoff when a team values explicit authority and a compact toolchain more than perfect continuity with Node conventions. Existing applications can migrate in pieces because npm compatibility now covers common paths. New programs can begin with narrow permissions and web APIs. The runtime deserves selection for those concrete properties, after the dependencies and deployment path survive a real trial.",
+      "deck": "JavaScript with explicit access to files, networks, and processes, plus a toolchain that arrives in one executable.",
+      "id": "editorial:2026-07-16:deno-permissioned-runtime",
+      "package": {
+        "agentSummary": "Deno combines JavaScript and TypeScript execution with formatting, linting, testing, package management, and explicit permissions in one cohesive web-platform-oriented runtime.",
+        "assessment": {
+          "alternatives": [
+            "Node.js for the broadest existing ecosystem",
+            "Bun for a different integrated runtime and package toolchain"
+          ],
+          "audiences": [
+            "JavaScript and TypeScript developers evaluating an integrated runtime"
+          ],
+          "caveats": [
+            "Permission flags become part of deployment and support",
+            "Node-focused dependencies can still expose compatibility gaps"
+          ],
+          "complements": [
+            "JSR packages, Deno Deploy, web-standard APIs, and project task definitions"
+          ],
+          "prerequisites": [
+            "A review of npm and Node compatibility for the project's dependencies"
+          ],
+          "useCases": [
+            "Writing permission-scoped automation",
+            "Building web services with built-in TypeScript tooling"
+          ]
+        },
+        "category": "language-runtime",
+        "displayName": "deno",
+        "docs": "https://docs.deno.com/",
+        "homepage": "https://deno.com/",
+        "id": "brew:deno",
+        "installURL": "pkgmgrmgr://install?package=brew%3Adeno",
+        "lastUpdatedAt": "2026-07-15T20:55:35Z",
+        "manager": "homebrew",
+        "repository": "https://github.com/denoland/deno",
+        "researchedAt": "2026-07-16T22:51:02Z",
+        "sources": [
+          {
+            "kind": "primary",
+            "title": "Deno runtime documentation",
+            "url": "https://docs.deno.com/runtime/"
+          },
+          {
+            "kind": "primary",
+            "title": "Deno source repository",
+            "url": "https://github.com/denoland/deno"
+          }
+        ],
+        "upstreamSummary": "Secure runtime for JavaScript and TypeScript",
+        "version": null
+      },
+      "primaryPackageID": "brew:deno",
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "relatedPackages": [
+        {
+          "agentSummary": "Deno combines JavaScript and TypeScript execution with formatting, linting, testing, package management, and explicit permissions in one cohesive web-platform-oriented runtime.",
+          "assessment": {
+            "alternatives": [
+              "Node.js for the broadest existing ecosystem",
+              "Bun for a different integrated runtime and package toolchain"
+            ],
+            "audiences": [
+              "JavaScript and TypeScript developers evaluating an integrated runtime"
+            ],
+            "caveats": [
+              "Permission flags become part of deployment and support",
+              "Node-focused dependencies can still expose compatibility gaps"
+            ],
+            "complements": [
+              "JSR packages, Deno Deploy, web-standard APIs, and project task definitions"
+            ],
+            "prerequisites": [
+              "A review of npm and Node compatibility for the project's dependencies"
+            ],
+            "useCases": [
+              "Writing permission-scoped automation",
+              "Building web services with built-in TypeScript tooling"
+            ]
+          },
+          "category": "language-runtime",
+          "displayName": "deno",
+          "docs": "https://docs.deno.com/",
+          "homepage": "https://deno.com/",
+          "id": "brew:deno",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adeno",
+          "lastUpdatedAt": "2026-07-15T20:55:35Z",
+          "manager": "homebrew",
+          "repository": "https://github.com/denoland/deno",
+          "researchedAt": "2026-07-16T22:51:02Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "Deno runtime documentation",
+              "url": "https://docs.deno.com/runtime/"
+            },
+            {
+              "kind": "primary",
+              "title": "Deno source repository",
+              "url": "https://github.com/denoland/deno"
+            }
+          ],
+          "upstreamSummary": "Secure runtime for JavaScript and TypeScript",
+          "version": null
+        },
+        {
+          "agentSummary": "TypeScript adds static types and tooling to JavaScript, catching mistakes during development while compiling to portable code for browsers and runtimes.",
+          "assessment": {
+            "alternatives": [
+              "Built-in platform tools or another package in the same category"
+            ],
+            "audiences": [
+              "Developers and teams whose workflow matches the documented scope"
+            ],
+            "caveats": [
+              "Confirm compatibility, update policy, and operational impact before production use"
+            ],
+            "complements": [
+              "Version control, CI, and project-specific documentation"
+            ],
+            "prerequisites": [
+              "A compatible runtime, operating system, or project configuration"
+            ],
+            "useCases": [
+              "Automating the task described by the upstream project"
+            ]
+          },
+          "category": null,
+          "displayName": "typescript",
+          "docs": null,
+          "homepage": "https://www.typescriptlang.org/",
+          "id": "npm:typescript",
+          "installURL": "pkgmgrmgr://install?package=npm%3Atypescript",
+          "lastUpdatedAt": "2026-07-08T15:55:18Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-16T17:09:55Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "typescript documentation",
+              "url": "https://www.typescriptlang.org/"
+            },
+            {
+              "kind": "primary",
+              "title": "typescript project and release information",
+              "url": "https://www.npmjs.com/package/typescript"
+            }
+          ],
+          "upstreamSummary": "TypeScript is a language for application scale JavaScript development",
+          "version": "7.0.2"
+        },
+        {
+          "agentSummary": "tsx runs TypeScript and ECMAScript modules directly through esbuild, providing a quick development runtime for scripts, tools, and Node applications.",
+          "assessment": {
+            "alternatives": [
+              "Built-in platform tools or another package in the same category"
+            ],
+            "audiences": [
+              "Developers and teams whose workflow matches the documented scope"
+            ],
+            "caveats": [
+              "Confirm compatibility, update policy, and operational impact before production use"
+            ],
+            "complements": [
+              "Version control, CI, and project-specific documentation"
+            ],
+            "prerequisites": [
+              "A compatible runtime, operating system, or project configuration"
+            ],
+            "useCases": [
+              "Automating the task described by the upstream project"
+            ]
+          },
+          "category": "developer-tools",
+          "displayName": "tsx",
+          "docs": null,
+          "homepage": "https://tsx.hirok.io",
+          "id": "npm:tsx",
+          "installURL": "pkgmgrmgr://install?package=npm%3Atsx",
+          "lastUpdatedAt": "2026-07-03T14:25:06Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-16T17:09:55Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "tsx documentation",
+              "url": "https://tsx.hirok.io"
+            },
+            {
+              "kind": "primary",
+              "title": "tsx project and release information",
+              "url": "https://www.npmjs.com/package/tsx"
+            }
+          ],
+          "upstreamSummary": "TypeScript Execute (tsx): Node.js enhanced with esbuild to run TypeScript & ESM files",
+          "version": "4.23.0"
+        }
+      ],
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "Deno 1.0 announcement",
+          "url": "https://deno.com/blog/v1"
+        },
+        {
+          "kind": "primary",
+          "title": "Deno runtime documentation",
+          "url": "https://docs.deno.com/runtime/"
+        },
+        {
+          "kind": "primary",
+          "title": "Deno source and release history",
+          "url": "https://github.com/denoland/deno"
+        },
+        {
+          "kind": "independent",
+          "title": "Stack Overflow Developer Survey 2025 technology results",
+          "url": "https://survey.stackoverflow.co/2025/technology/"
+        }
+      ],
+      "title": "Deno and the Permissioned Runtime",
+      "type": "editorial"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "recently-updated:ai:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Terminal client for Ollama",
+          "category": "ai",
+          "displayName": "oterm",
+          "homepage": "https://github.com/ggozad/oterm",
+          "id": "brew:oterm",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aoterm",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Browser automation CLI for AI agents",
+          "category": "ai",
+          "displayName": "agent-browser",
+          "homepage": "https://agent-browser.dev/",
+          "id": "brew:agent-browser",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aagent-browser",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "The most comprehensive MCP server for Figma — design tokens, variables, components, write tools, version history diff, accessibility audits, FigJam, Slides, and more. Local (WebSocket Desktop Bridge plugin) and Cloudflare Workers (paired + remote) modes.",
+          "category": "ai",
+          "displayName": "figma-console-mcp",
+          "homepage": "https://github.com/southleft/figma-console-mcp#readme",
+          "id": "npm:figma-console-mcp",
+          "installURL": "pkgmgrmgr://install?package=npm%3Afigma-console-mcp",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Deco CMS — Self-hostable MCP Gateway for managing AI connections and tools",
+          "category": "ai",
+          "displayName": "decocms",
+          "homepage": "https://github.com/decocms/studio",
+          "id": "npm:decocms",
+          "installURL": "pkgmgrmgr://install?package=npm%3Adecocms",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Memory-first coding agent",
+          "category": "ai",
+          "displayName": "letta-code",
+          "homepage": "https://docs.letta.com/letta-code",
+          "id": "brew:letta-code",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aletta-code",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "Recently Updated in Ai",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "for-you:security:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "A tiny (118 bytes), secure URL-friendly unique string ID generator",
+          "category": "security",
+          "displayName": "nanoid",
+          "homepage": "https://github.com/ai/nanoid#readme",
+          "id": "npm:nanoid",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ananoid",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Streamable SHA hashes in pure javascript",
+          "category": "security",
+          "displayName": "sha.js",
+          "homepage": "https://github.com/crypto-browserify/sha.js",
+          "id": "npm:sha.js",
+          "installURL": "pkgmgrmgr://install?package=npm%3Asha.js",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Optimized bcrypt in plain JavaScript with zero dependencies, with TypeScript support. Compatible to 'bcrypt'.",
+          "category": "security",
+          "displayName": "bcryptjs",
+          "homepage": "https://github.com/dcodeIO/bcrypt.js#readme",
+          "id": "npm:bcryptjs",
+          "installURL": "pkgmgrmgr://install?package=npm%3Abcryptjs",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "detect possibly catastrophic, exponential-time regular expressions",
+          "category": "security",
+          "displayName": "safe-regex2",
+          "homepage": "https://github.com/fastify/safe-regex2",
+          "id": "npm:safe-regex2",
+          "installURL": "pkgmgrmgr://install?package=npm%3Asafe-regex2",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Sanitize untrusted HTML (to prevent XSS) with a configuration specified by a Whitelist",
+          "category": "security",
+          "displayName": "xss",
+          "homepage": "https://github.com/leizongmin/js-xss",
+          "id": "npm:xss",
+          "installURL": "pkgmgrmgr://install?package=npm%3Axss",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "For You in Security",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "recently-updated:productivity:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Batteries-included terminal file manager with rich previews",
+          "category": "productivity",
+          "displayName": "elio",
+          "homepage": "https://elio-fm.github.io/",
+          "id": "brew:elio",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aelio",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Terminal-based presentations using Pandoc",
+          "category": "productivity",
+          "displayName": "patat",
+          "homepage": "https://github.com/jaspervdj/patat",
+          "id": "brew:patat",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apatat",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Efficiently back up the notes you've saved to Pinboard",
+          "category": "productivity",
+          "displayName": "pinboard-notes-backup",
+          "homepage": "https://github.com/bdesham/pinboard-notes-backup",
+          "id": "brew:pinboard-notes-backup",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apinboard-notes-backup",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Astro-native CMS with WordPress migration support",
+          "category": "productivity",
+          "displayName": "emdash",
+          "homepage": "https://github.com/emdash-cms/emdash",
+          "id": "npm:emdash",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aemdash",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Textual User Interface for interacting with Atlassian Jira from your shell",
+          "category": "productivity",
+          "displayName": "jiratui",
+          "homepage": "https://jiratui.sh/",
+          "id": "brew:jiratui",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ajiratui",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "Recently Updated in Productivity",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "for-you:other:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "opencontrol is available through npm for installation and management in Package Manager Manager.",
+          "category": "other",
+          "displayName": "opencontrol",
+          "homepage": null,
+          "id": "npm:opencontrol",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aopencontrol",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "dooboolab welcome console message.",
+          "category": "other",
+          "displayName": "dooboolab-welcome",
+          "homepage": null,
+          "id": "npm:dooboolab-welcome",
+          "installURL": "pkgmgrmgr://install?package=npm%3Adooboolab-welcome",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "conjure-lite is available through npm for installation and management in Package Manager Manager.",
+          "category": "other",
+          "displayName": "conjure-lite",
+          "homepage": null,
+          "id": "npm:conjure-lite",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aconjure-lite",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "xnft is available through npm for installation and management in Package Manager Manager.",
+          "category": "other",
+          "displayName": "xnft",
+          "homepage": null,
+          "id": "npm:xnft",
+          "installURL": "pkgmgrmgr://install?package=npm%3Axnft",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "bluefairy is available through npm for installation and management in Package Manager Manager.",
+          "category": "other",
+          "displayName": "bluefairy",
+          "homepage": null,
+          "id": "npm:bluefairy",
+          "installURL": "pkgmgrmgr://install?package=npm%3Abluefairy",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "For You in Other",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "recently-updated:games:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Open-source Android/Desktop remake of Civ V",
+          "category": "games",
+          "displayName": "unciv",
+          "homepage": "https://github.com/yairm210/Unciv",
+          "id": "brew:unciv",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aunciv",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Near-future Sci-Fi roguelike and tactical squad combat game",
+          "category": "games",
+          "displayName": "allureofthestars",
+          "homepage": "https://allureofthestars.com/",
+          "id": "brew:allureofthestars",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aallureofthestars",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Collection of one-player puzzle games",
+          "category": "games",
+          "displayName": "puzzles",
+          "homepage": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+          "id": "brew:puzzles",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apuzzles",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Classic 2D jump'n run sidescroller game",
+          "category": "games",
+          "displayName": "supertux",
+          "homepage": "https://www.supertux.org/",
+          "id": "brew:supertux",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asupertux",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Sega Model 3 arcade emulator",
+          "category": "games",
+          "displayName": "supermodel",
+          "homepage": "https://github.com/trzy/Supermodel",
+          "id": "brew:supermodel",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asupermodel",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "Recently Updated in Games",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "new-packages:security:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Security feature auditing for ELF binaries and Linux kernels",
+          "category": "security",
+          "displayName": "checksec",
+          "homepage": "https://slimm609.github.io/checksec",
+          "id": "brew:checksec",
+          "installURL": "pkgmgrmgr://install?package=brew%3Achecksec",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "New Packages in Security",
+      "type": "newPackages"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "for-you:data:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "YAML 1.2 parser and serializer",
+          "category": "data",
+          "displayName": "js-yaml",
+          "homepage": "https://github.com/nodeca/js-yaml#readme",
+          "id": "npm:js-yaml",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ajs-yaml",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "JSON for Humans",
+          "category": "data",
+          "displayName": "json5",
+          "homepage": null,
+          "id": "npm:json5",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ajson5",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "JavaScript parser and stringifier for YAML",
+          "category": "data",
+          "displayName": "yaml",
+          "homepage": "https://eemeli.org/yaml/",
+          "id": "npm:yaml",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ayaml",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Given some data, jsesc returns the shortest possible stringified & ASCII-safe representation of that data.",
+          "category": "data",
+          "displayName": "jsesc",
+          "homepage": "https://mths.be/jsesc",
+          "id": "npm:jsesc",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ajsesc",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "A comprehensive library for mime-type mapping",
+          "category": "data",
+          "displayName": "mime",
+          "homepage": "https://github.com/broofa/mime#readme",
+          "id": "npm:mime",
+          "installURL": "pkgmgrmgr://install?package=npm%3Amime",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "For You in Data",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "recently-updated:other:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "F1 Live Timing TUI for all F1 sessions with variable delay to sync to your TV",
+          "category": "other",
+          "displayName": "undercutf1",
+          "homepage": "https://amandhoot.com",
+          "id": "brew:undercutf1",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aundercutf1",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "TIFF library and utilities",
+          "category": "other",
+          "displayName": "libtiff",
+          "homepage": "https://libtiff.gitlab.io/libtiff/",
+          "id": "brew:libtiff",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alibtiff",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Generic library support script",
+          "category": "other",
+          "displayName": "libtool",
+          "homepage": "https://www.gnu.org/software/libtool/",
+          "id": "brew:libtool",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alibtool",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Provides cross-platform access to statistics about the system",
+          "category": "other",
+          "displayName": "libstatgrab",
+          "homepage": "https://libstatgrab.org/",
+          "id": "brew:libstatgrab",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alibstatgrab",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Command-line editing facilities similar to the tcsh shell",
+          "category": "other",
+          "displayName": "libtecla",
+          "homepage": "https://sites.astro.caltech.edu/~mcs/tecla/",
+          "id": "brew:libtecla",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alibtecla",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "Recently Updated in Other",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "new-packages:ai:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Fast local AI engine for Apple Silicon with an OpenAI-compatible API",
+          "category": "ai",
+          "displayName": "rapid-mlx",
+          "homepage": "https://github.com/raullenchai/Rapid-MLX",
+          "id": "brew:rapid-mlx",
+          "installURL": "pkgmgrmgr://install?package=brew%3Arapid-mlx",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "CLI for managing skills and external CLIs",
+          "category": "ai",
+          "displayName": "advai-cli",
+          "homepage": "https://github.com/Advai-X/advai-cli",
+          "id": "brew:advai-cli",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aadvai-cli",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Terminal pixel-art office for AI coding agents",
+          "category": "ai",
+          "displayName": "pixtuoid",
+          "homepage": "https://github.com/IvanWng97/pixtuoid",
+          "id": "brew:pixtuoid",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apixtuoid",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "New Packages in Ai",
+      "type": "newPackages"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "recently-updated:science:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Interactive environments for writing and running code",
+          "category": "science",
+          "displayName": "jupyterlab",
+          "homepage": "https://jupyter.org/",
+          "id": "brew:jupyterlab",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ajupyterlab",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Visual browser for netCDF format files",
+          "category": "science",
+          "displayName": "ncview",
+          "homepage": "https://cirrus.ucsd.edu/ncview/",
+          "id": "brew:ncview",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ancview",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Programs that partition graphs and order matrices",
+          "category": "science",
+          "displayName": "metis",
+          "homepage": "https://papers.karypis.org/glaros/software/metis/overview.html",
+          "id": "brew:metis",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ametis",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Pythonic workflow system",
+          "category": "science",
+          "displayName": "snakemake",
+          "homepage": "https://snakemake.readthedocs.io/",
+          "id": "brew:snakemake",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asnakemake",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Cross platform GUI for Maxima",
+          "category": "science",
+          "displayName": "wxmaxima",
+          "homepage": "https://wxmaxima-developers.github.io/wxmaxima/",
+          "id": "brew:wxmaxima",
+          "installURL": "pkgmgrmgr://install?package=brew%3Awxmaxima",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "Recently Updated in Science",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260716T225102Z-e7dac710",
+      "id": "new-packages:developer-tools:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Opinionated Dockerfile linter",
+          "category": "developer-tools",
+          "displayName": "droast",
+          "homepage": "https://ewry.net/droast-dockerfile-linter/",
+          "id": "brew:droast",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adroast",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Human-friendly console utility for interacting with NEAR Protocol",
+          "category": "developer-tools",
+          "displayName": "near",
+          "homepage": "https://near.cli.rs",
+          "id": "brew:near",
+          "installURL": "pkgmgrmgr://install?package=brew%3Anear",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "SDK and command-line tool for the Bittensor network",
+          "category": "developer-tools",
+          "displayName": "bittensor",
+          "homepage": "https://subtensor.vercel.app/",
+          "id": "brew:bittensor",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abittensor",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:51:02Z",
+      "title": "New Packages in Developer Tools",
+      "type": "newPackages"
+    },
+    {
+      "artwork": {
+        "alt": "Translucent package blocks flow into a luminous shared vault and branch into several project folders on a dark indigo field.",
+        "attribution": "Generated with OpenAI image generation",
+        "boxColors": {
+          "backgroundEnd": "#06244D",
+          "backgroundStart": "#11183E",
+          "foreground": "#FFFFFF"
+        },
+        "license": "OpenAI terms of use",
+        "path": "feed/assets/pnpm-one-store-many-projects.png"
+      },
+      "batchID": "20260716T224902Z-d416c6f1",
+      "body": "## The Duplicate Dependency Problem\n\nJavaScript projects collect dependencies fast. A modest application can pull thousands of files into `node_modules`, and a laptop with ten related repositories may store the same versions ten times. pnpm approaches that waste as a storage problem. It keeps package contents in a shared, content-addressed store, then links the files each project needs into place. The result looks familiar to Node.js tooling while using far less physical space across projects.\n\nThe project dates to 2016 and grew alongside two pressures in JavaScript development: dependency trees became larger, and monorepos moved from unusual infrastructure to an ordinary way of keeping applications, libraries, and configuration together. npm and Yarn have changed a great deal during the same period, so pnpm cannot claim every speed or storage win in every environment. Its lasting contribution is a clear model: identical package content belongs in one store, and a project should access only the dependencies it declares.\n\n## A Stricter Dependency Graph\n\nThat second property catches teams by surprise. Traditional flat `node_modules` layouts can make transitive dependencies appear importable from application code. The package exists on disk because another dependency requested it, even though your own `package.json` says nothing about it. Code built on that accident can break when the dependency tree changes. pnpm's linked layout makes those undeclared imports harder to get away with. A migration may expose failures on day one, but each failure identifies a missing contract that was already present in the codebase.\n\nThe shared store does not mean projects share mutable package files. pnpm addresses package content by integrity and links it into a virtual store before constructing the dependency view a project expects. Different projects can pin different versions. A changed file gets new content rather than rewriting the old object under another project's feet. Developers still get a `node_modules` directory, lifecycle scripts, registry configuration, and a lockfile. The machinery underneath is different, while the working surface stays close to the npm ecosystem.\n\n## Workspaces and CI\n\nWorkspaces make the design more compelling. A repository can declare several packages in `pnpm-workspace.yaml`, run commands across them, and use the `workspace:` protocol when one local package depends on another. The lockfile records the resolved graph for repeatable installs. Teams often pair this with a task runner, but pnpm's filtering and recursive commands cover many release, test, and build routines on their own. The official project site lists Next.js, Vue, Vite, Nuxt, Prisma, and other open-source projects among its users. State of JavaScript's 2024 monorepo results also place pnpm at the front of that survey's respondents. Those examples do not predict performance in your repository, but they show that the layout works beyond small demonstrations.\n\nCI needs deliberate setup. Caching the pnpm store can save downloads, though restoring a huge cache may cost more than fetching the missing packages. A committed lockfile and `--frozen-lockfile` give the build a stable input. Corepack or an explicit setup action can pin the package-manager version so local machines and CI interpret that lockfile with the same release. Container builds need another decision: copy only the manifests first for layer reuse, then install and build, or use pnpm's deployment commands to produce a pruned application tree.\n\n## Plan the Migration\n\nMigration starts with the lockfile and the dependency graph, not the install command. Remove the previous manager's artifacts, generate `pnpm-lock.yaml`, run the complete test suite, and inspect failures for undeclared dependencies or tools that resolve modules through undocumented paths. Native modules and postinstall scripts deserve attention. Deployment platforms may need a package-manager declaration in `package.json`, and contributor documentation should name the expected version. Keep the change separate from dependency upgrades so reviewers can distinguish layout problems from new package behavior.\n\npnpm will not rescue a disorganized workspace. Catalogs, overrides, peer-dependency settings, and filters can become another configuration language if a team adopts them without a concrete need. The symlinked layout can confuse software that assumes every file has a conventional physical path. Security controls around dependency age and script execution help only when teams understand their settings and review exceptions. npm remains a sensible default for many repositories because it ships with Node and asks less of new contributors. Yarn and Bun offer their own workspace, performance, and runtime choices.\n\n## Measure the Result\n\nThe useful test is small: convert one representative repository, measure clean and warm installs, compare disk use, run CI, and ask maintainers whether the stricter graph exposed real defects or created busywork. pnpm earns its place when the shared store reduces waste and the workspace model clarifies ownership. If those gains do not appear, switching package managers adds churn without improving the software.",
+      "deck": "A package manager built around shared files, stricter dependency boundaries, and the practical demands of JavaScript monorepos.",
+      "id": "editorial:2026-07-16:pnpm-one-store-many-projects",
+      "package": {
+        "agentSummary": "pnpm installs JavaScript dependencies through a shared content-addressed store, saving disk space while enforcing stricter, more predictable dependency boundaries across projects.",
+        "assessment": {
+          "alternatives": [
+            "npm for the Node.js default",
+            "Yarn or Bun for different workspace and runtime tradeoffs"
+          ],
+          "audiences": [
+            "JavaScript and TypeScript teams managing several projects or a monorepo"
+          ],
+          "caveats": [
+            "Some tools still assume a flat dependency tree",
+            "Changing package managers creates a large lockfile and CI review"
+          ],
+          "complements": [
+            "Corepack, committed lockfiles, CI dependency caches, and workspace-aware build tools"
+          ],
+          "prerequisites": [
+            "A supported JavaScript runtime and a project whose tooling accepts pnpm's node_modules layout"
+          ],
+          "useCases": [
+            "Reducing repeated dependency storage",
+            "Running workspace commands across related packages"
+          ]
+        },
+        "category": "developer-tools",
+        "displayName": "pnpm",
+        "docs": "https://pnpm.io/",
+        "homepage": "https://pnpm.io/",
+        "id": "brew:pnpm",
+        "installURL": "pkgmgrmgr://install?package=brew%3Apnpm",
+        "lastUpdatedAt": "2026-07-16T04:48:52Z",
+        "manager": "homebrew",
+        "repository": "https://github.com/pnpm/pnpm",
+        "researchedAt": "2026-07-16T22:49:02Z",
+        "sources": [
+          {
+            "kind": "primary",
+            "title": "pnpm documentation",
+            "url": "https://pnpm.io/"
+          },
+          {
+            "kind": "primary",
+            "title": "pnpm source repository",
+            "url": "https://github.com/pnpm/pnpm"
+          }
+        ],
+        "upstreamSummary": "Fast, disk space efficient package manager",
+        "version": null
+      },
+      "primaryPackageID": "brew:pnpm",
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "relatedPackages": [
+        {
+          "agentSummary": "pnpm installs JavaScript dependencies through a shared content-addressed store, saving disk space while enforcing stricter, more predictable dependency boundaries across projects.",
+          "assessment": {
+            "alternatives": [
+              "npm for the Node.js default",
+              "Yarn or Bun for different workspace and runtime tradeoffs"
+            ],
+            "audiences": [
+              "JavaScript and TypeScript teams managing several projects or a monorepo"
+            ],
+            "caveats": [
+              "Some tools still assume a flat dependency tree",
+              "Changing package managers creates a large lockfile and CI review"
+            ],
+            "complements": [
+              "Corepack, committed lockfiles, CI dependency caches, and workspace-aware build tools"
+            ],
+            "prerequisites": [
+              "A supported JavaScript runtime and a project whose tooling accepts pnpm's node_modules layout"
+            ],
+            "useCases": [
+              "Reducing repeated dependency storage",
+              "Running workspace commands across related packages"
+            ]
+          },
+          "category": "developer-tools",
+          "displayName": "pnpm",
+          "docs": "https://pnpm.io/",
+          "homepage": "https://pnpm.io/",
+          "id": "brew:pnpm",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apnpm",
+          "lastUpdatedAt": "2026-07-16T04:48:52Z",
+          "manager": "homebrew",
+          "repository": "https://github.com/pnpm/pnpm",
+          "researchedAt": "2026-07-16T22:49:02Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "pnpm documentation",
+              "url": "https://pnpm.io/"
+            },
+            {
+              "kind": "primary",
+              "title": "pnpm source repository",
+              "url": "https://github.com/pnpm/pnpm"
+            }
+          ],
+          "upstreamSummary": "Fast, disk space efficient package manager",
+          "version": null
+        },
+        {
+          "agentSummary": "Vite provides a fast development server and optimized production builds for modern web projects, with native modules and a broad plugin ecosystem.",
+          "assessment": {
+            "alternatives": [
+              "Built-in platform tools or another package in the same category"
+            ],
+            "audiences": [
+              "Developers and teams whose workflow matches the documented scope"
+            ],
+            "caveats": [
+              "Confirm compatibility, update policy, and operational impact before production use"
+            ],
+            "complements": [
+              "Version control, CI, and project-specific documentation"
+            ],
+            "prerequisites": [
+              "A compatible runtime, operating system, or project configuration"
+            ],
+            "useCases": [
+              "Automating the task described by the upstream project"
+            ]
+          },
+          "category": "developer-tools",
+          "displayName": "vite",
+          "docs": null,
+          "homepage": "https://vite.dev",
+          "id": "npm:vite",
+          "installURL": "pkgmgrmgr://install?package=npm%3Avite",
+          "lastUpdatedAt": "2026-07-09T04:44:45Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-16T17:09:55Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "vite documentation",
+              "url": "https://vite.dev"
+            },
+            {
+              "kind": "primary",
+              "title": "vite project and release information",
+              "url": "https://www.npmjs.com/package/vite"
+            }
+          ],
+          "upstreamSummary": "Native-ESM powered web dev build tool",
+          "version": "8.1.4"
+        },
+        {
+          "agentSummary": "Vitest is a Vite-native testing framework with fast watch mode, TypeScript support, familiar assertions, mocking, coverage, and flexible workspace-aware configuration.",
+          "assessment": {
+            "alternatives": [
+              "Built-in platform tools or another package in the same category"
+            ],
+            "audiences": [
+              "Developers and teams whose workflow matches the documented scope"
+            ],
+            "caveats": [
+              "Confirm compatibility, update policy, and operational impact before production use"
+            ],
+            "complements": [
+              "Version control, CI, and project-specific documentation"
+            ],
+            "prerequisites": [
+              "A compatible runtime, operating system, or project configuration"
+            ],
+            "useCases": [
+              "Automating the task described by the upstream project"
+            ]
+          },
+          "category": "developer-tools",
+          "displayName": "vitest",
+          "docs": null,
+          "homepage": "https://vitest.dev",
+          "id": "npm:vitest",
+          "installURL": "pkgmgrmgr://install?package=npm%3Avitest",
+          "lastUpdatedAt": "2026-07-06T06:44:42Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-16T17:09:55Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "vitest documentation",
+              "url": "https://vitest.dev"
+            },
+            {
+              "kind": "primary",
+              "title": "vitest project and release information",
+              "url": "https://www.npmjs.com/package/vitest"
+            }
+          ],
+          "upstreamSummary": "Next generation testing framework powered by Vite",
+          "version": "4.1.10"
+        },
+        {
+          "agentSummary": "TypeScript adds static types and tooling to JavaScript, catching mistakes during development while compiling to portable code for browsers and runtimes.",
+          "assessment": {
+            "alternatives": [
+              "Built-in platform tools or another package in the same category"
+            ],
+            "audiences": [
+              "Developers and teams whose workflow matches the documented scope"
+            ],
+            "caveats": [
+              "Confirm compatibility, update policy, and operational impact before production use"
+            ],
+            "complements": [
+              "Version control, CI, and project-specific documentation"
+            ],
+            "prerequisites": [
+              "A compatible runtime, operating system, or project configuration"
+            ],
+            "useCases": [
+              "Automating the task described by the upstream project"
+            ]
+          },
+          "category": null,
+          "displayName": "typescript",
+          "docs": null,
+          "homepage": "https://www.typescriptlang.org/",
+          "id": "npm:typescript",
+          "installURL": "pkgmgrmgr://install?package=npm%3Atypescript",
+          "lastUpdatedAt": "2026-07-08T15:55:18Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-16T17:09:55Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "typescript documentation",
+              "url": "https://www.typescriptlang.org/"
+            },
+            {
+              "kind": "primary",
+              "title": "typescript project and release information",
+              "url": "https://www.npmjs.com/package/typescript"
+            }
+          ],
+          "upstreamSummary": "TypeScript is a language for application scale JavaScript development",
+          "version": "7.0.2"
+        }
+      ],
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "pnpm documentation and project users",
+          "url": "https://pnpm.io/"
+        },
+        {
+          "kind": "primary",
+          "title": "pnpm source repository",
+          "url": "https://github.com/pnpm/pnpm"
+        },
+        {
+          "kind": "primary",
+          "title": "pnpm release history",
+          "url": "https://github.com/pnpm/pnpm/releases"
+        },
+        {
+          "kind": "independent",
+          "title": "State of JavaScript 2024 monorepo tools results",
+          "url": "https://2024.stateofjs.com/en-US/libraries/monorepo_tools/"
+        }
+      ],
+      "title": "pnpm: One Store, Many Projects",
+      "type": "editorial"
+    },
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "for-you:networking:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "ECMAScript parser",
+          "category": "networking",
+          "displayName": "acorn",
+          "homepage": "https://github.com/acornjs/acorn",
+          "id": "npm:acorn",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aacorn",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Share target browsers between different front-end tools, like Autoprefixer, Stylelint and babel-env-preset",
+          "category": "networking",
+          "displayName": "browserslist",
+          "homepage": "https://github.com/browserslist/browserslist#readme",
+          "id": "npm:browserslist",
+          "installURL": "pkgmgrmgr://install?package=npm%3Abrowserslist",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "A library for obtaining browser versions with their maximum supported Baseline feature set and Widely Available status.",
+          "category": "networking",
+          "displayName": "baseline-browser-mapping",
+          "homepage": "https://github.com/web-platform-dx/baseline-browser-mapping#readme",
+          "id": "npm:baseline-browser-mapping",
+          "installURL": "pkgmgrmgr://install?package=npm%3Abaseline-browser-mapping",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Parse CSS and add vendor prefixes to CSS rules using values from the Can I Use website",
+          "category": "networking",
+          "displayName": "autoprefixer",
+          "homepage": "https://github.com/postcss/autoprefixer#readme",
+          "id": "npm:autoprefixer",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aautoprefixer",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Minimal H(TTP) framework built for high performance and portability.",
+          "category": "networking",
+          "displayName": "h3",
+          "homepage": "https://h3.dev",
+          "id": "npm:h3",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ah3",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "For You in Networking",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "new-packages:cloud-infrastructure:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Command-line interface for Vercel",
+          "category": "cloud-infrastructure",
+          "displayName": "vercel",
+          "homepage": "https://vercel.com/home",
+          "id": "brew:vercel",
+          "installURL": "pkgmgrmgr://install?package=brew%3Avercel",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "CLI for managing Grafana Cloud resources",
+          "category": "cloud-infrastructure",
+          "displayName": "gcx",
+          "homepage": "https://github.com/grafana/gcx",
+          "id": "brew:gcx",
+          "installURL": "pkgmgrmgr://install?package=brew%3Agcx",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Modern CLI for Outscale",
+          "category": "cloud-infrastructure",
+          "displayName": "octl",
+          "homepage": "https://github.com/outscale/octl",
+          "id": "brew:octl",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aoctl",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "New Packages in Cloud Infrastructure",
+      "type": "newPackages"
+    },
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "deck": "22 modern shell tools",
+      "id": "install-pack:unix-plus-plus:20260723T140545Z-b4efaed3",
+      "packages": [
+        {
+          "agentSummary": "Clone of cat(1) with syntax highlighting and Git integration",
+          "category": "developer-tools",
+          "displayName": "bat",
+          "homepage": "https://github.com/sharkdp/bat",
+          "id": "brew:bat",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abat",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Bash scripts that integrate bat with various command-line tools",
+          "category": "developer-tools",
+          "displayName": "bat-extras",
+          "homepage": "https://github.com/eth-p/bat-extras",
+          "id": "brew:bat-extras",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abat-extras",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Modern, maintained replacement for ls",
+          "category": "system",
+          "displayName": "eza",
+          "homepage": "https://eza.rocks",
+          "id": "brew:eza",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aeza",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Simple, fast and user-friendly alternative to find",
+          "category": "system",
+          "displayName": "fd",
+          "homepage": "https://github.com/sharkdp/fd",
+          "id": "brew:fd",
+          "installURL": "pkgmgrmgr://install?package=brew%3Afd",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Search tool like grep and The Silver Searcher",
+          "category": "developer-tools",
+          "displayName": "ripgrep",
+          "homepage": "https://github.com/BurntSushi/ripgrep",
+          "id": "brew:ripgrep",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aripgrep",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Intuitive find & replace CLI",
+          "category": "developer-tools",
+          "displayName": "sd",
+          "homepage": "https://github.com/chmln/sd",
+          "id": "brew:sd",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asd",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "More intuitive version of du in rust",
+          "category": "system",
+          "displayName": "dust",
+          "homepage": "https://github.com/bootandy/dust",
+          "id": "brew:dust",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adust",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Disk Usage/Free Utility - a better 'df' alternative",
+          "category": "system",
+          "displayName": "duf",
+          "homepage": "https://github.com/muesli/duf",
+          "id": "brew:duf",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aduf",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Modern replacement for ps written in Rust",
+          "category": "system",
+          "displayName": "procs",
+          "homepage": "https://github.com/dalance/procs",
+          "id": "brew:procs",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aprocs",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Yet another cross-platform graphical process/system monitor",
+          "category": "system",
+          "displayName": "bottom",
+          "homepage": "https://clementtsang.github.io/bottom/",
+          "id": "brew:bottom",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abottom",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Shell extension to navigate your filesystem faster",
+          "category": "developer-tools",
+          "displayName": "zoxide",
+          "homepage": "https://github.com/ajeetdsouza/zoxide",
+          "id": "brew:zoxide",
+          "installURL": "pkgmgrmgr://install?package=brew%3Azoxide",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Command-line fuzzy finder written in Go",
+          "category": "developer-tools",
+          "displayName": "fzf",
+          "homepage": "https://junegunn.github.io/fzf/",
+          "id": "brew:fzf",
+          "installURL": "pkgmgrmgr://install?package=brew%3Afzf",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Syntax-highlighting pager for git and diff output",
+          "category": "developer-tools",
+          "displayName": "git-delta",
+          "homepage": "https://dandavison.github.io/delta/",
+          "id": "brew:git-delta",
+          "installURL": "pkgmgrmgr://install?package=brew%3Agit-delta",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Command-line benchmarking tool",
+          "category": "developer-tools",
+          "displayName": "hyperfine",
+          "homepage": "https://github.com/sharkdp/hyperfine",
+          "id": "brew:hyperfine",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ahyperfine",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Program that allows you to count code, quickly",
+          "category": "developer-tools",
+          "displayName": "tokei",
+          "homepage": "https://github.com/XAMPPRocky/tokei",
+          "id": "brew:tokei",
+          "installURL": "pkgmgrmgr://install?package=brew%3Atokei",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Lightweight and flexible command-line JSON processor",
+          "category": "developer-tools",
+          "displayName": "jq",
+          "homepage": "https://jqlang.github.io/jq/",
+          "id": "brew:jq",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ajq",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Process YAML, JSON, XML, CSV and properties documents from the CLI",
+          "category": "developer-tools",
+          "displayName": "yq",
+          "homepage": "https://github.com/mikefarah/yq",
+          "id": "brew:yq",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ayq",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Friendly and fast tool for sending HTTP requests",
+          "category": "developer-tools",
+          "displayName": "xh",
+          "homepage": "https://github.com/ducaale/xh",
+          "id": "brew:xh",
+          "installURL": "pkgmgrmgr://install?package=brew%3Axh",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Command-line DNS Client for Humans",
+          "category": "networking",
+          "displayName": "doggo",
+          "homepage": "https://doggo.mrkaran.dev/",
+          "id": "brew:doggo",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adoggo",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Like sed, awk, cut, join & sort for name-indexed data such as CSV",
+          "category": "data",
+          "displayName": "miller",
+          "homepage": "https://github.com/johnkerl/miller",
+          "id": "brew:miller",
+          "installURL": "pkgmgrmgr://install?package=brew%3Amiller",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Run arbitrary commands when files change",
+          "category": "developer-tools",
+          "displayName": "entr",
+          "homepage": "https://eradman.com/entrproject/",
+          "id": "brew:entr",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aentr",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Execute commands when watched files change",
+          "category": "developer-tools",
+          "displayName": "watchexec",
+          "homepage": "https://watchexec.github.io/",
+          "id": "brew:watchexec",
+          "installURL": "pkgmgrmgr://install?package=brew%3Awatchexec",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "UNIX++ Pack",
+      "type": "installPack"
+    },
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "for-you:media:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "SVGO is a Node.js library and command-line application for optimizing vector images.",
+          "category": "media",
+          "displayName": "svgo",
+          "homepage": "https://svgo.dev",
+          "id": "npm:svgo",
+          "installURL": "pkgmgrmgr://install?package=npm%3Asvgo",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "get dimensions of any image file",
+          "category": "media",
+          "displayName": "image-size",
+          "homepage": "https://github.com/image-size/image-size#readme",
+          "id": "npm:image-size",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aimage-size",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "QRCode / 2d Barcode api with both server side and client side support using canvas",
+          "category": "media",
+          "displayName": "qrcode",
+          "homepage": null,
+          "id": "npm:qrcode",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aqrcode",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Fast math typesetting for the web.",
+          "category": "media",
+          "displayName": "katex",
+          "homepage": "https://katex.org",
+          "id": "npm:katex",
+          "installURL": "pkgmgrmgr://install?package=npm%3Akatex",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "The smallest and fastest pixel-level image comparison library.",
+          "category": "media",
+          "displayName": "pixelmatch",
+          "homepage": "https://github.com/mapbox/pixelmatch#readme",
+          "id": "npm:pixelmatch",
+          "installURL": "pkgmgrmgr://install?package=npm%3Apixelmatch",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "For You in Media",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "recently-updated:security:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Stealth Chromium that passes every bot detection test. Drop-in Playwright/Puppeteer replacement with source-level fingerprint patches.",
+          "category": "security",
+          "displayName": "cloakbrowser",
+          "homepage": "https://github.com/CloakHQ/cloakbrowser#javascript--nodejs",
+          "id": "npm:cloakbrowser",
+          "installURL": "pkgmgrmgr://install?package=npm%3Acloakbrowser",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "TOTP/HOTP authenticator app with import functionality",
+          "category": "security",
+          "displayName": "cotp",
+          "homepage": "https://github.com/replydev/cotp",
+          "id": "brew:cotp",
+          "installURL": "pkgmgrmgr://install?package=brew%3Acotp",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "CLI for Infisical",
+          "category": "security",
+          "displayName": "infisical",
+          "homepage": "https://infisical.com/docs/cli/overview",
+          "id": "brew:infisical",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ainfisical",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "CLI for managing Lacework",
+          "category": "security",
+          "displayName": "lacework-cli",
+          "homepage": "https://docs.lacework.com/cli",
+          "id": "brew:lacework-cli",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alacework-cli",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Add declarative schema to .env files using @env-spec decorator comments",
+          "category": "security",
+          "displayName": "varlock",
+          "homepage": "https://varlock.dev",
+          "id": "brew:varlock",
+          "installURL": "pkgmgrmgr://install?package=brew%3Avarlock",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "Recently Updated in Security",
+      "type": "recentlyUpdated"
+    }
+  ],
+  "generatedAt": "2026-07-23T14:05:45Z",
+  "nextPageURL": "https://mxcl.dev/package-manager-manager/feed/v2/pages/20260723T140545Z-5d8bcaf6.json",
+  "pageID": "20260723T140545Z-0248765e",
+  "schemaVersion": 2
+}

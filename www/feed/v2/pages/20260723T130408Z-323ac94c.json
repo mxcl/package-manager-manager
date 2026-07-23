@@ -1,0 +1,1543 @@
+{
+  "content": [
+    {
+      "artwork": {
+        "alt": "Layered blue translucent architectural planes on a dark background with a warm amber edge glow.",
+        "attribution": "Generated with OpenAI image generation for Package Manager Manager.",
+        "boxColors": {
+          "backgroundEnd": "#273D88",
+          "backgroundStart": "#08142D",
+          "foreground": "#FFFFFF"
+        },
+        "license": "CC-BY-4.0",
+        "path": "feed/assets/typescript-static-checking-2026-07-20.png"
+      },
+      "batchID": "20260720T130253Z-6a16f0bf",
+      "body": "## A deliberately incremental history\n\nJavaScript's reach is part of its appeal. The same language can sit in a browser, power a build step, serve an API, and automate a small task. That reach also makes the edges of a codebase easy to blur: an object arrives from a request, a configuration file grows fields, or a library changes an API, and the first sign of trouble can be a production exception. TypeScript was created to move a useful share of those mistakes earlier, into an editor or build.\n\nMicrosoft introduced TypeScript publicly in 2012 and released version 1.0 in 2014. Its central choice was conservative: add a type system to JavaScript, then emit JavaScript. Existing code can be adopted incrementally, and the compiler is not a separate application runtime. That history explains both the project's durability and its limit. Teams can add checking around a mature codebase without translating every file, but annotations do not turn unknown runtime data into validated data.\n\nThe official Handbook describes TypeScript as a static type checker: it examines a program before it runs. That is a more useful claim than a blanket promise of safe JavaScript. A renamed property can reveal callers that still expect the old shape; a function signature makes inputs and outputs visible; editor integrations use the same program model for completion, navigation, and refactoring.\n\n## Type checking has a boundary\n\nIn normal work, `tsc` is most valuable as feedback close to a change. It fits naturally as a development dependency, with `tsconfig.json` recording decisions about module output, strictness, library targets, and file inclusion. Modern projects often let a framework or bundler transpile files while `tsc --noEmit` handles checking. Others ask the compiler to emit JavaScript directly. Either arrangement can work when one tool clearly owns each task.\n\nTypeScript's types disappear at runtime. That means a JSON payload, environment variable, database row, or third-party service response can still be malformed even when its declared type looks perfect. Validate external inputs, test observable behavior, and review dependency changes. Types are strongest at expressing contracts inside code the team controls; they are weaker at enforcing facts beyond that boundary.\n\nA useful rollout is intentionally small:\n\n- check a new or well-contained area first;\n- enable stricter compiler options deliberately;\n- add runtime validation where data enters the system; and\n- make type checking part of CI only after the errors are understood.\n\nThis approach avoids the common trap of treating a large annotation campaign as an end in itself. A loose configuration can create a false sense of safety, while turning every strict option on at once may surface years of assumptions with little guidance about priority.\n\n## A practical toolchain role\n\nActual use extends beyond one framework. Libraries publish declaration files so consumers can inspect APIs before calling them. Application teams use typed boundaries between UI components, services, and persistence. Tooling authors use the compiler and language service to understand source code. The public repository and npm distribution make the source and release trail inspectable; the Stack Overflow survey is an independent, imperfect signal that the language is familiar to many working developers. Familiarity alone is not a reason to add a dependency, but it can reduce collaboration friction.\n\nThe surrounding tools matter. esbuild can transform or bundle TypeScript-adjacent source quickly, but it does not replace a deliberate type-checking step. Vitest can exercise behavior in the same project, but passing tests do not prove that every interface change is sound. Together they illustrate a healthy division of labor: a compiler checks declared relationships, a build tool prepares code for its target, and tests observe behavior.\n\n## Adoption should stay measurable\n\nTypeScript asks teams to learn a second way of describing JavaScript. Inference removes much of the ceremony, yet generics, narrowing, declaration files, and module resolution become real design concerns. The payoff should be measured in clearer changes, earlier interface mistakes, and easier maintenance rather than in annotation counts.\n\nFor a JavaScript project that has grown beyond a few files, the adoption path is reversible and testable. Start with the official documentation, choose an explicit configuration, and decide which compiler errors should block a merge. If that produces better reviews and fewer surprises, continue. If the configuration becomes ceremony without catching meaningful defects, scale it back. The aim is not a more elaborate type system; it is a codebase whose assumptions are easier to see, test, and change.",
+      "deck": "Why TypeScript remains a useful boundary around JavaScript, and where its guarantees end.",
+      "id": "editorial:2026-07-20:typescript-static-checking-without-a-runtime-rewrite",
+      "package": {
+        "agentSummary": "TypeScript adds static analysis to JavaScript projects, helping teams surface interface mismatches before execution while retaining JavaScript output and gradual adoption paths.",
+        "assessment": {
+          "alternatives": [
+            "JavaScript with JSDoc checking or another typed language"
+          ],
+          "audiences": [
+            "JavaScript application and library teams"
+          ],
+          "caveats": [
+            "Types are erased at runtime and cannot validate untrusted data"
+          ],
+          "complements": [
+            "Runtime input validation and automated tests"
+          ],
+          "prerequisites": [
+            "A JavaScript project and an agreed compiler configuration"
+          ],
+          "useCases": [
+            "Checking application and library interfaces before runtime"
+          ]
+        },
+        "category": null,
+        "displayName": "typescript",
+        "docs": null,
+        "homepage": "https://www.typescriptlang.org/",
+        "id": "npm:typescript",
+        "installURL": "pkgmgrmgr://install?package=npm%3Atypescript",
+        "lastUpdatedAt": "2026-07-08T15:55:18Z",
+        "manager": "npm",
+        "repository": null,
+        "researchedAt": "2026-07-20T13:02:53Z",
+        "sources": [
+          {
+            "kind": "primary",
+            "title": "TypeScript Handbook",
+            "url": "https://www.typescriptlang.org/docs/handbook/intro.html"
+          },
+          {
+            "kind": "primary",
+            "title": "TypeScript source repository",
+            "url": "https://github.com/microsoft/TypeScript"
+          }
+        ],
+        "upstreamSummary": "TypeScript is a language for application scale JavaScript development",
+        "version": "7.0.2"
+      },
+      "primaryPackageID": "npm:typescript",
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "relatedPackages": [
+        {
+          "agentSummary": "TypeScript adds static analysis to JavaScript projects, helping teams surface interface mismatches before execution while retaining JavaScript output and gradual adoption paths.",
+          "assessment": {
+            "alternatives": [
+              "JavaScript with JSDoc checking or another typed language"
+            ],
+            "audiences": [
+              "JavaScript application and library teams"
+            ],
+            "caveats": [
+              "Types are erased at runtime and cannot validate untrusted data"
+            ],
+            "complements": [
+              "Runtime input validation and automated tests"
+            ],
+            "prerequisites": [
+              "A JavaScript project and an agreed compiler configuration"
+            ],
+            "useCases": [
+              "Checking application and library interfaces before runtime"
+            ]
+          },
+          "category": null,
+          "displayName": "typescript",
+          "docs": null,
+          "homepage": "https://www.typescriptlang.org/",
+          "id": "npm:typescript",
+          "installURL": "pkgmgrmgr://install?package=npm%3Atypescript",
+          "lastUpdatedAt": "2026-07-08T15:55:18Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-20T13:02:53Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "TypeScript Handbook",
+              "url": "https://www.typescriptlang.org/docs/handbook/intro.html"
+            },
+            {
+              "kind": "primary",
+              "title": "TypeScript source repository",
+              "url": "https://github.com/microsoft/TypeScript"
+            }
+          ],
+          "upstreamSummary": "TypeScript is a language for application scale JavaScript development",
+          "version": "7.0.2"
+        },
+        {
+          "agentSummary": "esbuild bundles and transforms JavaScript and TypeScript quickly, making it a pragmatic build component when its compatibility targets and plugin boundaries suit a project.",
+          "assessment": {
+            "alternatives": [
+              "Rollup, webpack, or framework-provided build tooling"
+            ],
+            "audiences": [
+              "Web developers maintaining JavaScript or TypeScript builds"
+            ],
+            "caveats": [
+              "Review target support and plugin behavior before replacing an established build"
+            ],
+            "complements": [
+              "A framework, test runner, and deployment pipeline"
+            ],
+            "prerequisites": [
+              "A Node.js-based build workflow"
+            ],
+            "useCases": [
+              "Bundling and transforming web application assets"
+            ]
+          },
+          "category": "developer-tools",
+          "displayName": "esbuild",
+          "docs": null,
+          "homepage": "https://github.com/evanw/esbuild#readme",
+          "id": "npm:esbuild",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aesbuild",
+          "lastUpdatedAt": "2026-06-11T22:47:05Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-20T13:02:53Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "esbuild documentation",
+              "url": "https://esbuild.github.io/"
+            },
+            {
+              "kind": "primary",
+              "title": "esbuild source repository",
+              "url": "https://github.com/evanw/esbuild"
+            }
+          ],
+          "upstreamSummary": "An extremely fast JavaScript and CSS bundler and minifier.",
+          "version": "0.28.1"
+        },
+        {
+          "agentSummary": "Vitest provides a Vite-powered test runner for modern JavaScript and TypeScript projects, with familiar assertions and fast feedback where its environment model fits the application.",
+          "assessment": {
+            "alternatives": [
+              "Jest, Node's built-in test runner, or Playwright"
+            ],
+            "audiences": [
+              "Teams building Vite-oriented JavaScript and TypeScript applications"
+            ],
+            "caveats": [
+              "Confirm environment emulation and mocking behavior against production requirements"
+            ],
+            "complements": [
+              "Type checking, browser testing, and continuous integration"
+            ],
+            "prerequisites": [
+              "A compatible Node.js project and test configuration"
+            ],
+            "useCases": [
+              "Running unit and integration tests with development feedback"
+            ]
+          },
+          "category": "developer-tools",
+          "displayName": "vitest",
+          "docs": null,
+          "homepage": "https://vitest.dev",
+          "id": "npm:vitest",
+          "installURL": "pkgmgrmgr://install?package=npm%3Avitest",
+          "lastUpdatedAt": "2026-07-06T06:44:42Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-20T13:02:53Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "Vitest guide",
+              "url": "https://vitest.dev/guide/"
+            },
+            {
+              "kind": "primary",
+              "title": "Vitest source repository",
+              "url": "https://github.com/vitest-dev/vitest"
+            }
+          ],
+          "upstreamSummary": "Next generation testing framework powered by Vite",
+          "version": "4.1.10"
+        }
+      ],
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "TypeScript Handbook",
+          "url": "https://www.typescriptlang.org/docs/handbook/intro.html"
+        },
+        {
+          "kind": "primary",
+          "title": "TypeScript source repository",
+          "url": "https://github.com/microsoft/TypeScript"
+        },
+        {
+          "kind": "primary",
+          "title": "TypeScript package on npm",
+          "url": "https://www.npmjs.com/package/typescript"
+        },
+        {
+          "kind": "independent",
+          "title": "2025 Stack Overflow Developer Survey: Technology",
+          "url": "https://survey.stackoverflow.co/2025/technology/"
+        }
+      ],
+      "title": "TypeScript: Static Checking Without a Runtime Rewrite",
+      "type": "editorial"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "new-packages:system:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Enhanced (but compatible) version of the classic ttyrec",
+          "category": "system",
+          "displayName": "ovh-ttyrec",
+          "homepage": "https://github.com/ovh/ovh-ttyrec",
+          "id": "brew:ovh-ttyrec",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aovh-ttyrec",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "macOS command-line tool to work with default apps",
+          "category": "system",
+          "displayName": "utiluti",
+          "homepage": "https://github.com/scriptingosx/utiluti",
+          "id": "brew:utiluti",
+          "installURL": "pkgmgrmgr://install?package=brew%3Autiluti",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "New Packages in System",
+      "type": "newPackages"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "for-you:ai:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "MCP server for Chrome DevTools",
+          "category": "ai",
+          "displayName": "chrome-devtools-mcp",
+          "homepage": "https://github.com/ChromeDevTools/chrome-devtools-mcp#readme",
+          "id": "npm:chrome-devtools-mcp",
+          "installURL": "pkgmgrmgr://install?package=npm%3Achrome-devtools-mcp",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Multi-channel AI gateway with extensible messaging integrations",
+          "category": "ai",
+          "displayName": "openclaw",
+          "homepage": "https://github.com/openclaw/openclaw#readme",
+          "id": "npm:openclaw",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aopenclaw",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Lean output compaction for terminal-heavy agent workflows.",
+          "category": "ai",
+          "displayName": "tokenjuice",
+          "homepage": "https://github.com/vincentkoc/tokenjuice",
+          "id": "npm:tokenjuice",
+          "installURL": "pkgmgrmgr://install?package=npm%3Atokenjuice",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "The open agent skills ecosystem",
+          "category": "ai",
+          "displayName": "skills",
+          "homepage": "https://github.com/vercel-labs/skills#readme",
+          "id": "npm:skills",
+          "installURL": "pkgmgrmgr://install?package=npm%3Askills",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "opencode-ai is available through npm for installation and management in Package Manager Manager.",
+          "category": "ai",
+          "displayName": "opencode-ai",
+          "homepage": null,
+          "id": "npm:opencode-ai",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aopencode-ai",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "For You in Ai",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "new-packages:media:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Server and web based player for Qobuz",
+          "category": "media",
+          "displayName": "qobine-web",
+          "homepage": "https://github.com/SofusA/qobine",
+          "id": "brew:qobine-web",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aqobine-web",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Tui player for Qobuz",
+          "category": "media",
+          "displayName": "qobine-tui",
+          "homepage": "https://github.com/SofusA/qobine",
+          "id": "brew:qobine-tui",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aqobine-tui",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Self-hosted media streaming server and Plex alternative for movies and TV",
+          "category": "media",
+          "displayName": "lunarr",
+          "homepage": "https://github.com/lunarr-app/lunarr-go",
+          "id": "brew:lunarr",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alunarr",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "New Packages in Media",
+      "type": "newPackages"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "deck": "22 modern shell tools",
+      "id": "install-pack:unix-plus-plus:20260720T130253Z-b4efaed3",
+      "packages": [
+        {
+          "agentSummary": "Clone of cat(1) with syntax highlighting and Git integration",
+          "category": "developer-tools",
+          "displayName": "bat",
+          "homepage": "https://github.com/sharkdp/bat",
+          "id": "brew:bat",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abat",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Bash scripts that integrate bat with various command-line tools",
+          "category": "developer-tools",
+          "displayName": "bat-extras",
+          "homepage": "https://github.com/eth-p/bat-extras",
+          "id": "brew:bat-extras",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abat-extras",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Modern, maintained replacement for ls",
+          "category": "system",
+          "displayName": "eza",
+          "homepage": "https://eza.rocks",
+          "id": "brew:eza",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aeza",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Simple, fast and user-friendly alternative to find",
+          "category": "system",
+          "displayName": "fd",
+          "homepage": "https://github.com/sharkdp/fd",
+          "id": "brew:fd",
+          "installURL": "pkgmgrmgr://install?package=brew%3Afd",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Search tool like grep and The Silver Searcher",
+          "category": "developer-tools",
+          "displayName": "ripgrep",
+          "homepage": "https://github.com/BurntSushi/ripgrep",
+          "id": "brew:ripgrep",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aripgrep",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Intuitive find & replace CLI",
+          "category": "developer-tools",
+          "displayName": "sd",
+          "homepage": "https://github.com/chmln/sd",
+          "id": "brew:sd",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asd",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "More intuitive version of du in rust",
+          "category": "system",
+          "displayName": "dust",
+          "homepage": "https://github.com/bootandy/dust",
+          "id": "brew:dust",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adust",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Disk Usage/Free Utility - a better 'df' alternative",
+          "category": "system",
+          "displayName": "duf",
+          "homepage": "https://github.com/muesli/duf",
+          "id": "brew:duf",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aduf",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Modern replacement for ps written in Rust",
+          "category": "system",
+          "displayName": "procs",
+          "homepage": "https://github.com/dalance/procs",
+          "id": "brew:procs",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aprocs",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Yet another cross-platform graphical process/system monitor",
+          "category": "system",
+          "displayName": "bottom",
+          "homepage": "https://clementtsang.github.io/bottom/",
+          "id": "brew:bottom",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abottom",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Shell extension to navigate your filesystem faster",
+          "category": "developer-tools",
+          "displayName": "zoxide",
+          "homepage": "https://github.com/ajeetdsouza/zoxide",
+          "id": "brew:zoxide",
+          "installURL": "pkgmgrmgr://install?package=brew%3Azoxide",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Command-line fuzzy finder written in Go",
+          "category": "developer-tools",
+          "displayName": "fzf",
+          "homepage": "https://junegunn.github.io/fzf/",
+          "id": "brew:fzf",
+          "installURL": "pkgmgrmgr://install?package=brew%3Afzf",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Syntax-highlighting pager for git and diff output",
+          "category": "developer-tools",
+          "displayName": "git-delta",
+          "homepage": "https://dandavison.github.io/delta/",
+          "id": "brew:git-delta",
+          "installURL": "pkgmgrmgr://install?package=brew%3Agit-delta",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Command-line benchmarking tool",
+          "category": "developer-tools",
+          "displayName": "hyperfine",
+          "homepage": "https://github.com/sharkdp/hyperfine",
+          "id": "brew:hyperfine",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ahyperfine",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Program that allows you to count code, quickly",
+          "category": "developer-tools",
+          "displayName": "tokei",
+          "homepage": "https://github.com/XAMPPRocky/tokei",
+          "id": "brew:tokei",
+          "installURL": "pkgmgrmgr://install?package=brew%3Atokei",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Lightweight and flexible command-line JSON processor",
+          "category": "developer-tools",
+          "displayName": "jq",
+          "homepage": "https://jqlang.github.io/jq/",
+          "id": "brew:jq",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ajq",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Process YAML, JSON, XML, CSV and properties documents from the CLI",
+          "category": "developer-tools",
+          "displayName": "yq",
+          "homepage": "https://github.com/mikefarah/yq",
+          "id": "brew:yq",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ayq",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Friendly and fast tool for sending HTTP requests",
+          "category": "developer-tools",
+          "displayName": "xh",
+          "homepage": "https://github.com/ducaale/xh",
+          "id": "brew:xh",
+          "installURL": "pkgmgrmgr://install?package=brew%3Axh",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Command-line DNS Client for Humans",
+          "category": "networking",
+          "displayName": "doggo",
+          "homepage": "https://doggo.mrkaran.dev/",
+          "id": "brew:doggo",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adoggo",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Like sed, awk, cut, join & sort for name-indexed data such as CSV",
+          "category": "data",
+          "displayName": "miller",
+          "homepage": "https://github.com/johnkerl/miller",
+          "id": "brew:miller",
+          "installURL": "pkgmgrmgr://install?package=brew%3Amiller",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Run arbitrary commands when files change",
+          "category": "developer-tools",
+          "displayName": "entr",
+          "homepage": "https://eradman.com/entrproject/",
+          "id": "brew:entr",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aentr",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Execute commands when watched files change",
+          "category": "developer-tools",
+          "displayName": "watchexec",
+          "homepage": "https://watchexec.github.io/",
+          "id": "brew:watchexec",
+          "installURL": "pkgmgrmgr://install?package=brew%3Awatchexec",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "UNIX++ Pack",
+      "type": "installPack"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "recently-updated:language-runtime:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Glorious Glasgow Haskell Compilation System",
+          "category": "language-runtime",
+          "displayName": "ghc",
+          "homepage": "https://haskell.org/ghc/",
+          "id": "brew:ghc",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aghc",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Rye is a homoiconic programming language focused on fluid expressions",
+          "category": "language-runtime",
+          "displayName": "ryelang",
+          "homepage": "https://ryelang.org/",
+          "id": "brew:ryelang",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aryelang",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Friendly programming language from the future",
+          "category": "language-runtime",
+          "displayName": "unisonlang",
+          "homepage": "https://unison-lang.org/",
+          "id": "brew:unisonlang",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aunisonlang",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Google's JavaScript engine",
+          "category": "language-runtime",
+          "displayName": "v8",
+          "homepage": "https://v8.dev/docs",
+          "id": "brew:v8",
+          "installURL": "pkgmgrmgr://install?package=brew%3Av8",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Functional programming language for building browser-based GUIs",
+          "category": "language-runtime",
+          "displayName": "elm",
+          "homepage": "https://elm-lang.org",
+          "id": "brew:elm",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aelm",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "Recently Updated in Language Runtime",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "new-packages:ai:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Fast local AI engine for Apple Silicon with an OpenAI-compatible API",
+          "category": "ai",
+          "displayName": "rapid-mlx",
+          "homepage": "https://github.com/raullenchai/Rapid-MLX",
+          "id": "brew:rapid-mlx",
+          "installURL": "pkgmgrmgr://install?package=brew%3Arapid-mlx",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "CLI for managing skills and external CLIs",
+          "category": "ai",
+          "displayName": "advai-cli",
+          "homepage": "https://github.com/Advai-X/advai-cli",
+          "id": "brew:advai-cli",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aadvai-cli",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Terminal pixel-art office for AI coding agents",
+          "category": "ai",
+          "displayName": "pixtuoid",
+          "homepage": "https://github.com/IvanWng97/pixtuoid",
+          "id": "brew:pixtuoid",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apixtuoid",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "New Packages in Ai",
+      "type": "newPackages"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "for-you:language-runtime:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Runtime typescript and ESM support for Node.js",
+          "category": "language-runtime",
+          "displayName": "jiti",
+          "homepage": "https://github.com/unjs/jiti#readme",
+          "id": "npm:jiti",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ajiti",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Vite as Node.js runtime",
+          "category": "language-runtime",
+          "displayName": "vite-node",
+          "homepage": "https://github.com/antfu-collective/vite-node#readme",
+          "id": "npm:vite-node",
+          "installURL": "pkgmgrmgr://install?package=npm%3Avite-node",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "👷 workerd, Cloudflare's JavaScript/Wasm Runtime",
+          "category": "language-runtime",
+          "displayName": "workerd",
+          "homepage": "https://github.com/cloudflare/workerd#readme",
+          "id": "npm:workerd",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aworkerd",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Run any Edge Function from CLI or Node.js module.",
+          "category": "language-runtime",
+          "displayName": "edge-runtime",
+          "homepage": "https://edge-runtime.vercel.app/packages/runtime",
+          "id": "npm:edge-runtime",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aedge-runtime",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "node",
+          "category": "language-runtime",
+          "displayName": "node",
+          "homepage": "https://github.com/aredridel/node-bin-gen#readme",
+          "id": "npm:node",
+          "installURL": "pkgmgrmgr://install?package=npm%3Anode",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "For You in Language Runtime",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "recently-updated:developer-tools:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Extremely fast Python type checker, written in Rust",
+          "category": "developer-tools",
+          "displayName": "ty",
+          "homepage": "https://docs.astral.sh/ty/",
+          "id": "brew:ty",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aty",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Polyglot runtime manager (asdf rust clone)",
+          "category": "developer-tools",
+          "displayName": "mise",
+          "homepage": "https://mise.jdx.dev/",
+          "id": "brew:mise",
+          "installURL": "pkgmgrmgr://install?package=brew%3Amise",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Modern cli tool that keeps your deps fresh",
+          "category": "developer-tools",
+          "displayName": "taze",
+          "homepage": "https://github.com/antfu-collective/taze",
+          "id": "brew:taze",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ataze",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "CLI tool for managing workspaces provided by brev.dev",
+          "category": "developer-tools",
+          "displayName": "brev",
+          "homepage": "https://developer.nvidia.com/brev",
+          "id": "brew:brev",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abrev",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Reference implementation of Sass, written in Dart",
+          "category": "developer-tools",
+          "displayName": "dart-sass",
+          "homepage": "https://sass-lang.com/dart-sass",
+          "id": "brew:dart-sass",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adart-sass",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "Recently Updated in Developer Tools",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "for-you:security:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "A tiny (118 bytes), secure URL-friendly unique string ID generator",
+          "category": "security",
+          "displayName": "nanoid",
+          "homepage": "https://github.com/ai/nanoid#readme",
+          "id": "npm:nanoid",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ananoid",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Streamable SHA hashes in pure javascript",
+          "category": "security",
+          "displayName": "sha.js",
+          "homepage": "https://github.com/crypto-browserify/sha.js",
+          "id": "npm:sha.js",
+          "installURL": "pkgmgrmgr://install?package=npm%3Asha.js",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Optimized bcrypt in plain JavaScript with zero dependencies, with TypeScript support. Compatible to 'bcrypt'.",
+          "category": "security",
+          "displayName": "bcryptjs",
+          "homepage": "https://github.com/dcodeIO/bcrypt.js#readme",
+          "id": "npm:bcryptjs",
+          "installURL": "pkgmgrmgr://install?package=npm%3Abcryptjs",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "detect possibly catastrophic, exponential-time regular expressions",
+          "category": "security",
+          "displayName": "safe-regex2",
+          "homepage": "https://github.com/fastify/safe-regex2",
+          "id": "npm:safe-regex2",
+          "installURL": "pkgmgrmgr://install?package=npm%3Asafe-regex2",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Sanitize untrusted HTML (to prevent XSS) with a configuration specified by a Whitelist",
+          "category": "security",
+          "displayName": "xss",
+          "homepage": "https://github.com/leizongmin/js-xss",
+          "id": "npm:xss",
+          "installURL": "pkgmgrmgr://install?package=npm%3Axss",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "For You in Security",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "recently-updated:games:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Open-source Android/Desktop remake of Civ V",
+          "category": "games",
+          "displayName": "unciv",
+          "homepage": "https://github.com/yairm210/Unciv",
+          "id": "brew:unciv",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aunciv",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Near-future Sci-Fi roguelike and tactical squad combat game",
+          "category": "games",
+          "displayName": "allureofthestars",
+          "homepage": "https://allureofthestars.com/",
+          "id": "brew:allureofthestars",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aallureofthestars",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Collection of one-player puzzle games",
+          "category": "games",
+          "displayName": "puzzles",
+          "homepage": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+          "id": "brew:puzzles",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apuzzles",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Classic 2D jump'n run sidescroller game",
+          "category": "games",
+          "displayName": "supertux",
+          "homepage": "https://www.supertux.org/",
+          "id": "brew:supertux",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asupertux",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Sega Model 3 arcade emulator",
+          "category": "games",
+          "displayName": "supermodel",
+          "homepage": "https://github.com/trzy/Supermodel",
+          "id": "brew:supermodel",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asupermodel",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "Recently Updated in Games",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "for-you:media:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "SVGO is a Node.js library and command-line application for optimizing vector images.",
+          "category": "media",
+          "displayName": "svgo",
+          "homepage": "https://svgo.dev",
+          "id": "npm:svgo",
+          "installURL": "pkgmgrmgr://install?package=npm%3Asvgo",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "get dimensions of any image file",
+          "category": "media",
+          "displayName": "image-size",
+          "homepage": "https://github.com/image-size/image-size#readme",
+          "id": "npm:image-size",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aimage-size",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "QRCode / 2d Barcode api with both server side and client side support using canvas",
+          "category": "media",
+          "displayName": "qrcode",
+          "homepage": null,
+          "id": "npm:qrcode",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aqrcode",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Fast math typesetting for the web.",
+          "category": "media",
+          "displayName": "katex",
+          "homepage": "https://katex.org",
+          "id": "npm:katex",
+          "installURL": "pkgmgrmgr://install?package=npm%3Akatex",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "The smallest and fastest pixel-level image comparison library.",
+          "category": "media",
+          "displayName": "pixelmatch",
+          "homepage": "https://github.com/mapbox/pixelmatch#readme",
+          "id": "npm:pixelmatch",
+          "installURL": "pkgmgrmgr://install?package=npm%3Apixelmatch",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "For You in Media",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260720T130253Z-661909b5",
+      "id": "recently-updated:networking:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Tunnel (TUN) interface for SOCKS and HTTP proxies",
+          "category": "networking",
+          "displayName": "tun2proxy",
+          "homepage": "https://github.com/tun2proxy/tun2proxy",
+          "id": "brew:tun2proxy",
+          "installURL": "pkgmgrmgr://install?package=brew%3Atun2proxy",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Replay saved tcpdump files at arbitrary speeds",
+          "category": "networking",
+          "displayName": "tcpreplay",
+          "homepage": "https://tcpreplay.appneta.com/",
+          "id": "brew:tcpreplay",
+          "installURL": "pkgmgrmgr://install?package=brew%3Atcpreplay",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "FlightAware ADS-B Ground Station System for SDRs",
+          "category": "networking",
+          "displayName": "dump1090-fa",
+          "homepage": "https://github.com/flightaware/dump1090",
+          "id": "brew:dump1090-fa",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adump1090-fa",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Lightning Network implementation focusing on spec compliance and performance",
+          "category": "networking",
+          "displayName": "core-lightning",
+          "homepage": "https://github.com/ElementsProject/lightning",
+          "id": "brew:core-lightning",
+          "installURL": "pkgmgrmgr://install?package=brew%3Acore-lightning",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Implementation of the DNS protocols",
+          "category": "networking",
+          "displayName": "bind",
+          "homepage": "https://www.isc.org/bind/",
+          "id": "brew:bind",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abind",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "title": "Recently Updated in Networking",
+      "type": "recentlyUpdated"
+    },
+    {
+      "artwork": {
+        "alt": "Three glass browser stages render matching geometric scenes above a luminous automation rail and diagnostic timeline.",
+        "attribution": "Generated with OpenAI image generation",
+        "boxColors": {
+          "backgroundEnd": "#30144E",
+          "backgroundStart": "#090822",
+          "foreground": "#FFFFFF"
+        },
+        "license": "OpenAI terms of use",
+        "path": "feed/assets/playwright-browsers-under-test.png"
+      },
+      "batchID": "20260716T225252Z-3e0a01bd",
+      "body": "## Waiting Is Part of the Model\n\nA browser test often fails in the gap between what the page has drawn and what a person can use. A button exists in the DOM but still moves under an animation. A request has finished, though a client-side state update has not. A selector matches a hidden copy of the control. Test code can paper over each race with a delay, and the suite grows slower while remaining unreliable. Playwright treats these timing problems as part of browser control.\n\nMicrosoft released Playwright 1.0 in 2020 after engineers who had worked on browser automation began building a new cross-browser API. The project shared some ancestry and design experience with Puppeteer, then expanded the target from Chromium to Chromium, Firefox, and WebKit. That choice shaped its architecture. Playwright ships browser builds matched to each release and speaks to those browsers through project-maintained protocol layers. The package owns more of the stack than a generic WebDriver client, which gives it consistent features and creates a tight relationship between library and browser versions.\n\n## Actionable Locators\n\nAuto-waiting provides the first visible benefit. Before a click, Playwright checks that a locator resolves to one element and that the element is visible, stable, enabled, and able to receive events. Assertions can retry until their conditions hold. A test expresses the state it expects instead of estimating how many milliseconds the interface needs. Timeouts remain, because a broken page must stop somewhere, but they become failure boundaries rather than routine synchronization. Teams still need to wait on meaningful product state. A spinner disappearing may say less than an order reaching the expected status.\n\nLocators reinforce that approach. Playwright encourages roles, labels, text, test identifiers, and relationships that resemble the way a user or accessibility tree finds a control. A long CSS chain tied to layout can break after harmless markup work. A role and accessible name can survive the same refactor while checking something the product should preserve. Test identifiers remain useful for controls with unstable content or no natural semantic handle. The tool cannot choose a durable contract for the team; it gives the team better contracts to choose from.\n\n## Isolation and Evidence\n\nEach test can run in a fresh browser context, an isolated profile that costs less than starting another browser process. Contexts separate cookies, local storage, and session state. A suite can create two contexts to test collaboration or permissions without two machines. Saved authentication state can speed setup, though teams must protect those files because they may contain credentials. Isolation also stops one failed test from poisoning the next with leftover state, provided the application resets its server-side data with equal care.\n\nPlaywright's trace viewer changes the debugging loop. A retained trace can include actions, DOM snapshots, network events, console messages, and screenshots around a failure. CI no longer has to report a bare timeout from a machine nobody can inspect. A developer can walk the action timeline and compare the page before and after the failed step. Video and screenshots remain available, but a structured trace often identifies whether the selector, application, data, or network caused the failure. Traces contain application data, so storage and retention policies should treat them as diagnostic records rather than harmless build output.\n\n## Where Teams Use It\n\nTeams use Playwright for end-to-end tests, component tests, visual comparisons, scraping, and browser-based developer tools. Language bindings cover JavaScript and TypeScript, Python, Java, and .NET, while `playwright-core` serves authors who need browser control without Playwright's test runner. State of JavaScript's 2024 testing results recorded Playwright among the leading tools used at work, with 3,674 respondents selecting it in that survey section. Survey participation skews toward engaged JavaScript developers, but the result supports what the project's release pace and integration ecosystem show: this is production infrastructure, not a laboratory demo.\n\nCross-browser coverage carries a bill. The browser downloads are large, CI images need system dependencies, and parallel workers consume memory. A release may update all three browser revisions, so teams should upgrade the library and its binaries together. WebKit on Linux provides useful engine coverage without reproducing every macOS or iOS behavior. Mobile emulation changes viewport, input, and user agent; it does not replace testing on a real device when hardware, operating-system integration, or the platform browser matters.\n\n## Keep the Browser Layer Narrow\n\nA healthy suite keeps the browser layer narrow. Test the journeys whose failure would hurt a user or the business, then cover smaller logic with faster tests. Give each browser test controlled data, semantic locators, and a clear assertion. Collect traces on the first retry instead of on every passing run. Measure whether multiple browsers catch distinct defects before tripling the full matrix.\n\nPlaywright reduces several causes of test flakiness through actionability checks, isolated contexts, and useful evidence after failure. It cannot stabilize an environment with shared mutable data or turn an ambiguous workflow into a trustworthy assertion. Teams get the best result when they use its browser knowledge and keep responsibility for test design, data, and scope.",
+      "deck": "One automation model for Chromium, Firefox, and WebKit, with waiting, isolation, and traces built around modern web applications.",
+      "id": "editorial:2026-07-16:playwright-browsers-under-test",
+      "package": {
+        "agentSummary": "Playwright Core provides cross-browser automation without the bundled test runner, fitting crawlers, agents, visual checks, and fully custom testing harnesses.",
+        "assessment": {
+          "alternatives": [
+            "Puppeteer for Chromium-centered automation",
+            "WebDriver clients for remote browser grids and standards-based control"
+          ],
+          "audiences": [
+            "Authors of browser automation tools and custom test infrastructure"
+          ],
+          "caveats": [
+            "Browser downloads consume storage and CI time",
+            "Selectors and workflows still change when the product changes"
+          ],
+          "complements": [
+            "Playwright Test, CI traces, accessibility checks, and stable test data"
+          ],
+          "prerequisites": [
+            "A supported Node.js release and Playwright-managed browser binaries"
+          ],
+          "useCases": [
+            "Controlling Chromium, Firefox, and WebKit through one API",
+            "Building crawlers, browser agents, or visual inspection systems"
+          ]
+        },
+        "category": "developer-tools",
+        "displayName": "playwright-core",
+        "docs": null,
+        "homepage": "https://playwright.dev",
+        "id": "npm:playwright-core",
+        "installURL": "pkgmgrmgr://install?package=npm%3Aplaywright-core",
+        "lastUpdatedAt": "2026-06-23T19:49:07Z",
+        "manager": "npm",
+        "repository": null,
+        "researchedAt": "2026-07-16T22:52:52Z",
+        "sources": [
+          {
+            "kind": "primary",
+            "title": "Playwright documentation",
+            "url": "https://playwright.dev/docs/intro"
+          },
+          {
+            "kind": "primary",
+            "title": "Microsoft Playwright source repository",
+            "url": "https://github.com/microsoft/playwright"
+          }
+        ],
+        "upstreamSummary": "A high-level API to automate web browsers",
+        "version": "1.61.1"
+      },
+      "primaryPackageID": "npm:playwright-core",
+      "publishedAt": "2026-07-16T22:52:52Z",
+      "relatedPackages": [
+        {
+          "agentSummary": "Playwright Core provides cross-browser automation without the bundled test runner, fitting crawlers, agents, visual checks, and fully custom testing harnesses.",
+          "assessment": {
+            "alternatives": [
+              "Puppeteer for Chromium-centered automation",
+              "WebDriver clients for remote browser grids and standards-based control"
+            ],
+            "audiences": [
+              "Authors of browser automation tools and custom test infrastructure"
+            ],
+            "caveats": [
+              "Browser downloads consume storage and CI time",
+              "Selectors and workflows still change when the product changes"
+            ],
+            "complements": [
+              "Playwright Test, CI traces, accessibility checks, and stable test data"
+            ],
+            "prerequisites": [
+              "A supported Node.js release and Playwright-managed browser binaries"
+            ],
+            "useCases": [
+              "Controlling Chromium, Firefox, and WebKit through one API",
+              "Building crawlers, browser agents, or visual inspection systems"
+            ]
+          },
+          "category": "developer-tools",
+          "displayName": "playwright-core",
+          "docs": null,
+          "homepage": "https://playwright.dev",
+          "id": "npm:playwright-core",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aplaywright-core",
+          "lastUpdatedAt": "2026-06-23T19:49:07Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-16T22:52:52Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "Playwright documentation",
+              "url": "https://playwright.dev/docs/intro"
+            },
+            {
+              "kind": "primary",
+              "title": "Microsoft Playwright source repository",
+              "url": "https://github.com/microsoft/playwright"
+            }
+          ],
+          "upstreamSummary": "A high-level API to automate web browsers",
+          "version": "1.61.1"
+        },
+        {
+          "agentSummary": "Playwright automates Chromium, Firefox, and WebKit through one API, supporting reliable end-to-end testing across browsers, devices, platforms, and isolated contexts.",
+          "assessment": {
+            "alternatives": [
+              "Built-in platform tools or another package in the same category"
+            ],
+            "audiences": [
+              "Developers and teams whose workflow matches the documented scope"
+            ],
+            "caveats": [
+              "Confirm compatibility, update policy, and operational impact before production use"
+            ],
+            "complements": [
+              "Version control, CI, and project-specific documentation"
+            ],
+            "prerequisites": [
+              "A compatible runtime, operating system, or project configuration"
+            ],
+            "useCases": [
+              "Automating the task described by the upstream project"
+            ]
+          },
+          "category": "developer-tools",
+          "displayName": "playwright",
+          "docs": null,
+          "homepage": "https://playwright.dev",
+          "id": "npm:playwright",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aplaywright",
+          "lastUpdatedAt": "2026-06-23T19:49:00Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-16T17:09:55Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "playwright documentation",
+              "url": "https://playwright.dev"
+            },
+            {
+              "kind": "primary",
+              "title": "playwright project and release information",
+              "url": "https://www.npmjs.com/package/playwright"
+            }
+          ],
+          "upstreamSummary": "A high-level API to automate web browsers",
+          "version": "1.61.1"
+        },
+        {
+          "agentSummary": "Vitest is a Vite-native testing framework with fast watch mode, TypeScript support, familiar assertions, mocking, coverage, and flexible workspace-aware configuration.",
+          "assessment": {
+            "alternatives": [
+              "Built-in platform tools or another package in the same category"
+            ],
+            "audiences": [
+              "Developers and teams whose workflow matches the documented scope"
+            ],
+            "caveats": [
+              "Confirm compatibility, update policy, and operational impact before production use"
+            ],
+            "complements": [
+              "Version control, CI, and project-specific documentation"
+            ],
+            "prerequisites": [
+              "A compatible runtime, operating system, or project configuration"
+            ],
+            "useCases": [
+              "Automating the task described by the upstream project"
+            ]
+          },
+          "category": "developer-tools",
+          "displayName": "vitest",
+          "docs": null,
+          "homepage": "https://vitest.dev",
+          "id": "npm:vitest",
+          "installURL": "pkgmgrmgr://install?package=npm%3Avitest",
+          "lastUpdatedAt": "2026-07-06T06:44:42Z",
+          "manager": "npm",
+          "repository": null,
+          "researchedAt": "2026-07-16T17:09:55Z",
+          "sources": [
+            {
+              "kind": "primary",
+              "title": "vitest documentation",
+              "url": "https://vitest.dev"
+            },
+            {
+              "kind": "primary",
+              "title": "vitest project and release information",
+              "url": "https://www.npmjs.com/package/vitest"
+            }
+          ],
+          "upstreamSummary": "Next generation testing framework powered by Vite",
+          "version": "4.1.10"
+        }
+      ],
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "Playwright documentation",
+          "url": "https://playwright.dev/docs/intro"
+        },
+        {
+          "kind": "primary",
+          "title": "Playwright source and release history",
+          "url": "https://github.com/microsoft/playwright"
+        },
+        {
+          "kind": "primary",
+          "title": "Playwright auto-waiting documentation",
+          "url": "https://playwright.dev/docs/actionability"
+        },
+        {
+          "kind": "independent",
+          "title": "State of JavaScript 2024 testing results",
+          "url": "https://2024.stateofjs.com/en-US/libraries/testing/"
+        }
+      ],
+      "title": "Playwright Puts Browsers Under Test",
+      "type": "editorial"
+    },
+    {
+      "batchID": "20260716T225252Z-72f77757",
+      "id": "for-you:data:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "YAML 1.2 parser and serializer",
+          "category": "data",
+          "displayName": "js-yaml",
+          "homepage": "https://github.com/nodeca/js-yaml#readme",
+          "id": "npm:js-yaml",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ajs-yaml",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "JSON for Humans",
+          "category": "data",
+          "displayName": "json5",
+          "homepage": null,
+          "id": "npm:json5",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ajson5",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "JavaScript parser and stringifier for YAML",
+          "category": "data",
+          "displayName": "yaml",
+          "homepage": "https://eemeli.org/yaml/",
+          "id": "npm:yaml",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ayaml",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Given some data, jsesc returns the shortest possible stringified & ASCII-safe representation of that data.",
+          "category": "data",
+          "displayName": "jsesc",
+          "homepage": "https://mths.be/jsesc",
+          "id": "npm:jsesc",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ajsesc",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "A comprehensive library for mime-type mapping",
+          "category": "data",
+          "displayName": "mime",
+          "homepage": "https://github.com/broofa/mime#readme",
+          "id": "npm:mime",
+          "installURL": "pkgmgrmgr://install?package=npm%3Amime",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:52:52Z",
+      "title": "For You in Data",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260716T225252Z-72f77757",
+      "id": "recently-updated:media:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Library to search and download subtitles",
+          "category": "media",
+          "displayName": "subliminal",
+          "homepage": "https://subliminal.readthedocs.io",
+          "id": "brew:subliminal",
+          "installURL": "pkgmgrmgr://install?package=brew%3Asubliminal",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Lightweight PDF and XPS viewer",
+          "category": "media",
+          "displayName": "mupdf",
+          "homepage": "https://mupdf.com/",
+          "id": "brew:mupdf",
+          "installURL": "pkgmgrmgr://install?package=brew%3Amupdf",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Play, record, convert, and stream audio and video",
+          "category": "media",
+          "displayName": "ffmpeg@2.8",
+          "homepage": "https://ffmpeg.org/",
+          "id": "brew:ffmpeg@2.8",
+          "installURL": "pkgmgrmgr://install?package=brew%3Affmpeg%402.8",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Perl lib for reading and writing EXIF metadata",
+          "category": "media",
+          "displayName": "exiftool",
+          "homepage": "https://exiftool.org",
+          "id": "brew:exiftool",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aexiftool",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "JPEG 2000 Library",
+          "category": "media",
+          "displayName": "grokj2k",
+          "homepage": "https://github.com/GrokImageCompression/grok",
+          "id": "brew:grokj2k",
+          "installURL": "pkgmgrmgr://install?package=brew%3Agrokj2k",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:52:52Z",
+      "title": "Recently Updated in Media",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260716T225252Z-72f77757",
+      "id": "for-you:developer-tools:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "The semantic version parser used by npm.",
+          "category": "developer-tools",
+          "displayName": "semver",
+          "homepage": "https://github.com/npm/node-semver#readme",
+          "id": "npm:semver",
+          "installURL": "pkgmgrmgr://install?package=npm%3Asemver",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "RFC9562 UUIDs",
+          "category": "developer-tools",
+          "displayName": "uuid",
+          "homepage": "https://github.com/uuidjs/uuid#readme",
+          "id": "npm:uuid",
+          "installURL": "pkgmgrmgr://install?package=npm%3Auuid",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "An extremely fast JavaScript and CSS bundler and minifier.",
+          "category": "developer-tools",
+          "displayName": "esbuild",
+          "homepage": "https://github.com/evanw/esbuild#readme",
+          "id": "npm:esbuild",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aesbuild",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "resolve like require.resolve() on behalf of files asynchronously and synchronously",
+          "category": "developer-tools",
+          "displayName": "resolve",
+          "homepage": "https://github.com/browserify/resolve#readme",
+          "id": "npm:resolve",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aresolve",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "CLI tool to update caniuse-lite to refresh target browsers from Browserslist config",
+          "category": "developer-tools",
+          "displayName": "update-browserslist-db",
+          "homepage": "https://github.com/browserslist/update-db#readme",
+          "id": "npm:update-browserslist-db",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aupdate-browserslist-db",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:52:52Z",
+      "title": "For You in Developer Tools",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260716T225252Z-72f77757",
+      "id": "recently-updated:system:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Modern, advanced, portable, multiprotocol bootloader and boot manager",
+          "category": "system",
+          "displayName": "limine",
+          "homepage": "https://github.com/Limine-Bootloader/Limine",
+          "id": "brew:limine",
+          "installURL": "pkgmgrmgr://install?package=brew%3Alimine",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Tools and libraries to work with AppStream metadata",
+          "category": "system",
+          "displayName": "appstream",
+          "homepage": "https://www.freedesktop.org/wiki/Distributions/AppStream/",
+          "id": "brew:appstream",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aappstream",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "TUI macOS cleaner that scans caches/logs and lets you select what to delete",
+          "category": "system",
+          "displayName": "mac-cleanup-go",
+          "homepage": "https://github.com/2ykwang/mac-cleanup-go",
+          "id": "brew:mac-cleanup-go",
+          "installURL": "pkgmgrmgr://install?package=brew%3Amac-cleanup-go",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Git-integrated backup tool for macOS and Linux devs",
+          "category": "system",
+          "displayName": "shallow-backup",
+          "homepage": "https://github.com/alichtman/shallow-backup",
+          "id": "brew:shallow-backup",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ashallow-backup",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Alternative to top/htop",
+          "category": "system",
+          "displayName": "glances",
+          "homepage": "https://nicolargo.github.io/glances/",
+          "id": "brew:glances",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aglances",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:52:52Z",
+      "title": "Recently Updated in System",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260716T225252Z-72f77757",
+      "id": "for-you:games:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Query for the status of any game server in Node.JS",
+          "category": "games",
+          "displayName": "gamedig",
+          "homepage": "https://github.com/gamedig/node-gamedig#readme",
+          "id": "npm:gamedig",
+          "installURL": "pkgmgrmgr://install?package=npm%3Agamedig",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "The Stockfish chess engine in Web Assembly (WASM)",
+          "category": "games",
+          "displayName": "stockfish",
+          "homepage": "https://github.com/nmrugg/stockfish.js#readme",
+          "id": "npm:stockfish",
+          "installURL": "pkgmgrmgr://install?package=npm%3Astockfish",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Rom manager for AdvanceMAME/MESS",
+          "category": "games",
+          "displayName": "advancescan",
+          "homepage": "https://www.advancemame.it/scan-readme.html",
+          "id": "brew:advancescan",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aadvancescan",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Near-future Sci-Fi roguelike and tactical squad combat game",
+          "category": "games",
+          "displayName": "allureofthestars",
+          "homepage": "https://allureofthestars.com/",
+          "id": "brew:allureofthestars",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aallureofthestars",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Dungeon exploration game",
+          "category": "games",
+          "displayName": "angband",
+          "homepage": "https://rephial.org/",
+          "id": "brew:angband",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aangband",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:52:52Z",
+      "title": "For You in Games",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260716T225252Z-72f77757",
+      "id": "recently-updated:productivity:20260720T130253Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Batteries-included terminal file manager with rich previews",
+          "category": "productivity",
+          "displayName": "elio",
+          "homepage": "https://elio-fm.github.io/",
+          "id": "brew:elio",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aelio",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Terminal-based presentations using Pandoc",
+          "category": "productivity",
+          "displayName": "patat",
+          "homepage": "https://github.com/jaspervdj/patat",
+          "id": "brew:patat",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apatat",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Efficiently back up the notes you've saved to Pinboard",
+          "category": "productivity",
+          "displayName": "pinboard-notes-backup",
+          "homepage": "https://github.com/bdesham/pinboard-notes-backup",
+          "id": "brew:pinboard-notes-backup",
+          "installURL": "pkgmgrmgr://install?package=brew%3Apinboard-notes-backup",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Astro-native CMS with WordPress migration support",
+          "category": "productivity",
+          "displayName": "emdash",
+          "homepage": "https://github.com/emdash-cms/emdash",
+          "id": "npm:emdash",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aemdash",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Textual User Interface for interacting with Atlassian Jira from your shell",
+          "category": "productivity",
+          "displayName": "jiratui",
+          "homepage": "https://jiratui.sh/",
+          "id": "brew:jiratui",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ajiratui",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:52:52Z",
+      "title": "Recently Updated in Productivity",
+      "type": "recentlyUpdated"
+    }
+  ],
+  "generatedAt": "2026-07-23T13:04:08Z",
+  "nextPageURL": "https://mxcl.dev/package-manager-manager/feed/v2/pages/20260723T130408Z-80081de2.json",
+  "pageID": "20260723T130408Z-323ac94c",
+  "schemaVersion": 2
+}

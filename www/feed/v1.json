@@ -2,49 +2,56 @@
   "content": [
     {
       "artwork": {
-        "alt": "Layered blue translucent architectural planes on a dark background with a warm amber edge glow.",
-        "attribution": "Generated with OpenAI image generation for Package Manager Manager.",
+        "alt": "An abstract compass joins three looping paths on a luminous mountain grid at sunrise.",
+        "attribution": "Generated with OpenAI image generation",
         "boxColors": {
-          "backgroundEnd": "#273D88",
-          "backgroundStart": "#08142D",
+          "backgroundEnd": "#B8DCCB",
+          "backgroundStart": "#09253A",
           "foreground": "#FFFFFF"
         },
-        "license": "CC-BY-4.0",
-        "path": "feed/assets/typescript-static-checking-2026-07-20.png"
+        "license": "OpenAI-generated asset for PMM Discover",
+        "path": "feed/assets/feedback-loops-2026-07-23.png"
       },
-      "body": "## A deliberately incremental history\n\nJavaScript's reach is part of its appeal. The same language can sit in a browser, power a build step, serve an API, and automate a small task. That reach also makes the edges of a codebase easy to blur: an object arrives from a request, a configuration file grows fields, or a library changes an API, and the first sign of trouble can be a production exception. TypeScript was created to move a useful share of those mistakes earlier, into an editor or build.\n\nMicrosoft introduced TypeScript publicly in 2012 and released version 1.0 in 2014. Its central choice was conservative: add a type system to JavaScript, then emit JavaScript. Existing code can be adopted incrementally, and the compiler is not a separate application runtime. That history explains both the project's durability and its limit. Teams can add checking around a mature codebase without translating every file, but annotations do not turn unknown runtime data into validated data.\n\nThe official Handbook describes TypeScript as a static type checker: it examines a program before it runs. That is a more useful claim than a blanket promise of safe JavaScript. A renamed property can reveal callers that still expect the old shape; a function signature makes inputs and outputs visible; editor integrations use the same program model for completion, navigation, and refactoring.\n\n## Type checking has a boundary\n\nIn normal work, `tsc` is most valuable as feedback close to a change. It fits naturally as a development dependency, with `tsconfig.json` recording decisions about module output, strictness, library targets, and file inclusion. Modern projects often let a framework or bundler transpile files while `tsc --noEmit` handles checking. Others ask the compiler to emit JavaScript directly. Either arrangement can work when one tool clearly owns each task.\n\nTypeScript's types disappear at runtime. That means a JSON payload, environment variable, database row, or third-party service response can still be malformed even when its declared type looks perfect. Validate external inputs, test observable behavior, and review dependency changes. Types are strongest at expressing contracts inside code the team controls; they are weaker at enforcing facts beyond that boundary.\n\nA useful rollout is intentionally small:\n\n- check a new or well-contained area first;\n- enable stricter compiler options deliberately;\n- add runtime validation where data enters the system; and\n- make type checking part of CI only after the errors are understood.\n\nThis approach avoids the common trap of treating a large annotation campaign as an end in itself. A loose configuration can create a false sense of safety, while turning every strict option on at once may surface years of assumptions with little guidance about priority.\n\n## A practical toolchain role\n\nActual use extends beyond one framework. Libraries publish declaration files so consumers can inspect APIs before calling them. Application teams use typed boundaries between UI components, services, and persistence. Tooling authors use the compiler and language service to understand source code. The public repository and npm distribution make the source and release trail inspectable; the Stack Overflow survey is an independent, imperfect signal that the language is familiar to many working developers. Familiarity alone is not a reason to add a dependency, but it can reduce collaboration friction.\n\nThe surrounding tools matter. esbuild can transform or bundle TypeScript-adjacent source quickly, but it does not replace a deliberate type-checking step. Vitest can exercise behavior in the same project, but passing tests do not prove that every interface change is sound. Together they illustrate a healthy division of labor: a compiler checks declared relationships, a build tool prepares code for its target, and tests observe behavior.\n\n## Adoption should stay measurable\n\nTypeScript asks teams to learn a second way of describing JavaScript. Inference removes much of the ceremony, yet generics, narrowing, declaration files, and module resolution become real design concerns. The payoff should be measured in clearer changes, earlier interface mistakes, and easier maintenance rather than in annotation counts.\n\nFor a JavaScript project that has grown beyond a few files, the adoption path is reversible and testable. Start with the official documentation, choose an explicit configuration, and decide which compiler errors should block a merge. If that produces better reviews and fewer surprises, continue. If the configuration becomes ceremony without catching meaningful defects, scale it back. The aim is not a more elaborate type system; it is a codebase whose assumptions are easier to see, test, and change.",
-      "deck": "Why TypeScript remains a useful boundary around JavaScript, and where its guarantees end.",
-      "id": "editorial:2026-07-20:typescript-static-checking-without-a-runtime-rewrite",
-      "primaryPackageID": "npm:typescript",
-      "publishedAt": "2026-07-20T13:02:53Z",
+      "body": "## A faster tool is not automatically a faster team\n\nDeveloper tooling earns its keep by shortening the interval between a change and a trustworthy decision. A formatter that finishes quickly is useful when it lets a pull request move from \"did we agree on this file?\" to the next substantive question. A type checker is useful when its diagnostics arrive while the code is still in the editor, not after a long CI queue. Browser automation is useful when it makes a real workflow observable without turning every verification into a manual ritual.\n\nThat framing matters because tool speed is easy to measure and team feedback is not. The three projects here—Oxfmt, ty, and agent-browser—sit at different points in the loop. Their appeal is not that every repository should replace its existing stack. It is that they make the boundaries of the loop visible: formatting, static analysis, and behavior in an actual browser.\n\n## Oxfmt: a new formatter direction\n\nOxfmt entered alpha in December 2025 and reached beta in February 2026. The Oxc team describes it as a Rust-powered, Prettier-compatible formatter for JavaScript and TypeScript. Its stated early performance figures are impressive, but compatibility is the more practical reason to look: formatters only save time when they produce stable, reviewable output across the code a team actually owns.\n\nFor a repository already using Prettier, the safe question is not \"is Oxfmt faster?\" It is **which files, options, embedded languages, and plugins behave the same enough for us?** Start with `--check` on a representative branch, then inspect differences by category. A one-off formatting migration can create a noisy diff; a gradual trial on new or contained packages gives the team a clean rollback path.\n\nBeta status is a real tradeoff. Oxfmt's roadmap still includes compatibility and plugin work, and a formatter's edge cases can be exactly where a mature codebase has accumulated conventions. That does not rule it out. It argues for treating it as a measured experiment, with a baseline and an exit.\n\n## Ty: keep type feedback near the edit\n\nAstral's ty is a Rust-based Python type checker with official binaries, package installation paths, and editor-oriented documentation. It belongs in the same conversation because formatting is only one kind of cheap feedback. Type diagnostics can turn an integration mistake into a local correction before it becomes a failed test, a review comment, or a production bug.\n\nPython teams should expect differences from their current checker. Annotation interpretation, supported features, configuration, and diagnostic wording all affect adoption. That makes a shadow run more useful than a wholesale switch: run ty beside Pyright or mypy in CI, classify the new findings, and decide which are signal. The goal is not to maximize the number of warnings. The goal is to make **useful** warnings arrive early enough to change behavior.\n\n## Agent Browser: the boundary where state becomes real\n\nAgent-browser addresses the last, messier segment of the loop: observing and interacting with a browser. Its release history documents a fast-moving command-line surface for snapshots, navigation, sessions, network inspection, and browser providers. That can be a strong fit for agent workflows and repeatable browser checks, especially when raw browser state is easier to inspect than a screenshot alone.\n\nBut browser automation has a different failure mode from formatting and type checking: it can cause side effects. A script that clicks a destructive control, submits a form, or operates with a logged-in session needs explicit limits. Keep production credentials out of exploratory runs, use test accounts where possible, and constrain destinations with allowlists or environment-level safeguards. Speed without containment is merely a quicker route to a bad action.\n\n## Build the loop in layers\n\nA pragmatic trial can be small:\n\n- Use Oxfmt in check-only mode on one JavaScript or TypeScript package.\n- Run ty alongside the existing Python checker and review only the disagreements.\n- Point agent-browser at a staging workflow with a deliberately narrow action policy.\n\nThe shared lesson is that fast tools work best as **small, reversible feedback loops**. Measure wall-clock time, but also measure review noise, false positives, and whether a developer can act on the result without opening another ticket. Retain the tools that make a decision faster; leave the rest at the boundary until their maturity catches up.",
+      "deck": "Three newer developer tools show why speed matters most when it shortens a decision, not simply a benchmark.",
+      "id": "editorial:2026-07-23:feedback-loops-where-fast-tools-help-and-where-they-dont",
+      "primaryPackageID": "brew:oxfmt",
+      "publishedAt": "2026-07-23T14:05:45Z",
       "relatedPackageIDs": [
-        "npm:typescript",
-        "npm:esbuild",
-        "npm:vitest"
+        "brew:oxfmt",
+        "brew:ty",
+        "brew:agent-browser"
       ],
+      "selection": {
+        "newerOverride": {
+          "reason": "Oxfmt is a newly introduced formatter direction: it entered alpha in December 2025 and beta in February 2026, with a distinct Prettier-compatible Rust implementation.",
+          "sourceURL": "https://oxc.rs/blog/2026-02-24-oxfmt-beta"
+        },
+        "rationale": "newer"
+      },
       "sources": [
         {
           "kind": "primary",
-          "title": "TypeScript Handbook",
-          "url": "https://www.typescriptlang.org/docs/handbook/intro.html"
+          "title": "Oxfmt alpha announcement",
+          "url": "https://oxc.rs/blog/2025-12-01-oxfmt-alpha.html"
         },
         {
           "kind": "primary",
-          "title": "TypeScript source repository",
-          "url": "https://github.com/microsoft/TypeScript"
+          "title": "Oxfmt beta announcement",
+          "url": "https://oxc.rs/blog/2026-02-24-oxfmt-beta"
         },
         {
           "kind": "primary",
-          "title": "TypeScript package on npm",
-          "url": "https://www.npmjs.com/package/typescript"
+          "title": "Ty documentation",
+          "url": "https://docs.astral.sh/ty/"
         },
         {
-          "kind": "independent",
-          "title": "2025 Stack Overflow Developer Survey: Technology",
-          "url": "https://survey.stackoverflow.co/2025/technology/"
+          "kind": "primary",
+          "title": "Agent Browser release history",
+          "url": "https://github.com/vercel-labs/agent-browser/releases"
         }
       ],
-      "title": "TypeScript: Static Checking Without a Runtime Rewrite",
+      "title": "Faster Feedback Loops Need Clear Boundaries",
       "type": "editorial"
     },
     {
@@ -125,6 +132,9 @@
     {
       "id": "recently-updated",
       "packageIDs": [
+        "brew:ty",
+        "brew:agent-browser",
+        "brew:oxfmt",
         "brew:droast",
         "brew:rapid-mlx",
         "brew:dskditto",
@@ -133,13 +143,57 @@
         "brew:woxi",
         "brew:vals",
         "brew:pnpm",
-        "brew:ggshield",
-        "brew:kew",
-        "brew:dolt",
-        "brew:deno"
+        "brew:ggshield"
       ],
       "title": "Recently Updated",
       "type": "recentlyUpdated"
+    },
+    {
+      "artwork": {
+        "alt": "Layered blue translucent architectural planes on a dark background with a warm amber edge glow.",
+        "attribution": "Generated with OpenAI image generation for Package Manager Manager.",
+        "boxColors": {
+          "backgroundEnd": "#273D88",
+          "backgroundStart": "#08142D",
+          "foreground": "#FFFFFF"
+        },
+        "license": "CC-BY-4.0",
+        "path": "feed/assets/typescript-static-checking-2026-07-20.png"
+      },
+      "body": "## A deliberately incremental history\n\nJavaScript's reach is part of its appeal. The same language can sit in a browser, power a build step, serve an API, and automate a small task. That reach also makes the edges of a codebase easy to blur: an object arrives from a request, a configuration file grows fields, or a library changes an API, and the first sign of trouble can be a production exception. TypeScript was created to move a useful share of those mistakes earlier, into an editor or build.\n\nMicrosoft introduced TypeScript publicly in 2012 and released version 1.0 in 2014. Its central choice was conservative: add a type system to JavaScript, then emit JavaScript. Existing code can be adopted incrementally, and the compiler is not a separate application runtime. That history explains both the project's durability and its limit. Teams can add checking around a mature codebase without translating every file, but annotations do not turn unknown runtime data into validated data.\n\nThe official Handbook describes TypeScript as a static type checker: it examines a program before it runs. That is a more useful claim than a blanket promise of safe JavaScript. A renamed property can reveal callers that still expect the old shape; a function signature makes inputs and outputs visible; editor integrations use the same program model for completion, navigation, and refactoring.\n\n## Type checking has a boundary\n\nIn normal work, `tsc` is most valuable as feedback close to a change. It fits naturally as a development dependency, with `tsconfig.json` recording decisions about module output, strictness, library targets, and file inclusion. Modern projects often let a framework or bundler transpile files while `tsc --noEmit` handles checking. Others ask the compiler to emit JavaScript directly. Either arrangement can work when one tool clearly owns each task.\n\nTypeScript's types disappear at runtime. That means a JSON payload, environment variable, database row, or third-party service response can still be malformed even when its declared type looks perfect. Validate external inputs, test observable behavior, and review dependency changes. Types are strongest at expressing contracts inside code the team controls; they are weaker at enforcing facts beyond that boundary.\n\nA useful rollout is intentionally small:\n\n- check a new or well-contained area first;\n- enable stricter compiler options deliberately;\n- add runtime validation where data enters the system; and\n- make type checking part of CI only after the errors are understood.\n\nThis approach avoids the common trap of treating a large annotation campaign as an end in itself. A loose configuration can create a false sense of safety, while turning every strict option on at once may surface years of assumptions with little guidance about priority.\n\n## A practical toolchain role\n\nActual use extends beyond one framework. Libraries publish declaration files so consumers can inspect APIs before calling them. Application teams use typed boundaries between UI components, services, and persistence. Tooling authors use the compiler and language service to understand source code. The public repository and npm distribution make the source and release trail inspectable; the Stack Overflow survey is an independent, imperfect signal that the language is familiar to many working developers. Familiarity alone is not a reason to add a dependency, but it can reduce collaboration friction.\n\nThe surrounding tools matter. esbuild can transform or bundle TypeScript-adjacent source quickly, but it does not replace a deliberate type-checking step. Vitest can exercise behavior in the same project, but passing tests do not prove that every interface change is sound. Together they illustrate a healthy division of labor: a compiler checks declared relationships, a build tool prepares code for its target, and tests observe behavior.\n\n## Adoption should stay measurable\n\nTypeScript asks teams to learn a second way of describing JavaScript. Inference removes much of the ceremony, yet generics, narrowing, declaration files, and module resolution become real design concerns. The payoff should be measured in clearer changes, earlier interface mistakes, and easier maintenance rather than in annotation counts.\n\nFor a JavaScript project that has grown beyond a few files, the adoption path is reversible and testable. Start with the official documentation, choose an explicit configuration, and decide which compiler errors should block a merge. If that produces better reviews and fewer surprises, continue. If the configuration becomes ceremony without catching meaningful defects, scale it back. The aim is not a more elaborate type system; it is a codebase whose assumptions are easier to see, test, and change.",
+      "deck": "Why TypeScript remains a useful boundary around JavaScript, and where its guarantees end.",
+      "id": "editorial:2026-07-20:typescript-static-checking-without-a-runtime-rewrite",
+      "primaryPackageID": "npm:typescript",
+      "publishedAt": "2026-07-20T13:02:53Z",
+      "relatedPackageIDs": [
+        "npm:typescript",
+        "npm:esbuild",
+        "npm:vitest"
+      ],
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "TypeScript Handbook",
+          "url": "https://www.typescriptlang.org/docs/handbook/intro.html"
+        },
+        {
+          "kind": "primary",
+          "title": "TypeScript source repository",
+          "url": "https://github.com/microsoft/TypeScript"
+        },
+        {
+          "kind": "primary",
+          "title": "TypeScript package on npm",
+          "url": "https://www.npmjs.com/package/typescript"
+        },
+        {
+          "kind": "independent",
+          "title": "2025 Stack Overflow Developer Survey: Technology",
+          "url": "https://survey.stackoverflow.co/2025/technology/"
+        }
+      ],
+      "title": "TypeScript: Static Checking Without a Runtime Rewrite",
+      "type": "editorial"
     },
     {
       "artwork": {
@@ -332,7 +386,7 @@
       "type": "editorial"
     }
   ],
-  "generatedAt": "2026-07-23T13:04:07Z",
+  "generatedAt": "2026-07-23T14:05:45Z",
   "packages": {
     "brew:advai-cli": {
       "agentSummary": "advai-cli is a local-first command line tool that combines skill management, external CLI workflows, browser-bridge automation, and a terminal AI chat interface.",
@@ -385,6 +439,62 @@
         }
       ],
       "upstreamSummary": "CLI for managing skills and external CLIs",
+      "version": null
+    },
+    "brew:agent-browser": {
+      "agentSummary": "Agent Browser is a command-line browser automation tool for AI agents, exposing structured navigation, inspection, interaction, and session controls through a compact terminal-first interface.",
+      "assessment": {
+        "alternatives": [
+          "Playwright",
+          "Selenium",
+          "Puppeteer"
+        ],
+        "audiences": [
+          "Developers building browser-using agents",
+          "Teams testing browser workflows"
+        ],
+        "caveats": [
+          "Browser automation can trigger real side effects",
+          "Version changes may alter commands and integrations"
+        ],
+        "complements": [
+          "End-to-end tests",
+          "Domain allowlists",
+          "CI isolation"
+        ],
+        "prerequisites": [
+          "A supported browser or remote browser provider",
+          "Clear safeguards for real-world actions"
+        ],
+        "useCases": [
+          "Structured browser automation",
+          "Inspecting page state",
+          "Repeatable agent-driven checks"
+        ]
+      },
+      "category": "ai",
+      "displayName": "agent-browser",
+      "docs": "https://agent-browser.dev/",
+      "homepage": "https://agent-browser.dev/",
+      "id": "brew:agent-browser",
+      "installURL": "pkgmgrmgr://install?package=brew%3Aagent-browser",
+      "lastUpdatedAt": "2026-07-23T03:37:51Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/vercel-labs/agent-browser",
+      "researchedAt": "2026-07-23T14:05:45Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "Agent Browser documentation",
+          "url": "https://agent-browser.dev/"
+        },
+        {
+          "kind": "primary",
+          "title": "Agent Browser release history",
+          "url": "https://github.com/vercel-labs/agent-browser/releases"
+        }
+      ],
+      "upstreamSummary": "Browser automation CLI for AI agents",
       "version": null
     },
     "brew:cyclonedx-npm": {
@@ -868,6 +978,59 @@
       "upstreamSummary": "Fast BAM/CRAM depth calculation for WGS, exome, or targeted sequencing",
       "version": null
     },
+    "brew:oxfmt": {
+      "agentSummary": "Oxfmt is a Rust-powered formatter for JavaScript and TypeScript projects, aiming for Prettier compatibility while reducing formatting time in large repositories and continuous-integration workflows.",
+      "assessment": {
+        "alternatives": [
+          "Prettier",
+          "Biome formatter"
+        ],
+        "audiences": [
+          "JavaScript and TypeScript teams with slow formatting checks"
+        ],
+        "caveats": [
+          "Oxfmt is beta and compatibility gaps may remain",
+          "Plugin and embedded-language support should be verified per repository"
+        ],
+        "complements": [
+          "Type checking",
+          "Linting",
+          "Pre-commit hooks"
+        ],
+        "prerequisites": [
+          "A JavaScript or TypeScript project",
+          "Tolerance for a beta-stage formatter"
+        ],
+        "useCases": [
+          "Replacing or evaluating Prettier-compatible repository formatting",
+          "Running formatting checks in CI"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "oxfmt",
+      "docs": "https://github.com/oxc-project/oxc#readme",
+      "homepage": "https://oxc.rs/",
+      "id": "brew:oxfmt",
+      "installURL": "pkgmgrmgr://install?package=brew%3Aoxfmt",
+      "lastUpdatedAt": "2026-07-23T01:09:21Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/oxc-project/oxc",
+      "researchedAt": "2026-07-23T14:05:45Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "Oxfmt beta announcement",
+          "url": "https://oxc.rs/blog/2026-02-24-oxfmt-beta"
+        },
+        {
+          "kind": "primary",
+          "title": "Oxfmt alpha announcement",
+          "url": "https://oxc.rs/blog/2025-12-01-oxfmt-alpha.html"
+        }
+      ],
+      "upstreamSummary": "High-performance formatting tool for JavaScript and TypeScript",
+      "version": null
+    },
     "brew:perlnavigator": {
       "agentSummary": "Perl Navigator provides language-server features for Perl editors, including navigation, diagnostics, completion, formatting, and documentation within modern integrated development environments.",
       "assessment": {
@@ -1106,6 +1269,60 @@
         }
       ],
       "upstreamSummary": "Upgrade all the things",
+      "version": null
+    },
+    "brew:ty": {
+      "agentSummary": "Ty is Astral's Rust-based Python type checker, designed for rapid feedback and gradual adoption while its evolving diagnostics, configuration, and language support continue to mature.",
+      "assessment": {
+        "alternatives": [
+          "Pyright",
+          "mypy"
+        ],
+        "audiences": [
+          "Python developers adding or accelerating static analysis"
+        ],
+        "caveats": [
+          "Ty remains pre-1.0",
+          "Migration may expose different interpretation of annotations"
+        ],
+        "complements": [
+          "Ruff",
+          "Pyright",
+          "pytest"
+        ],
+        "prerequisites": [
+          "Python code with useful annotations",
+          "A plan for handling checker differences"
+        ],
+        "useCases": [
+          "Editor diagnostics",
+          "CI type-checking experiments",
+          "Comparing type checker behavior"
+        ]
+      },
+      "category": "developer-tools",
+      "displayName": "ty",
+      "docs": "https://docs.astral.sh/ty",
+      "homepage": "https://docs.astral.sh/ty/",
+      "id": "brew:ty",
+      "installURL": "pkgmgrmgr://install?package=brew%3Aty",
+      "lastUpdatedAt": "2026-07-23T04:05:44Z",
+      "manager": "homebrew",
+      "repository": "https://github.com/astral-sh/ty",
+      "researchedAt": "2026-07-23T14:05:45Z",
+      "sources": [
+        {
+          "kind": "primary",
+          "title": "Ty documentation",
+          "url": "https://docs.astral.sh/ty/"
+        },
+        {
+          "kind": "primary",
+          "title": "Ty installation documentation",
+          "url": "https://docs.astral.sh/ty/installation/"
+        }
+      ],
+      "upstreamSummary": "Extremely fast Python type checker, written in Rust",
       "version": null
     },
     "brew:vals": {

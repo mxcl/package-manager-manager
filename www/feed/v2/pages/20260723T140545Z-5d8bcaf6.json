@@ -1,0 +1,188 @@
+{
+  "content": [
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "for-you:language-runtime:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Runtime typescript and ESM support for Node.js",
+          "category": "language-runtime",
+          "displayName": "jiti",
+          "homepage": "https://github.com/unjs/jiti#readme",
+          "id": "npm:jiti",
+          "installURL": "pkgmgrmgr://install?package=npm%3Ajiti",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Vite as Node.js runtime",
+          "category": "language-runtime",
+          "displayName": "vite-node",
+          "homepage": "https://github.com/antfu-collective/vite-node#readme",
+          "id": "npm:vite-node",
+          "installURL": "pkgmgrmgr://install?package=npm%3Avite-node",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "👷 workerd, Cloudflare's JavaScript/Wasm Runtime",
+          "category": "language-runtime",
+          "displayName": "workerd",
+          "homepage": "https://github.com/cloudflare/workerd#readme",
+          "id": "npm:workerd",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aworkerd",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "Run any Edge Function from CLI or Node.js module.",
+          "category": "language-runtime",
+          "displayName": "edge-runtime",
+          "homepage": "https://edge-runtime.vercel.app/packages/runtime",
+          "id": "npm:edge-runtime",
+          "installURL": "pkgmgrmgr://install?package=npm%3Aedge-runtime",
+          "manager": "npm"
+        },
+        {
+          "agentSummary": "node",
+          "category": "language-runtime",
+          "displayName": "node",
+          "homepage": "https://github.com/aredridel/node-bin-gen#readme",
+          "id": "npm:node",
+          "installURL": "pkgmgrmgr://install?package=npm%3Anode",
+          "manager": "npm"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "For You in Language Runtime",
+      "type": "personalizedRecommendations"
+    },
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "recently-updated:developer-tools:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Extremely fast Python type checker, written in Rust",
+          "category": "developer-tools",
+          "displayName": "ty",
+          "homepage": "https://docs.astral.sh/ty/",
+          "id": "brew:ty",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aty",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Polyglot runtime manager (asdf rust clone)",
+          "category": "developer-tools",
+          "displayName": "mise",
+          "homepage": "https://mise.jdx.dev/",
+          "id": "brew:mise",
+          "installURL": "pkgmgrmgr://install?package=brew%3Amise",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Modern cli tool that keeps your deps fresh",
+          "category": "developer-tools",
+          "displayName": "taze",
+          "homepage": "https://github.com/antfu-collective/taze",
+          "id": "brew:taze",
+          "installURL": "pkgmgrmgr://install?package=brew%3Ataze",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "CLI tool for managing workspaces provided by brev.dev",
+          "category": "developer-tools",
+          "displayName": "brev",
+          "homepage": "https://developer.nvidia.com/brev",
+          "id": "brew:brev",
+          "installURL": "pkgmgrmgr://install?package=brew%3Abrev",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Reference implementation of Sass, written in Dart",
+          "category": "developer-tools",
+          "displayName": "dart-sass",
+          "homepage": "https://sass-lang.com/dart-sass",
+          "id": "brew:dart-sass",
+          "installURL": "pkgmgrmgr://install?package=brew%3Adart-sass",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "Recently Updated in Developer Tools",
+      "type": "recentlyUpdated"
+    },
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "new-packages:language-runtime:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Interpreter for a subset of the Wolfram Language",
+          "category": "language-runtime",
+          "displayName": "woxi",
+          "homepage": "https://github.com/ad-si/Woxi",
+          "id": "brew:woxi",
+          "installURL": "pkgmgrmgr://install?package=brew%3Awoxi",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "New Packages in Language Runtime",
+      "type": "newPackages"
+    },
+    {
+      "batchID": "20260716T224902Z-c0b4136e",
+      "id": "recently-updated:language-runtime:20260723T140545Z-f220bb45",
+      "packages": [
+        {
+          "agentSummary": "Glorious Glasgow Haskell Compilation System",
+          "category": "language-runtime",
+          "displayName": "ghc",
+          "homepage": "https://haskell.org/ghc/",
+          "id": "brew:ghc",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aghc",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Rye is a homoiconic programming language focused on fluid expressions",
+          "category": "language-runtime",
+          "displayName": "ryelang",
+          "homepage": "https://ryelang.org/",
+          "id": "brew:ryelang",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aryelang",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Friendly programming language from the future",
+          "category": "language-runtime",
+          "displayName": "unisonlang",
+          "homepage": "https://unison-lang.org/",
+          "id": "brew:unisonlang",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aunisonlang",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Google's JavaScript engine",
+          "category": "language-runtime",
+          "displayName": "v8",
+          "homepage": "https://v8.dev/docs",
+          "id": "brew:v8",
+          "installURL": "pkgmgrmgr://install?package=brew%3Av8",
+          "manager": "homebrew"
+        },
+        {
+          "agentSummary": "Functional programming language for building browser-based GUIs",
+          "category": "language-runtime",
+          "displayName": "elm",
+          "homepage": "https://elm-lang.org",
+          "id": "brew:elm",
+          "installURL": "pkgmgrmgr://install?package=brew%3Aelm",
+          "manager": "homebrew"
+        }
+      ],
+      "publishedAt": "2026-07-16T22:49:02Z",
+      "title": "Recently Updated in Language Runtime",
+      "type": "recentlyUpdated"
+    }
+  ],
+  "generatedAt": "2026-07-23T14:05:45Z",
+  "nextPageURL": null,
+  "pageID": "20260723T140545Z-5d8bcaf6",
+  "schemaVersion": 2
+}
