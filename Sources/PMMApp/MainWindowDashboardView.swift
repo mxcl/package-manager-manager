@@ -552,7 +552,7 @@ private struct DashboardDiscoverPackageLink: View {
         }
         .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
         .padding(18)
-        .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .glassEffect(.regular, in: .rect(cornerRadius: 18))
     }
 }
 
