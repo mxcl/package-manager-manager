@@ -308,6 +308,10 @@ private struct DashboardDiscoverEditorialCard: View {
             }
             .background(LinearGradient(colors: [Color(feedHex: boxColors?.backgroundStart ?? "#1F1638"), Color(feedHex: boxColors?.backgroundEnd ?? "#481488")], startPoint: .topLeading, endPoint: .bottomTrailing))
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+            }
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -765,6 +769,10 @@ private struct DashboardBlogPostCard: View {
             .frame(maxWidth: .infinity, minHeight: 250, alignment: .topLeading)
             .background(SystemColor.controlFill)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
     }
