@@ -244,6 +244,33 @@ public struct PackageScanner: @unchecked Sendable {
     }
 
     public func scanSkills(database: PackageDatabase) throws -> [ManagedPackage] {
+        let repositories = skillRepositories()
+        let installed = [
+            homeDirectory.appendingPathComponent(".agents/skills", isDirectory: true),
+            homeDirectory.appendingPathComponent(".codex/skills", isDirectory: true),
+        ].flatMap { root in
+            (try? fileManager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? []
+        }.filter {
+            fileManager.fileExists(atPath: $0.appendingPathComponent("SKILL.md").path)
+        }
+        if !installed.isEmpty {
+            return Dictionary(grouping: installed, by: \.lastPathComponent)
+                .map { name, locations in
+                    ManagedPackage(
+                        manager: .skills,
+                        identifier: "skills:global:\(name)",
+                        displayName: name,
+                        installedVersion: "installed",
+                        latestVersion: nil,
+                        summary: "Global agent skill",
+                        category: "developer-tools",
+                        repo: repositories[name],
+                        installLocation: locations[0].path
+                    )
+                }
+                .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        }
+
         let executable: String
         let prefix: [String]
         if let skills = toolPaths["skills"] {
@@ -262,7 +289,7 @@ public struct PackageScanner: @unchecked Sendable {
             return []
         }
         let global = try runner.run(executable, prefix + ["list", "--global"])
-        return global.status == 0 ? parseSkillsList(global.stdout, repositories: skillRepositories()) : []
+        return global.status == 0 ? parseSkillsList(global.stdout, repositories: repositories) : []
     }
 
     public func scanNPX(database: PackageDatabase, npmRegistryClient: NPMRegistryClient) async throws -> [ManagedPackage] {

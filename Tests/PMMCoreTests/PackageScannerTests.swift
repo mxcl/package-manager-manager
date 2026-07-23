@@ -716,15 +716,31 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 }
 
 @Test func skillsScannerFallsBackToNPX() throws {
+    let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: home) }
     let runner = RecordingRunner(responses: [
         "/fake/npx --yes skills list --global": CommandResult(stdout: "example  /tmp/example  Agents: Codex\n", stderr: "", status: 0),
     ])
-    let scanner = PackageScanner(runner: runner, toolPaths: ["npx": "/fake/npx"])
+    let scanner = PackageScanner(runner: runner, homeDirectory: home, toolPaths: ["npx": "/fake/npx"])
 
     let packages = try scanner.scanSkills(database: PackageDatabase())
 
     #expect(runner.calls.map(\.command) == ["/fake/npx --yes skills list --global"])
     #expect(packages.map(\.identifier) == ["skills:global:example"])
+}
+
+@Test func skillsScannerReadsGlobalSkillDirectoriesWithoutCLI() throws {
+    let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let skill = home.appendingPathComponent(".agents/skills/example", isDirectory: true)
+    try FileManager.default.createDirectory(at: skill, withIntermediateDirectories: true)
+    try "---\nname: example\n---\n".write(to: skill.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: home) }
+
+    let scanner = PackageScanner(runner: FakeRunner(responses: [:]), homeDirectory: home, environment: [:])
+    let packages = try scanner.scanSkills(database: PackageDatabase())
+
+    #expect(packages.map(\.identifier) == ["skills:global:example"])
+    #expect(packages.first?.installLocation?.hasSuffix("/.agents/skills/example") == true)
 }
 
 @Test func npxScannerUsesNPMResolvedLatestVersion() async throws {
