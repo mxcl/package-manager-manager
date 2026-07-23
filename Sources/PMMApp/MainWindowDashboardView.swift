@@ -658,7 +658,7 @@ private struct DashboardBlogAndPackageSection: View {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 12) {
                     blogContent
-                        .frame(minWidth: 420)
+                        .frame(minWidth: 420, maxWidth: .infinity)
                     packageContent
                         .frame(width: 220)
                 }
