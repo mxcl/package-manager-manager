@@ -514,13 +514,6 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var dashboardBlogEntriesAreLoading = false
     @Published private(set) var pendingInstallPackConfirmation: MainWindowInstallPackConfirmation?
     @Published var searchText = ""
-    @Published private(set) var setupOffer: ManagerSetupOffer?
-    /// The manager whose detection is still running, if it could yet produce an offer.
-    @Published private(set) var setupDetectingManager: PackageManagerKind?
-    private var cargoSetup = CargoSetupState()
-    /// The helper the host reports installing, if any.
-    private var installingHelper: CargoHelper?
-    private var setupDetectionTask: Task<Void, Never>?
 
     nonisolated private static let newUpdatedLastClickedAtDefaultsKey = "MainWindowModel.newUpdatedLastClickedAt"
     nonisolated private static let remoteHostsDefaultsKey = "MainWindowModel.remoteHosts"
@@ -535,9 +528,6 @@ final class MainWindowModel: NSObject, ObservableObject {
     private var newUpdatedLastClickedAt: Date?
     private var newUpdatedSelectionDisplayCount: Int?
     private let userDefaults: UserDefaults
-    private let preferencesStore: PackagePreferencesStore
-    /// Injectable so tests can drive detection's timing; shells out in production.
-    private let detectCargoSetup: @Sendable (PackagePreferences) -> CargoSetupState
     private let store: PackageHostStore
     private let bundledCatalog: [ManagedPackage]
     private let dossierClient: PackageDossierClient?
@@ -563,13 +553,8 @@ final class MainWindowModel: NSObject, ObservableObject {
         bundledCatalog: [ManagedPackage] = PackageHostStore.bundledCatalog(),
         dossierClient: PackageDossierClient? = nil,
         dashboardBlogURL: URL? = nil,
-        remoteClient: RemoteSSHClient = RemoteSSHClient(),
-        preferencesStore: PackagePreferencesStore = PackagePreferencesStore(),
-        detectCargoSetup: @escaping @Sendable (PackagePreferences) -> CargoSetupState
-            = { CargoSetupState.detect(preferences: $0) }
+        remoteClient: RemoteSSHClient = RemoteSSHClient()
     ) {
-        self.preferencesStore = preferencesStore
-        self.detectCargoSetup = detectCargoSetup
         self.userDefaults = userDefaults
         newUpdatedLastClickedAt = userDefaults.object(forKey: Self.newUpdatedLastClickedAtDefaultsKey) as? Date
         remoteHosts = userDefaults.data(forKey: Self.remoteHostsDefaultsKey)
@@ -996,74 +981,6 @@ final class MainWindowModel: NSObject, ObservableObject {
         PackageHostNotifications.postUninstallRequested(packageID: package.id)
     }
 
-    /// The setup offer to show above the current section, if any.
-    ///
-    /// Gated on activeSidebarSection, not selectedSection: the latter keeps its value while a
-    /// remote host is selected, and helpers install on this Mac, not the one being viewed.
-    func setupOffer(for section: MainWindowSection) -> ManagerSetupOffer? {
-        guard activeSidebarSection == section, let setupOffer, mainWindowSetupSection(setupOffer.manager) == section else {
-            return nil
-        }
-        return setupOffer
-    }
-
-    /// True while a section that could still produce an offer is waiting on detection, so the card
-    /// slot can hold a spinner rather than render "not detected yet" as "nothing to offer".
-    func isDetectingSetupOffer(for section: MainWindowSection) -> Bool {
-        guard activeSidebarSection == section, setupOffer == nil, let manager = setupDetectingManager else {
-            return false
-        }
-        return mainWindowSetupSection(manager) == section
-    }
-
-    /// Detecting tools shells out, so it never runs on the main thread.
-    ///
-    /// One detection at a time: this is kicked on every section change, and an older run landing
-    /// after a newer one would put back the tool status from before a helper was installed.
-    func refreshSetupOffers() {
-        setupDetectionTask?.cancel()
-        setupDetectionTask = Task { [preferencesStore, detectCargoSetup] in
-            let detected = await Task.detached(priority: .utility) {
-                detectCargoSetup(preferencesStore.load())
-            }.value
-            guard !Task.isCancelled else { return }
-            cargoSetup = cargoSetup.merging(status: detected.status, preferences: detected.preferences)
-            refreshSetupOffer()
-        }
-    }
-
-    private func refreshSetupOffer() {
-        // Recomputed on every snapshot, so no intermediate array.
-        let installedManagers = Set(inventory.packages.lazy.map(\.manager))
-        setupOffer = cargoSetup.offer(installedManagers: installedManagers)?.setupOffer
-        // Cargo is the only manager with an offer, so the mapping to a section lives here rather
-        // than behind a dispatch layer that would have exactly one case.
-        setupDetectingManager = cargoSetup.isAwaitingDetection(installedManagers: installedManagers)
-            ? .cargoInstall
-            : nil
-    }
-
-    var isInstallingHelper: Bool { installingHelper != nil }
-
-    /// The host refuses a helper install that arrives while a refresh or another action is running,
-    /// so the card disables its button rather than offering a click that goes nowhere.
-    var canInstallHelper: Bool { !isReloading && !isPackageActionRunning }
-
-    func installHelper(_ id: String) {
-        guard canInstallHelper, !isInstallingHelper else { return }
-        // Deliberately no optimistic state: the host is the authority on whether the install
-        // actually started, and claiming it here would show "Installing…" over a dropped request.
-        PackageHostNotifications.postHelperInstallRequested(id)
-    }
-
-    func dismissHelper(_ id: String) {
-        cargoSetup.preferences.dismiss(id)
-        refreshSetupOffer()
-        // The store owns both the ordering and the IO, so there is no background task here to
-        // reorder two dismissals made back to back.
-        preferencesStore.save(cargoSetup.preferences)
-    }
-
     func update(_ package: ManagedPackage) {
         guard PackageUpdater.supports(package), !isPackageActionRunning else { return }
         if let host = selectedRemoteHost {
@@ -1456,7 +1373,6 @@ final class MainWindowModel: NSObject, ObservableObject {
             installingPackageName = nil
             uninstallingPackageName = nil
             updatingPackageName = nil
-            installingHelper = nil
             packageActionCommand = nil
             packageActionOutput = ""
             return
@@ -1513,24 +1429,7 @@ final class MainWindowModel: NSObject, ObservableObject {
             ),
             installedPackageFirstSeenAtByID: snapshot.installedPackageFirstSeenAtByID
         )
-        // The offer depends on which managers have packages, so it is only answerable once an
-        // inventory has landed — detection alone runs before the first scan finishes.
-        refreshSetupOffer()
         guard remoteActionHostID == nil else { return }
-        // The host is the authority on whether a helper install is running: it refuses a request
-        // that arrives during a refresh or another action, so anything set at click time could
-        // claim an install that never started. Its running action is also the only reliable
-        // completion signal — waiting for the tool to appear leaves the card spinning forever
-        // whenever the install failed.
-        let wasInstallingHelper = installingHelper != nil
-        installingHelper = snapshot.runningAction.flatMap { action in
-            action.kind == .install ? CargoHelper(promptKey: action.packageID) : nil
-        }
-        // Detection shells out, and the host publishes a snapshot per manager during a refresh — a
-        // dozen in a burst. What it detects only changes when a helper install finishes, so that is
-        // the one snapshot worth re-detecting on. First load and section changes are covered by the
-        // list view's task.
-        if wasInstallingHelper, installingHelper == nil { refreshSetupOffers() }
         installingPackageName = snapshot.runningAction?.kind == .install ? snapshot.runningAction?.displayName : nil
         uninstallingPackageName = snapshot.runningAction?.kind == .uninstall ? snapshot.runningAction?.displayName : nil
         updatingPackageName = snapshot.runningAction?.kind == .update ? snapshot.runningAction?.displayName : nil
@@ -1720,17 +1619,6 @@ struct PackageIndex: Sendable {
 
 /// The section a manager's setup offer belongs above. Managers whose packages span sections have
 /// no single home, so they cannot make offers.
-func mainWindowSetupSection(_ manager: PackageManagerKind) -> MainWindowSection? {
-    switch manager {
-    case .cargoInstall, .rustup: .rust
-    case .homebrew: .homebrew
-    case .npm, .npx: .javascript
-    case .skills: .skills
-    case .uv, .uvx: .python
-    case .macApp, .mise: nil
-    }
-}
-
 func mainWindowManagerSection(for package: ManagedPackage) -> MainWindowSection {
     if package.identifier.hasPrefix("brew:cask:") { return .apps }
     switch package.manager {

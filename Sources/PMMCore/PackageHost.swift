@@ -139,10 +139,7 @@ public enum PackageHostNotifications {
     public static let appUpdateInstallRequested = Notification.Name("dev.mxcl.pmm.packageHost.appUpdateInstallRequested")
     public static let appUpdateQuitRequested = Notification.Name("dev.mxcl.pmm.packageHost.appUpdateQuitRequested")
 
-    public static let helperInstallRequested = Notification.Name("dev.mxcl.pmm.packageHost.helperInstallRequested")
-
     public static let packageIDKey = "packageID"
-    public static let helperIDKey = "helperID"
     public static let packageIDsKey = "packageIDs"
     public static let actionKindKey = "actionKind"
     public static let actionRunIDKey = "actionRunID"
@@ -204,19 +201,6 @@ public enum PackageHostNotifications {
 
     public static func postUninstallRequested(packageID: String) {
         postPackageCommand(uninstallRequested, packageID: packageID)
-    }
-
-    public static func postHelperInstallRequested(_ helperID: String) {
-        DistributedNotificationCenter.default().postNotificationName(
-            helperInstallRequested,
-            object: nil,
-            userInfo: [helperIDKey: helperID],
-            deliverImmediately: true
-        )
-    }
-
-    public static func helperID(from notification: Notification) -> String? {
-        notification.userInfo?[helperIDKey] as? String
     }
 
     public static func postAppUpdateCheckRequested() {

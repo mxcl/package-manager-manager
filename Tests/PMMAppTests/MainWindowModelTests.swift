@@ -636,6 +636,23 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
+@Test func cargoDependencyInstallURLUsesTheInstallPackConfirmation() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let binstall = ManagedPackage(manager: .cargoInstall, identifier: "cargo:cargo-binstall", installedVersion: nil, latestVersion: "1", category: "developer-tools")
+    let update = ManagedPackage(manager: .cargoInstall, identifier: "cargo:cargo-update", installedVersion: nil, latestVersion: "1", category: "developer-tools")
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: [binstall, update]
+    ))
+
+    #expect(model.openPackageURL(URL(string: "pkgmgrmgr://install?package=cargo%3Acargo-binstall&package=cargo%3Acargo-update")!))
+    #expect(model.pendingInstallPackConfirmation == MainWindowInstallPackConfirmation(
+        packageIDs: [binstall.id, update.id],
+        packageCount: 2
+    ))
+}
+
+@MainActor
 @Test func discoverPackageOpensInAppBeforeInstallConfirmation() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let package = ManagedPackage(
@@ -1655,254 +1672,6 @@ private func package(
 
     #expect(model.packageActionOutput.count == 100_000)
     #expect(model.packageActionOutput == String(repeating: "x", count: 100_000))
-}
-
-@MainActor
-@Test func helperInstallStateComesFromTheHostNotTheClick() {
-    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
-    let crate = ManagedPackage(manager: .cargoInstall, name: "just", installedVersion: "1", latestVersion: nil)
-    let idle = PackageHostSnapshot(inventory: PackageInventory(packages: [crate]))
-    let helperID = CargoHelper.binstall.promptKey
-    model.apply(snapshot: idle)
-
-    // The host refuses a request that arrives while it is busy, so clicking must not claim an
-    // install that may never start.
-    model.installHelper(helperID)
-    #expect(!model.isInstallingHelper)
-
-    model.apply(snapshot: PackageHostSnapshot(
-        inventory: PackageInventory(packages: [crate]),
-        runningAction: PackageHostRunningAction(kind: .install, packageID: helperID, displayName: "cargo-binstall")
-    ))
-    #expect(model.isInstallingHelper)
-
-    model.apply(snapshot: idle)
-    #expect(!model.isInstallingHelper)
-}
-
-@MainActor
-@Test func anOrdinaryPackageInstallIsNotAHelperInstall() {
-    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
-    let package = ManagedPackage(manager: .homebrew, name: "curl", installedVersion: nil, latestVersion: "8")
-
-    model.apply(snapshot: PackageHostSnapshot(
-        inventory: PackageInventory(packages: []),
-        runningAction: PackageHostRunningAction(kind: .install, packageID: package.id, displayName: "curl")
-    ))
-
-    #expect(model.installingPackageName == "curl")
-    #expect(!model.isInstallingHelper)
-}
-
-@MainActor
-@Test func helperInstallIsOfferedOnlyWhenTheHostWouldAcceptIt() {
-    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
-    let crate = ManagedPackage(manager: .cargoInstall, name: "just", installedVersion: "1", latestVersion: nil)
-
-    // The host rejects while it is refreshing or running an action, so the button goes with it
-    // rather than offering a click that lands nowhere.
-    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [crate]), isRefreshing: true))
-    #expect(!model.canInstallHelper)
-
-    model.apply(snapshot: PackageHostSnapshot(
-        inventory: PackageInventory(packages: [crate]),
-        runningAction: PackageHostRunningAction(kind: .update, packageID: crate.id, displayName: "just")
-    ))
-    #expect(!model.canInstallHelper)
-
-    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [crate])))
-    #expect(model.canInstallHelper)
-}
-
-@MainActor
-@Test func setupCardSlotReportsDetectionSeparatelyFromHavingNothingToOffer() {
-    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
-    let crate = ManagedPackage(manager: .cargoInstall, name: "just", installedVersion: "1", latestVersion: nil)
-    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [crate])))
-    model.selectedSection = .rust
-
-    // Detection shells out, so before it lands the slot has to say "still looking" rather than
-    // render identically to "nothing to offer".
-    #expect(model.isDetectingSetupOffer(for: .rust))
-    // Only in the section the offer would appear in.
-    #expect(!model.isDetectingSetupOffer(for: .homebrew))
-
-    // A user with no Rust packages is never going to be offered a cargo helper.
-    let other = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
-    other.apply(snapshot: PackageHostSnapshot(
-        inventory: PackageInventory(packages: [ManagedPackage(manager: .homebrew, name: "curl", installedVersion: "8", latestVersion: nil)])
-    ))
-    other.selectedSection = .rust
-    #expect(!other.isDetectingSetupOffer(for: .rust))
-}
-
-@MainActor
-@Test func dismissingTwoHelpersInARowPersistsBoth() throws {
-    // The offer advances the moment the first is dismissed, so the second dismissal follows almost
-    // immediately. Both have to survive, whatever order their writes land in.
-    let url = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("pmm-prefs-model-\(UUID().uuidString).json")
-    defer { try? FileManager.default.removeItem(at: url) }
-    let store = PackagePreferencesStore(url: url)
-    let model = MainWindowModel(
-        userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
-        preferencesStore: store
-    )
-
-    model.dismissHelper(CargoHelper.binstall.promptKey)
-    model.dismissHelper(CargoHelper.installUpdate.promptKey)
-    store.flush()
-
-    let loaded = store.load()
-    #expect(loaded.hasDismissed(CargoHelper.binstall.promptKey))
-    #expect(loaded.hasDismissed(CargoHelper.installUpdate.promptKey))
-}
-
-@MainActor
-@Test func aStaleDetectionCannotOverwriteANewerOne() async {
-    // Detection is kicked on every section change, so two can be in flight at once. The slow one
-    // finishing last must not put back the tool status from before the fast one — that is how a
-    // just-installed helper gets re-offered.
-    let detector = CargoSetupDetectorStub()
-    // A store of its own: the default one is the real user file, which `dismissHelper` writes to
-    // and detection reads back, so a shared store makes these assertions depend on this machine.
-    let store = temporaryPreferencesStore()
-    defer { store.remove() }
-    let model = MainWindowModel(
-        userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
-        preferencesStore: store.store,
-        detectCargoSetup: detector.detect
-    )
-    let crate = ManagedPackage(manager: .cargoInstall, name: "just", installedVersion: "1", latestVersion: nil)
-    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [crate])))
-
-    // Run one: slow, and reports the world as it was before binstall was installed.
-    detector.next = CargoToolchainStatus(cargo: "/c", binstall: nil, installUpdate: nil)
-    detector.blocks = true
-    model.refreshSetupOffers()
-    // Wait until run one is actually parked inside the detector before changing anything, or run
-    // two's settings could be the ones it reads and the two runs become indistinguishable.
-    await waitForModel { detector.entries == 1 }
-
-    // Run two: fast, and sees binstall present.
-    detector.blocks = false
-    detector.next = CargoToolchainStatus(cargo: "/c", binstall: "/b", installUpdate: nil)
-    model.refreshSetupOffers()
-    await waitForModel { detector.completions == 1 }
-    await waitForModel { model.setupOffer != nil }
-    // Only now does the stale run finish. Waiting for it to return is not enough — what has to be
-    // given every chance to happen is the continuation that would apply its result.
-    detector.release()
-    await waitForModel { detector.completions == 2 }
-    for _ in 0..<2_000 { await Task.yield() }
-
-    #expect(model.setupOffer?.id == CargoHelper.installUpdate.promptKey)
-}
-
-@MainActor
-@Test func aDismissalSurvivesADetectionThatWasAlreadyInFlight() async {
-    // The dismissal exists only in memory until its write lands; a detection that read preferences
-    // before it must not bring the card back.
-    let detector = CargoSetupDetectorStub()
-    detector.next = CargoToolchainStatus(cargo: "/c", binstall: nil, installUpdate: nil)
-    detector.blocks = true
-    let store = temporaryPreferencesStore()
-    defer { store.remove() }
-    let model = MainWindowModel(
-        userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
-        preferencesStore: store.store,
-        detectCargoSetup: detector.detect
-    )
-    let crate = ManagedPackage(manager: .cargoInstall, name: "just", installedVersion: "1", latestVersion: nil)
-    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [crate])))
-
-    model.refreshSetupOffers()
-    await waitForModel { detector.entries == 1 }
-    model.dismissHelper(CargoHelper.binstall.promptKey)
-    // The in-flight read now returns, carrying preferences from before the dismissal.
-    detector.release()
-    await waitForModel { model.setupOffer != nil }
-
-    #expect(model.setupOffer?.id == CargoHelper.installUpdate.promptKey)
-}
-
-@MainActor
-@Test func aHostThatForgetsItsInventoryDoesNotStrandTheInstallingCard() {
-    // A snapshot with no inventory resets the action fields. Missing the helper here would leave
-    // the card spinning and its button permanently refused, with no way back but a relaunch.
-    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
-    model.apply(snapshot: PackageHostSnapshot(
-        inventory: PackageInventory(packages: []),
-        runningAction: PackageHostRunningAction(
-            kind: .install,
-            packageID: CargoHelper.binstall.promptKey,
-            displayName: "cargo-binstall"
-        )
-    ))
-    #expect(model.isInstallingHelper)
-
-    model.apply(snapshot: PackageHostSnapshot())
-
-    #expect(!model.isInstallingHelper)
-}
-
-/// A preferences store in a temporary file.
-///
-/// `PackagePreferencesStore()` defaults to the real user file, so a test that dismisses anything
-/// without one of these writes into the running app's state and then reads its own writes back.
-private func temporaryPreferencesStore() -> (store: PackagePreferencesStore, remove: () -> Void) {
-    let url = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("pmm-prefs-\(UUID().uuidString).json")
-    return (PackagePreferencesStore(url: url), { try? FileManager.default.removeItem(at: url) })
-}
-
-/// Stands in for the real toolchain probe so a test can decide when detection finishes.
-private final class CargoSetupDetectorStub: @unchecked Sendable {
-    private let lock = NSLock()
-    private let gate = DispatchSemaphore(value: 0)
-    private var status = CargoToolchainStatus(cargo: nil, binstall: nil, installUpdate: nil)
-    private var shouldBlock = false
-    private var entered = 0
-    private var finished = 0
-
-    /// How many detections have been entered. A test waits on this before changing the stub's
-    /// settings, so a detection cannot pick up the settings meant for the next one.
-    var entries: Int { lock.withLock { entered } }
-    /// How many have returned, so a test can wait for the slow one rather than guess at timing.
-    var completions: Int { lock.withLock { finished } }
-
-    var next: CargoToolchainStatus {
-        get { lock.withLock { status } }
-        set { lock.withLock { status = newValue } }
-    }
-
-    var blocks: Bool {
-        get { lock.withLock { shouldBlock } }
-        set { lock.withLock { shouldBlock = newValue } }
-    }
-
-    func release() { gate.signal() }
-
-    var detect: @Sendable (PackagePreferences) -> CargoSetupState {
-        { [self] preferences in
-            let (blocking, value) = lock.withLock {
-                entered += 1
-                return (shouldBlock, status)
-            }
-            if blocking { gate.wait() }
-            lock.withLock { finished += 1 }
-            return CargoSetupState(status: value, preferences: preferences)
-        }
-    }
-}
-
-@MainActor
-private func waitForModel(_ predicate: @MainActor () -> Bool) async {
-    for _ in 0..<10_000 {
-        if predicate() { return }
-        await Task.yield()
-    }
-    Issue.record("Timed out waiting for model state")
 }
 
 @MainActor

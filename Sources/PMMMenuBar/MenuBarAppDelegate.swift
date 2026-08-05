@@ -104,8 +104,8 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     private var refreshTask: Task<Void, Never>?
     private var actionTask: Task<Void, Never>?
     private var rescanTask: Task<Void, Never>?
-    /// A helper install that arrived while the host was busy, waiting for it to go idle.
-    private var pendingHelperInstall: CargoHelper?
+    private var cargoDependenciesTask: Task<Void, Never>?
+    private var cargoDependenciesOffer: MenuBarCargoDependenciesOffer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         ShellEnvironment.shared.prime()
@@ -113,6 +113,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         observeCommands()
         configureStatusButton()
         rebuildMenu()
+        refreshCargoDependenciesOffer()
         let now = Date()
         let shouldRefresh = menuBarShouldRefreshOnLaunch(snapshot: snapshot, now: now)
         let firstRefreshAt = shouldRefresh
@@ -129,16 +130,17 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        PackagePreferencesStore.flushPendingWrites()
         timer?.invalidate()
         refreshTask?.cancel()
         actionTask?.cancel()
         rescanTask?.cancel()
+        cargoDependenciesTask?.cancel()
         notificationCenter.removeObserver(self)
     }
 
     private func refresh(ignoringAppCache: Bool = false) {
         guard refreshTask == nil, actionTask == nil else { return }
+        refreshCargoDependenciesOffer()
         rescanTask?.cancel()
         rescanTask = nil
         let missingManagers = snapshot.inventory == nil
@@ -427,81 +429,12 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         notificationCenter.addObserver(self, selector: #selector(updateAllRequested(_:)), name: PackageHostNotifications.updateAllRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(uninstallRequested(_:)), name: PackageHostNotifications.uninstallRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(appUpdateQuitRequested(_:)), name: PackageHostNotifications.appUpdateQuitRequested, object: nil)
-        notificationCenter.addObserver(self, selector: #selector(helperInstallRequested(_:)), name: PackageHostNotifications.helperInstallRequested, object: nil)
     }
 
-    @objc private func helperInstallRequested(_ notification: Notification) {
-        // The one place an identifier off the wire becomes a helper. Everything below holds the
-        // enum, so a held request cannot fail to parse on its way back out of the queue.
-        guard let helperID = PackageHostNotifications.helperID(from: notification) else { return }
-        switch menuBarHelperInstallDisposition(
-            id: helperID,
-            isBusy: isBusy,
-            installing: snapshot.runningAction?.packageID
-        ) {
-        case .ignore: return
-        case .hold(let helper): pendingHelperInstall = helper
-        case .start(let helper): installHelper(helper)
-        }
-    }
-
-    /// Whether a helper install has to wait. Deliberately the same two tasks the guards on
-    /// `refresh` and `runAction` check, so "the host is busy" means one thing.
-    private var isBusy: Bool { refreshTask != nil || actionTask != nil }
-
-    private func installHelper(_ helper: CargoHelper) {
-        let helperID = helper.promptKey
-        pendingHelperInstall = nil
-        cancelBackgroundRefresh()
-        // Installing a helper reports progress exactly like any other install: bootstrapping
-        // binstall has to compile from source, which takes minutes and looks hung without output.
-        let runID = UUID()
-        let packageID = helperID
-        snapshot.runningAction = PackageHostRunningAction(
-            runID: runID,
-            kind: .install,
-            packageID: packageID,
-            displayName: helper.crateName
-        )
-        snapshot.errorMessage = nil
-        publishSnapshot()
-        let relay = actionProgressRelay(runID: runID, kind: .install, packageID: packageID)
-        let progressHandler = actionProgressHandler(runID: runID, kind: .install, packageID: packageID, relay: relay)
-
-        actionTask = Task { [weak self] in
-            let result = await Task.detached(priority: .background) {
-                Result { try CargoToolchain().install(helper, onProgress: progressHandler) }
-            }.value
-
-            guard let self, !Task.isCancelled else { return }
-            self.finishActionProgress(relay, runID: runID, kind: .install, packageID: packageID)
-            self.snapshot.runningAction = nil
-            if case .failure(let error) = result {
-                self.snapshot.errorMessage = error.localizedDescription
-            }
-            self.publishSnapshot()
-            // A rescan is what surfaces the newly available versions cargo-update can now report.
-            self.finishBusyWork { self.refresh() }
-        }
-    }
-
-    /// The single place the host goes idle.
-    ///
-    /// Clearing both tasks and draining a held helper install are one step on purpose: the drain
-    /// re-enters `installHelper` through the same busy check, so a completion path that cleared
-    /// its task but forgot to drain would hold the request until the next unrelated action — with
-    /// nothing on screen to show for it, since a held request publishes no state. `followUp` is the
-    /// scan the caller was about to kick, skipped when an install takes precedence: that install
-    /// ends in a full refresh of its own, which is strictly fresher.
     private func finishBusyWork(then followUp: () -> Void) {
         refreshTask = nil
         actionTask = nil
-        guard let helper = pendingHelperInstall else {
-            followUp()
-            return
-        }
-        pendingHelperInstall = nil
-        installHelper(helper)
+        followUp()
     }
 
     private func rebuildMenu() {
@@ -519,6 +452,18 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             case .package(let package):
                 menu.addItem(packageItem(package))
             }
+        }
+
+        if cargoDependenciesOffer != nil {
+            menu.addItem(.separator())
+            let installItem = menu.addItem(
+                withTitle: "Install Cargo Dependencies…",
+                action: #selector(installCargoDependencies(_:)),
+                keyEquivalent: ""
+            )
+            installItem.target = self
+            installItem.isEnabled = snapshot.runningAction == nil
+            menu.addItem(disabledItem("Speeds up installs and finds outdated Cargo packages."))
         }
 
         menu.addItem(.separator())
@@ -700,6 +645,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             self.snapshot.runningAction = nil
             self.snapshot.errorMessage = errorMessage
             self.publishSnapshot()
+            self.refreshCargoDependenciesOffer()
             self.finishBusyWork { self.rescanAfterAction(errorMessage: errorMessage) }
         }
     }
@@ -759,8 +705,29 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         snapshot.loadingManagers = []
     }
 
+    private func refreshCargoDependenciesOffer() {
+        cargoDependenciesTask?.cancel()
+        cargoDependenciesTask = Task { [weak self] in
+            let offer = await Task.detached(priority: .utility) {
+                MenuBarCargoDependenciesOffer(
+                    status: CargoToolchain().status(),
+                    hasHomebrew: firstExecutable(named: "brew") != nil
+                )
+            }.value
+            guard let self, !Task.isCancelled else { return }
+            self.cargoDependenciesTask = nil
+            self.cargoDependenciesOffer = offer
+            self.rebuildMenu()
+        }
+    }
+
     @objc private func refreshNow(_ sender: Any?) {
         refresh(ignoringAppCache: true)
+    }
+
+    @objc private func installCargoDependencies(_ sender: Any?) {
+        guard let url = cargoDependenciesOffer?.installURL else { return }
+        NSWorkspace.shared.open(url)
     }
 
     @objc private func refreshRequested(_ notification: Notification) {

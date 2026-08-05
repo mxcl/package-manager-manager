@@ -306,19 +306,6 @@ struct MainWindowPackageListView: View {
                     .frame(maxWidth: .infinity, minHeight: 260)
                 } else {
                     LazyVStack(spacing: 0) {
-                        if let section = model.activeSidebarSection {
-                            if let offer = model.setupOffer(for: section) {
-                                ManagerSetupCard(
-                                    offer: offer,
-                                    isInstalling: model.isInstallingHelper,
-                                    canInstall: model.canInstallHelper,
-                                    install: { model.installHelper(offer.id) },
-                                    dismiss: { model.dismissHelper(offer.id) }
-                                )
-                            } else if model.isDetectingSetupOffer(for: section) {
-                                ManagerSetupDetectionCard()
-                            }
-                        }
                         ForEach(displayedPackages) { package in
                             PackageRow(
                                 package: package,
@@ -344,7 +331,6 @@ struct MainWindowPackageListView: View {
             .task(id: model.discoverPackageIDToScrollIntoView) {
                 await scrollToDiscoverPackage(model.discoverPackageIDToScrollIntoView, proxy: proxy)
             }
-            .task(id: model.selectedSection) { model.refreshSetupOffers() }
         }
         .safeAreaBar(edge: .top, alignment: .leading, spacing: 0) {
             HStack {
@@ -371,70 +357,6 @@ struct MainWindowPackageListView: View {
         }
         model.consumeDiscoverPackageScrollRequest()
     }
-}
-
-/// Holds the setup card's slot while detection is still running.
-///
-/// Detecting the helper tools shells out, and without this "not detected yet" would render exactly
-/// like "nothing to offer" — the card would simply pop in once the answer arrived.
-private struct ManagerSetupDetectionCard: View {
-    var body: some View {
-        HStack(spacing: 8) {
-            ProgressView().controlSize(.small)
-            Text("Checking for optional tools…")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-}
-
-/// A one-time offer to install an optional helper tool. Dismissing it is remembered.
-private struct ManagerSetupCard: View {
-    let offer: ManagerSetupOffer
-    let isInstalling: Bool
-    let canInstall: Bool
-    let install: () -> Void
-    let dismiss: () -> Void
-
-    var body: some View {
-        // Text spans the full width and the buttons get their own row: this column is narrow and
-        // resizable, and a side-by-side layout wraps the copy into a few words per line.
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: offer.symbolName)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tint)
-                Text(offer.title)
-                    .font(.system(size: 13, weight: .semibold))
-            }
-
-            Text(offer.explanation)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 12) {
-                Spacer(minLength: 0)
-                Button("Not Now") { dismiss() }
-                    .buttonStyle(.link)
-                    .disabled(isInstalling)
-                Button(isInstalling ? "Installing…" : "Install") { install() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isInstalling || !canInstall)
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
 }
 
 struct MainWindowDossierView: View {

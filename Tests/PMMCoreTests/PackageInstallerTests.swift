@@ -46,18 +46,20 @@ private final class ProgressRecorder: @unchecked Sendable {
 
 @Test func packageInstallerRunsManagerCommands() throws {
     let runner = RecordingRunner()
-    let installer = PackageInstaller(runner: runner, toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm"])
+    let installer = PackageInstaller(runner: runner, toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "cargo": "/fake/cargo"])
 
     try installer.install(package(.homebrew, "brew:git"))
     try installer.install(package(.homebrew, "brew:cask:visual-studio-code"))
     try installer.install(package(.npm, "npm:@scope/tool"))
+    try installer.install(package(.cargoInstall, "cargo:cargo-binstall"))
 
     #expect(runner.commands == [
         "/fake/brew install git",
         "/fake/brew install --cask visual-studio-code",
         "/fake/npm install -g @scope/tool@latest",
+        "/fake/cargo install cargo-binstall --force --color always",
     ])
-    #expect(runner.options.map(\.terminal) == [true, true, true])
+    #expect(runner.options.map(\.terminal) == [true, true, true, true])
 }
 
 @Test func packageInstallerReportsCommandAndOutputProgress() throws {
@@ -90,6 +92,8 @@ private final class ProgressRecorder: @unchecked Sendable {
     #expect(throws: PackageInstallError.unsupportedManager(.rustup)) {
         try PackageInstaller().install(package(.rustup, "rustup:rustup"))
     }
+    #expect(!PackageInstaller.supports(package(.cargoInstall, "cargo:ripgrep")))
+    #expect(PackageInstaller.supports(package(.cargoInstall, "cargo:cargo-update")))
 }
 
 private func package(_ manager: PackageManagerKind, _ name: String) -> ManagedPackage {

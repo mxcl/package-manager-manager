@@ -44,6 +44,43 @@ private final class LockedStrings: @unchecked Sendable {
     var values: [String] { lock.withLock { storage } }
 }
 
+@Test func cargoDependenciesOfferRequiresCargoAndAtLeastOneMissingHelper() throws {
+    let missing = CargoToolchainStatus(cargo: "/cargo", binstall: nil, installUpdate: nil)
+    let noCargo = CargoToolchainStatus(cargo: nil, binstall: nil, installUpdate: nil)
+    let hasBinstall = CargoToolchainStatus(cargo: "/cargo", binstall: "/binstall", installUpdate: nil)
+    let hasUpdate = CargoToolchainStatus(cargo: "/cargo", binstall: nil, installUpdate: "/update")
+
+    #expect(MenuBarCargoDependenciesOffer(status: noCargo, hasHomebrew: true) == nil)
+    #expect(MenuBarCargoDependenciesOffer(status: hasBinstall, hasHomebrew: true) != nil)
+    #expect(MenuBarCargoDependenciesOffer(status: hasUpdate, hasHomebrew: true) != nil)
+    #expect(MenuBarCargoDependenciesOffer(status: missing, hasHomebrew: true) != nil)
+    #expect(MenuBarCargoDependenciesOffer(
+        status: CargoToolchainStatus(cargo: "/cargo", binstall: "/binstall", installUpdate: "/update"),
+        hasHomebrew: true
+    ) == nil)
+}
+
+@Test func cargoDependenciesOfferBuildsBrewOrCargoInstallPackURL() throws {
+    let status = CargoToolchainStatus(cargo: "/cargo", binstall: nil, installUpdate: nil)
+    let brew = try #require(MenuBarCargoDependenciesOffer(status: status, hasHomebrew: true))
+    let cargo = try #require(MenuBarCargoDependenciesOffer(status: status, hasHomebrew: false))
+
+    #expect(URLComponents(url: brew.installURL, resolvingAgainstBaseURL: false)?.queryItems?.compactMap(\.value) == [
+        "brew:cargo-binstall", "brew:cargo-update",
+    ])
+    #expect(URLComponents(url: cargo.installURL, resolvingAgainstBaseURL: false)?.queryItems?.compactMap(\.value) == [
+        "cargo:cargo-binstall", "cargo:cargo-update",
+    ])
+
+    let missingUpdate = try #require(MenuBarCargoDependenciesOffer(
+        status: CargoToolchainStatus(cargo: "/cargo", binstall: "/binstall", installUpdate: nil),
+        hasHomebrew: true
+    ))
+    #expect(URLComponents(url: missingUpdate.installURL, resolvingAgainstBaseURL: false)?.queryItems?.compactMap(\.value) == [
+        "brew:cargo-update",
+    ])
+}
+
 @Test func menuStateShowsLoadingBeforeInventoryExists() {
     let state = MenuBarMenuState()
 
@@ -157,33 +194,6 @@ private final class LockedStrings: @unchecked Sendable {
 
     #expect(menuBarCommandInstallPackages(ids: [installed.id, brew.id, npm.id, unsupported.id], snapshot: snapshot) == [brew, npm])
     #expect(menuBarCommandInstallPackages(ids: [brew.id], snapshot: busy).isEmpty)
-}
-
-@Test func helperInstallIsHeldRatherThanDroppedWhileTheHostIsBusy() {
-    let id = CargoHelper.binstall.promptKey
-
-    #expect(menuBarHelperInstallDisposition(id: id, isBusy: false) == .start(.binstall))
-    // The app's button gate and this receive are not atomic, so a request can still arrive during a
-    // refresh. Holding it is what keeps the click from meaning nothing.
-    #expect(menuBarHelperInstallDisposition(id: id, isBusy: true) == .hold(.binstall))
-    // An id no manager claims is not something to hold onto.
-    #expect(menuBarHelperInstallDisposition(id: "brew:curl", isBusy: false) == .ignore)
-    #expect(menuBarHelperInstallDisposition(id: "brew:curl", isBusy: true) == .ignore)
-}
-
-@Test func aSecondClickDoesNotBecomeASecondInstall() {
-    let binstall = CargoHelper.binstall.promptKey
-    // Two clicks can land before the first snapshot disables the button. While that helper is the
-    // running action, another request for it is nothing to act on — holding it would re-run the
-    // whole install once the first finished, and `--force` means the work really is redone.
-    #expect(menuBarHelperInstallDisposition(id: binstall, isBusy: true, installing: binstall) == .ignore)
-    #expect(menuBarHelperInstallDisposition(id: binstall, isBusy: false, installing: binstall) == .ignore)
-    // A different helper arriving during an install is still worth holding.
-    #expect(
-        menuBarHelperInstallDisposition(
-            id: CargoHelper.installUpdate.promptKey, isBusy: true, installing: binstall
-        ) == .hold(.installUpdate)
-    )
 }
 
 @Test func menuBarRefreshesOnLaunchWhenInventoryIsMissingIncompleteOrStale() {

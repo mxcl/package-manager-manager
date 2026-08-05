@@ -3,6 +3,24 @@ import PMMCore
 
 let menuBarRefreshInterval: TimeInterval = 55 * 60
 
+struct MenuBarCargoDependenciesOffer: Equatable {
+    let installURL: URL
+
+    init?(status: CargoToolchainStatus, hasHomebrew: Bool) {
+        let missingHelpers = CargoHelper.allCases.filter { !status.has($0) }
+        guard status.hasCargo, !missingHelpers.isEmpty else { return nil }
+        var components = URLComponents()
+        components.scheme = "pkgmgrmgr"
+        components.host = "install"
+        let prefix = hasHomebrew ? "brew" : "cargo"
+        components.queryItems = missingHelpers.map {
+            URLQueryItem(name: "package", value: "\(prefix):\($0.crateName)")
+        }
+        guard let installURL = components.url else { return nil }
+        self.installURL = installURL
+    }
+}
+
 struct MenuBarPackageRow: Equatable {
     let ecosystemTitle: String
     let ecosystemIcon: MenuBarEcosystemIcon
@@ -142,34 +160,6 @@ func menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot, now: Date = Dat
         || snapshot.loadingManagers?.isEmpty == false
         || now.timeIntervalSince(inventory.generatedAt) >= menuBarRefreshInterval
 }
-
-/// What the host should do with an incoming helper install request.
-enum MenuBarHelperInstallDisposition: Equatable {
-    case start(CargoHelper)
-    /// Hold it until the host goes idle, rather than dropping it.
-    case hold(CargoHelper)
-    case ignore
-}
-
-/// Decides whether a helper install can start now.
-///
-/// The app disables the card's button against a busy host, but that check and this cross-process
-/// receive are not atomic: a refresh or an action can begin after the app observed an idle host and
-/// before the notification arrives. Holding the request means the click still means something —
-/// dropping it silently is what left the button doing nothing at all.
-func menuBarHelperInstallDisposition(
-    id: String,
-    isBusy: Bool,
-    installing: String? = nil
-) -> MenuBarHelperInstallDisposition {
-    guard let helper = CargoHelper(promptKey: id) else { return .ignore }
-    // Two clicks can land before the first snapshot disables the button. Holding the second would
-    // run the whole install again once the first finished, and both commands pass `--force`, so the
-    // user really does sit through a second download or compile for nothing.
-    guard id != installing else { return .ignore }
-    return isBusy ? .hold(helper) : .start(helper)
-}
-
 func menuBarSnapshot(
     _ snapshot: PackageHostSnapshot,
     merging result: PackageManagerScanResult,

@@ -22,13 +22,21 @@ public struct PackageInstaller: Sendable {
             try run("brew", arguments, onProgress: onProgress)
         case .npm:
             try run("npm", ["install", "-g", "\(package.packageToken)@latest"], onProgress: onProgress)
-        case .cargoInstall, .macApp, .rustup, .mise, .npx, .skills, .uv, .uvx:
+        case .cargoInstall:
+            guard let helper = CargoHelper.allCases.first(where: { $0.crateName == package.packageToken }) else {
+                throw PackageInstallError.unsupportedManager(package.manager)
+            }
+            try CargoToolchain(runner: runner, toolPaths: toolPaths).install(helper, onProgress: onProgress)
+        case .macApp, .rustup, .mise, .npx, .skills, .uv, .uvx:
             throw PackageInstallError.unsupportedManager(package.manager)
         }
     }
 
     public static func supports(_ package: ManagedPackage) -> Bool {
-        package.installedVersion == nil && [.homebrew, .npm].contains(package.manager)
+        package.installedVersion == nil && (
+            [.homebrew, .npm].contains(package.manager)
+                || (package.manager == .cargoInstall && CargoHelper.allCases.contains { $0.crateName == package.packageToken })
+        )
     }
 
     private func run(

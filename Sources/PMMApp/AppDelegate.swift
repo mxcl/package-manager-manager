@@ -63,9 +63,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // A dismissal clicked a moment ago is still queued; quitting without this loses it
-        // and the card comes back on next launch.
-        PackagePreferencesStore.flushPendingWrites()
         appUpdateTask?.cancel()
     }
 
