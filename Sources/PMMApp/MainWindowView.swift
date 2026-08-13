@@ -352,15 +352,33 @@ struct MainWindowPackageListView: View {
             .task(id: model.selectedSection) { model.refreshSetupOffers() }
         }
         .safeAreaBar(edge: .top, alignment: .leading, spacing: 0) {
-            HStack {
-                Text(model.displayedSectionTitle)
-                Spacer()
-                if model.displayedPackagesAreLoading { ProgressView().controlSize(.small) }
-            }
+            Text(model.displayedSectionTitle)
+                .frame(width: 228, alignment: .leading)
+                .overlay(alignment: .trailing) {
+                    HStack {
+                        if model.displayedPackagesAreLoading { ProgressView().controlSize(.small) }
+                        if model.activeSidebarSection?.categoryIdentifier != nil {
+                            ControlGroup {
+                                Toggle(isOn: $model.showsCategoryCLIs) {
+                                    Label("Show CLIs", systemImage: "terminal")
+                                }
+                                .help("Show CLIs")
+
+                                Toggle(isOn: $model.showsCategoryGUIs) {
+                                    Label("Show GUIs", systemImage: "macwindow")
+                                }
+                                .help("Show GUIs")
+                            }
+                            .toggleStyle(.button)
+                            .labelStyle(.iconOnly)
+                            .controlSize(.small)
+                        }
+                    }
+                }
             .font(.system(size: 13, weight: .bold))
             .foregroundStyle(Color.secondary)
+            .frame(minHeight: 42)
             .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 42)
         }
         .scrollEdgeEffectStyle(.soft, for: .top)
         .ignoresSafeArea(.container, edges: .top)
