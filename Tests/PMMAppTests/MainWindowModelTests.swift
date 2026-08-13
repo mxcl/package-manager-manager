@@ -995,6 +995,53 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(Set(model.displayedPackages.map(\.id)) == Set([machineLearning.id, duplicateCategory.id]))
 }
 
+@MainActor
+@Test func categoryListsCanFilterCLIsAndGUIsSeparately() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let cli = package(.homebrew, "git", installedVersion: nil, category: "developer-tools")
+    let nonAppCask = ManagedPackage(
+        manager: .homebrew,
+        identifier: "brew:cask:font-hack",
+        installedVersion: nil,
+        latestVersion: "1",
+        category: "developer-tools"
+    )
+    let gui = ManagedPackage(
+        manager: .homebrew,
+        identifier: "brew:cask:visual-studio-code",
+        installedVersion: "1",
+        latestVersion: "1",
+        category: "developer-tools",
+        appProvenance: .homebrew
+    )
+
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: [gui]),
+        catalogPackages: [cli, nonAppCask, gui],
+        isRefreshing: false
+    ))
+    model.selectSection(.developerTools)
+
+    #expect(Set(model.displayedPackages.map(\.id)) == Set([cli.id, nonAppCask.id, gui.id]))
+
+    model.showsCategoryGUIs = false
+    #expect(Set(model.displayedPackages.map(\.id)) == Set([cli.id, nonAppCask.id]))
+    #expect(model.count(for: .developerTools) == 2)
+
+    model.showsCategoryGUIs = true
+    model.showsCategoryCLIs = false
+    #expect(model.displayedPackages.map(\.id) == [gui.id])
+    #expect(model.count(for: .developerTools) == 1)
+
+    model.select(gui)
+    model.showsCategoryGUIs = false
+    #expect(model.displayedPackages.isEmpty)
+    #expect(model.selectedPackage == nil)
+
+    model.selectSection(.homebrew)
+    #expect(model.displayedPackages.map(\.id) == [gui.id])
+}
+
 @Test func categoryCatalogPackageVersionTextShowsManager() {
     let package = ManagedPackage(
         manager: .npm,

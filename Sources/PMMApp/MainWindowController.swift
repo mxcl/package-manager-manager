@@ -100,6 +100,7 @@ struct MainWindowRootView: View {
                     MainWindowPackageListView(model: model)
                         .navigationSplitViewColumnWidth(min: 252, ideal: 252, max: 252)
                         .toolbar {
+                            categoryPackageKindToolbarItem
                             ToolbarSpacer() //TODO I only want to space it to the edge of this column! :-/
                             updateAllToolbarItem
                         }
@@ -160,6 +161,29 @@ struct MainWindowRootView: View {
             Button("Uninstall", role: .destructive) { model.confirmRemoteUninstall() }
         } message: {
             Text("This will uninstall the package from \(model.pendingRemoteUninstall?.host.displayName ?? "the remote Mac").")
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var categoryPackageKindToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .secondaryAction) {
+            ControlGroup {
+                Toggle(isOn: $model.showsCategoryCLIs) {
+                    Label("Show CLIs", systemImage: "terminal")
+                }
+                .help("Show CLIs")
+
+                Toggle(isOn: $model.showsCategoryGUIs) {
+                    Label("Show GUIs", systemImage: "macwindow")
+                }
+                .help("Show GUIs")
+            }
+            .toggleStyle(.button)
+            .labelStyle(.iconOnly)
+            .controlSize(.small)
+            .opacity(model.activeSidebarSection?.categoryIdentifier == nil ? 0 : 1)
+            .disabled(model.activeSidebarSection?.categoryIdentifier == nil)
+            .accessibilityHidden(model.activeSidebarSection?.categoryIdentifier == nil)
         }
     }
 

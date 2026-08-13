@@ -523,6 +523,12 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var dashboardBlogEntriesAreLoading = false
     @Published private(set) var pendingInstallPackConfirmation: MainWindowInstallPackConfirmation?
     @Published var searchText = ""
+    @Published var showsCategoryCLIs = true {
+        didSet { reconcilePackageSelection() }
+    }
+    @Published var showsCategoryGUIs = true {
+        didSet { reconcilePackageSelection() }
+    }
     @Published private(set) var setupOffer: ManagerSetupOffer?
     /// The manager whose detection is still running, if it could yet produce an offer.
     @Published private(set) var setupDetectingManager: PackageManagerKind?
@@ -1365,7 +1371,12 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     private func packages(in section: MainWindowSection) -> [ManagedPackage] {
-        let packages = packageIndex.packagesBySection[section] ?? []
+        var packages = packageIndex.packagesBySection[section] ?? []
+        if section.categoryIdentifier != nil {
+            packages = packages.filter {
+                mainWindowManagerSection(for: $0) == .apps ? showsCategoryGUIs : showsCategoryCLIs
+            }
+        }
         let query = searchQuery
         guard !query.isEmpty else { return packages }
         return packages.filter { matchesSearch($0, query: query) }
@@ -1373,10 +1384,9 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     private func filteredCount(for section: MainWindowSection) -> Int? {
         let query = searchQuery
-        guard !query.isEmpty else { return nil }
-        return packageIndex.packagesBySection[section].map { packages in
-            packages.filter { matchesSearch($0, query: query) }.count
-        }
+        let categoryIsFiltered = section.categoryIdentifier != nil && (!showsCategoryCLIs || !showsCategoryGUIs)
+        guard !query.isEmpty || categoryIsFiltered else { return nil }
+        return packages(in: section).count
     }
 
     private func matchesSearch(_ package: ManagedPackage, query: String) -> Bool {
