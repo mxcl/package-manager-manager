@@ -150,7 +150,7 @@ public struct CargoToolchain: Sendable {
     // --force matters: without it binstall exits 0 without doing anything whenever cargo's install
     // metadata already records the target version, even if the binary itself is long gone.
     private static func binstallCommand(_ crate: String) -> PackageCommand {
-        PackageCommand(executable: "cargo", arguments: ["binstall", crate, "--no-confirm", "--force"])
+        PackageCommand(executable: "cargo", arguments: ["binstall", crate, "--no-confirm", "--force", "--locked"])
     }
 
     /// Latest versions keyed by crate name, via `cargo install-update --list`. This only reports
