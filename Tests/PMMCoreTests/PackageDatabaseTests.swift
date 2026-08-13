@@ -19,7 +19,16 @@ import Testing
               "pulse_kind": "updated"
             }
           },
-          "casks": {},
+          "casks": {
+            "example-editor": {
+              "summary": "Example editor",
+              "category": "developer-tools",
+              "applications": ["Example Editor.app"]
+            },
+            "font-hack": {
+              "applications": []
+            }
+          },
           "crates": {
             "ripgrep": {
               "summary": "Line-oriented search tool",
@@ -59,6 +68,8 @@ import Testing
     #expect(db.metadata(for: .cargoInstall, name: "ripgrep")?.version == "14.1.1")
     #expect(db.metadata(for: .npm, name: "typescript")?.summary == "TypeScript is a language for application scale JavaScript development")
     #expect(db.metadata(for: .npm, name: "typescript")?.version == "5.9.2")
+    #expect(db.catalogPackages.first { $0.identifier == "brew:cask:example-editor" }?.appProvenance == .homebrew)
+    #expect(db.catalogPackages.first { $0.identifier == "brew:cask:font-hack" }?.appProvenance == nil)
     let app = try #require(db.app(for: "com.example.Editor"))
     #expect(app.cask == "example-editor")
     #expect(app.feedURL == "https://example.com/appcast.xml")

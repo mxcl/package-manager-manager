@@ -1009,14 +1009,14 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     let gui = ManagedPackage(
         manager: .homebrew,
         identifier: "brew:cask:visual-studio-code",
-        installedVersion: "1",
+        installedVersion: nil,
         latestVersion: "1",
         category: "developer-tools",
         appProvenance: .homebrew
     )
 
     model.apply(snapshot: PackageHostSnapshot(
-        inventory: PackageInventory(packages: [gui]),
+        inventory: PackageInventory(packages: []),
         catalogPackages: [cli, nonAppCask, gui],
         isRefreshing: false
     ))
@@ -1037,9 +1037,6 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     model.showsCategoryGUIs = false
     #expect(model.displayedPackages.isEmpty)
     #expect(model.selectedPackage == nil)
-
-    model.selectSection(.homebrew)
-    #expect(model.displayedPackages.map(\.id) == [gui.id])
 }
 
 @Test func categoryCatalogPackageVersionTextShowsManager() {

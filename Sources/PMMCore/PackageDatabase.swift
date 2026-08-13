@@ -5,6 +5,7 @@ public struct PackageDatabase: Sendable {
 
     private let formulas: [String: PackageMetadata]
     private let casks: [String: PackageMetadata]
+    private let appCasks: Set<String>
     private let crates: [String: PackageMetadata]
     private let npms: [String: PackageMetadata]
     private let apps: [String: MacAppCatalogEntry]
@@ -12,12 +13,14 @@ public struct PackageDatabase: Sendable {
     public init(
         formulas: [String: PackageMetadata] = [:],
         casks: [String: PackageMetadata] = [:],
+        appCasks: Set<String> = [],
         crates: [String: PackageMetadata] = [:],
         npms: [String: PackageMetadata] = [:],
         apps: [String: MacAppCatalogEntry] = [:]
     ) {
         self.formulas = formulas
         self.casks = casks
+        self.appCasks = appCasks
         self.crates = crates
         self.npms = npms
         self.apps = apps
@@ -54,6 +57,7 @@ public struct PackageDatabase: Sendable {
         return PackageDatabase(
             formulas: decodeMetadataMap(db?["formulas"]),
             casks: decodeMetadataMap(db?["casks"]),
+            appCasks: decodeAppCasks(db?["casks"]),
             crates: decodeMetadataMap(db?["crates"]),
             npms: decodeMetadataMap(db?["npms"]),
             apps: decodeAppMap(db?["apps"])
@@ -68,7 +72,7 @@ public struct PackageDatabase: Sendable {
         let packages = (
             managedPackages(for: .cargoInstall, identifierPrefix: "cargo", metadata: crates) +
             managedPackages(for: .homebrew, identifierPrefix: "brew", metadata: formulas, homebrewPrefix: homebrewPrefix) +
-            managedPackages(for: .homebrew, identifierPrefix: "brew:cask", metadata: casks, homebrewPrefix: homebrewPrefix) +
+            managedPackages(for: .homebrew, identifierPrefix: "brew:cask", metadata: casks, homebrewPrefix: homebrewPrefix, appNames: appCasks) +
             managedPackages(for: .npm, identifierPrefix: "npm", metadata: npms)
         )
         return Dictionary(grouping: packages, by: \.id).compactMap { $0.value.first }
@@ -141,11 +145,20 @@ public struct PackageDatabase: Sendable {
         }
     }
 
+    private static func decodeAppCasks(_ value: Any?) -> Set<String> {
+        guard let map = value as? [String: Any] else { return [] }
+        return Set(map.compactMap { name, value in
+            guard let raw = value as? [String: Any], (raw["applications"] as? [Any])?.isEmpty == false else { return nil }
+            return name
+        })
+    }
+
     private func managedPackages(
         for manager: PackageManagerKind,
         identifierPrefix: String,
         metadata: [String: PackageMetadata],
-        homebrewPrefix: String? = nil
+        homebrewPrefix: String? = nil,
+        appNames: Set<String> = []
     ) -> [ManagedPackage] {
         metadata.map { name, metadata in
             ManagedPackage(
@@ -161,7 +174,8 @@ public struct PackageDatabase: Sendable {
                 repo: metadata.repo,
                 lastUpdatedAt: metadata.lastUpdatedAt,
                 pulseKind: metadata.pulseKind,
-                installLocation: homebrewInstallLocation(prefix: homebrewPrefix, identifierPrefix: identifierPrefix, name: name, version: metadata.version)
+                installLocation: homebrewInstallLocation(prefix: homebrewPrefix, identifierPrefix: identifierPrefix, name: name, version: metadata.version),
+                appProvenance: appNames.contains(name) ? .homebrew : nil
             )
         }
     }
