@@ -358,20 +358,16 @@ struct MainWindowPackageListView: View {
                     HStack {
                         if model.displayedPackagesAreLoading { ProgressView().controlSize(.small) }
                         if model.activeSidebarSection?.categoryIdentifier != nil {
-                            ControlGroup {
-                                Toggle(isOn: $model.showsCategoryCLIs) {
-                                    Label("Show CLIs", systemImage: "terminal")
-                                }
-                                .help("Show CLIs")
-
-                                Toggle(isOn: $model.showsCategoryGUIs) {
-                                    Label("Show GUIs", systemImage: "macwindow")
-                                }
-                                .help("Show GUIs")
+                            Menu {
+                                Toggle("CLIs", isOn: $model.showsCategoryCLIs)
+                                Toggle("GUIs", isOn: $model.showsCategoryGUIs)
+                            } label: {
+                                Label("Package Types", systemImage: "rectangle.grid.3x2")
                             }
-                            .toggleStyle(.button)
+                            .menuStyle(.button)
                             .labelStyle(.iconOnly)
                             .controlSize(.small)
+                            .help("Filter package types")
                         }
                     }
                 }
