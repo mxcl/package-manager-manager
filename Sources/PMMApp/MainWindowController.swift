@@ -100,8 +100,8 @@ struct MainWindowRootView: View {
                     MainWindowPackageListView(model: model)
                         .navigationSplitViewColumnWidth(min: 252, ideal: 252, max: 252)
                         .toolbar {
-                            categoryPackageKindToolbarItem
                             ToolbarSpacer() //TODO I only want to space it to the edge of this column! :-/
+                            categoryPackageKindToolbarItem
                             updateAllToolbarItem
                         }
                 } detail: {
