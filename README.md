@@ -1,6 +1,6 @@
 ![Package Manager Manager screenshot](www/pmm-promo-1@dark.png)
 
-# Package Manager Manager
+# Package Manager Manager [![Knock Knock](https://knock-knock.mxcl.dev/badge.svg)](https://knock-knock.mxcl.dev/mxcl/package-manager-manager)
 
 The time when one package manager was all you needed is long gone. pkg⋅mgr²
 inventories your package managers and their packages, so you can see what you
