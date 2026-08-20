@@ -1,7 +1,7 @@
 #!/usr/local/bin/av inject +APPLE_PASSWORD +APPLE_USERNAME -- /bin/bash
 # --- automic-vault
 # capabilities:
-#   gh: trusted
+#   gh: write
 # ---
 set -euo pipefail
 
@@ -14,7 +14,7 @@ helper_executable="PMMMenuBar"
 control_executable="pmmctl"
 identifier="${PRODUCT_BUNDLE_IDENTIFIER:-dev.mxcl.pmm}"
 helper_identifier="${HELPER_BUNDLE_IDENTIFIER:-$identifier.menu}"
-version="${MARKETING_VERSION:-0.22.0}"
+version="${MARKETING_VERSION:-}"
 build="${CURRENT_PROJECT_VERSION:-1}"
 app="${APP_PATH:-$root/dist/$app_name.app}"
 helper_app="$root/dist/$helper_app_name.app"
@@ -43,9 +43,12 @@ require_tool() {
   command -v "$1" >/dev/null || die "$1 is required"
 }
 
-script_version() {
-  sed -n 's/^version="${MARKETING_VERSION:-\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)}"$/\1/p' "$root/scripts/build.sh"
+package_version() {
+  sed -n 's/^let appVersion = "\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)"$/\1/p' "$root/Package.swift"
 }
+
+version="${version:-$(package_version)}"
+[[ -n "$version" ]] || die "Unable to read appVersion from Package.swift"
 
 latest_release_tag() {
   local release_tag
@@ -88,8 +91,8 @@ version_gt() {
 ensure_release_worktree_state() {
   git -C "$root" diff --cached --quiet ||
     die "Index has staged changes; commit or stash them before publishing"
-  git -C "$root" diff --quiet -- scripts/build.sh ||
-    die "scripts/build.sh has unstaged changes; commit or stash them before publishing"
+  git -C "$root" diff --quiet -- Package.swift ||
+    die "Package.swift has unstaged changes; commit or stash them before publishing"
 }
 
 generate_release_plan() {
@@ -111,7 +114,7 @@ generate_release_plan() {
 
 Repository: $root
 Previous release tag: $previous_tag
-Current script version: $current_version
+Current version: $current_version
 Compare range: $compare_range
 
 Inspect the git history and diff for that range. Choose the next SemVer version based on the changes since the previous release.
@@ -127,7 +130,7 @@ Output exactly this format, with no code fence, no title, no preamble, no commit
     prompt="Plan the initial Package Manager Manager release.
 
 Repository: $root
-Current script version: $current_version
+Current version: $current_version
 Target ref: $target_ref
 
 Inspect the repository and recent git history. Choose the next SemVer version.
@@ -178,7 +181,7 @@ Output exactly this format, with no code fence, no title, no preamble, no commit
   printf '%s\n%s\n' "$notes_path" "$version_path"
 }
 
-bump_script_version() {
+bump_package_version() {
   local new_version="$1"
 
   [[ "$new_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
@@ -186,16 +189,16 @@ bump_script_version() {
 
   VERSION="$new_version" perl -0pi -e '
     my $version = $ENV{VERSION};
-    s/^version="\$\{MARKETING_VERSION:-[0-9]+\.[0-9]+\.[0-9]+\}"$/version="\${MARKETING_VERSION:-$version}"/m
-      or die "Unable to update default version in scripts/build.sh\n";
-  ' "$root/scripts/build.sh"
+    s/^let appVersion = "[0-9]+\.[0-9]+\.[0-9]+"$/let appVersion = "$version"/m
+      or die "Unable to update appVersion in Package.swift\n";
+  ' "$root/Package.swift"
 }
 
 commit_release_version() {
   local new_version="$1"
   local tag="v$new_version"
 
-  git -C "$root" add scripts/build.sh
+  git -C "$root" add Package.swift
   git -C "$root" diff --cached --quiet &&
     die "Release version file was unchanged after version bump"
 
@@ -262,8 +265,8 @@ if $publish; then
 
   ensure_release_worktree_state
   if ! $clobber; then
-    current_version="$(script_version)"
-    [[ -n "$current_version" ]] || die "Unable to read default version from scripts/build.sh"
+    current_version="$(package_version)"
+    [[ -n "$current_version" ]] || die "Unable to read appVersion from Package.swift"
     release_plan="$(generate_release_plan "$current_version")"
     release_notes_path="$(printf '%s\n' "$release_plan" | sed -n '1p')"
     version_path="$(printf '%s\n' "$release_plan" | sed -n '2p')"
@@ -275,7 +278,7 @@ if $publish; then
       die "Tag v$planned_version already exists"
     fi
 
-    bump_script_version "$planned_version"
+    bump_package_version "$planned_version"
     version="$planned_version"
     commit_release_version "$planned_version"
     push_current_branch
