@@ -109,6 +109,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         ShellEnvironment.shared.prime()
+        PostHogTelemetry.shared.captureHeartbeat()
         loadSnapshot()
         observeCommands()
         configureStatusButton()
@@ -119,6 +120,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             ? now.addingTimeInterval(menuBarRefreshInterval)
             : min(snapshot.inventory!.generatedAt.addingTimeInterval(menuBarRefreshInterval), now.addingTimeInterval(menuBarRefreshInterval))
         let timer = Timer(fire: firstRefreshAt, interval: menuBarRefreshInterval, repeats: true) { [weak self] _ in
+            PostHogTelemetry.shared.captureHeartbeat()
             Task { @MainActor in self?.refresh() }
         }
         RunLoop.main.add(timer, forMode: .common)

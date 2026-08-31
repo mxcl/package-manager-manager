@@ -3,6 +3,8 @@ import Foundation
 public struct PostHogTelemetry: Sendable {
     public static let shared = PostHogTelemetry()
 
+    private static let heartbeatDefaultsKey = "PostHogLastHeartbeatAt"
+    private static let heartbeatInterval: TimeInterval = 24 * 60 * 60
     private static let installIDDefaultsKey = "PostHogAnonymousInstallID"
     private let endpoint = URL(string: "https://us.i.posthog.com/i/v0/e/")!
     private let apiKey: String?
@@ -19,6 +21,18 @@ public struct PostHogTelemetry: Sendable {
         capture(event: "pmm_app_opened")
     }
 
+    public func captureHeartbeat() {
+        let defaults = UserDefaults.standard
+        let now = Date()
+        guard Self.heartbeatIsDue(
+            lastCapturedAt: defaults.object(forKey: Self.heartbeatDefaultsKey) as? Date,
+            now: now
+        ) else { return }
+        capture(event: "pmm_heartbeat") {
+            UserDefaults.standard.set(now, forKey: Self.heartbeatDefaultsKey)
+        }
+    }
+
     public func capturePackageUpdated(_ package: ManagedPackage) {
         capture(
             event: "pmm_package_updated",
@@ -31,7 +45,11 @@ public struct PostHogTelemetry: Sendable {
         )
     }
 
-    private func capture(event: String, package: PackageProperties? = nil) {
+    private func capture(
+        event: String,
+        package: PackageProperties? = nil,
+        onSuccess: (@Sendable () -> Void)? = nil
+    ) {
         guard let apiKey, !apiKey.isEmpty else { return }
 
         let endpoint = endpoint
@@ -77,10 +95,16 @@ public struct PostHogTelemetry: Sendable {
                     NSLog("posthog telemetry failed with status: %d", (response as? HTTPURLResponse)?.statusCode ?? 0)
                     return
                 }
+                onSuccess?()
             } catch {
                 NSLog("posthog telemetry failed: %@", error.localizedDescription)
             }
         }
+    }
+
+    static func heartbeatIsDue(lastCapturedAt: Date?, now: Date) -> Bool {
+        guard let lastCapturedAt else { return true }
+        return now.timeIntervalSince(lastCapturedAt) >= heartbeatInterval
     }
 
     private static func anonymousInstallID(defaults: UserDefaults = .standard) -> String {
