@@ -1640,7 +1640,11 @@ private func package(
     let defaults = UserDefaults(suiteName: UUID().uuidString)!
     let response = RemoteControlResponse(inventory: PackageInventory(packages: []))
     let runner = MainWindowRemoteRunner(response: response)
-    let model = MainWindowModel(userDefaults: defaults, remoteClient: RemoteSSHClient(runner: runner))
+    let model = MainWindowModel(
+        userDefaults: defaults,
+        remoteClient: RemoteSSHClient(runner: runner),
+        usesPackageHostNotifications: false
+    )
     #expect(!model.hasMultipleHosts)
     #expect(!model.showsHostManagement)
 
@@ -1656,7 +1660,11 @@ private func package(
     #expect(throws: RemoteHostConfigurationError.duplicateDestination) {
         try model.saveRemoteHost(name: nil, destination: "builder")
     }
-    let restored = MainWindowModel(userDefaults: defaults, remoteClient: RemoteSSHClient(runner: runner))
+    let restored = MainWindowModel(
+        userDefaults: defaults,
+        remoteClient: RemoteSSHClient(runner: runner),
+        usesPackageHostNotifications: false
+    )
     #expect(restored.remoteHosts == [host])
 
     model.selectRemoteHost(host.id, section: .installed)
@@ -1675,7 +1683,8 @@ private func package(
     let runner = MainWindowRemoteRunner(response: response)
     let model = MainWindowModel(
         userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
-        remoteClient: RemoteSSHClient(runner: runner)
+        remoteClient: RemoteSSHClient(runner: runner),
+        usesPackageHostNotifications: false
     )
     let host = try model.saveRemoteHost(name: "Server", destination: "server")
     await waitForRemoteModel { model.remoteHostStates[host.id]?.inventory != nil }
@@ -1710,7 +1719,8 @@ private func package(
     ))
     let model = MainWindowModel(
         userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
-        remoteClient: RemoteSSHClient(runner: runner)
+        remoteClient: RemoteSSHClient(runner: runner),
+        usesPackageHostNotifications: false
     )
     let host = try model.saveRemoteHost(name: "Atlas", destination: "atlas")
     await waitForRemoteModel { model.remoteHostStates[host.id]?.inventory != nil }
@@ -1730,7 +1740,8 @@ private func package(
     let runner = MainWindowRemoteRunner(response: RemoteControlResponse(inventory: PackageInventory(packages: [eslint, prettier])))
     let model = MainWindowModel(
         userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
-        remoteClient: RemoteSSHClient(runner: runner)
+        remoteClient: RemoteSSHClient(runner: runner),
+        usesPackageHostNotifications: false
     )
     let host = try model.saveRemoteHost(name: "Server", destination: "server")
     await waitForRemoteModel { model.remoteHostStates[host.id]?.inventory != nil }
@@ -1751,7 +1762,8 @@ private func package(
     let runner = MainWindowRemoteRunner(response: response)
     let model = MainWindowModel(
         userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
-        remoteClient: RemoteSSHClient(runner: runner)
+        remoteClient: RemoteSSHClient(runner: runner),
+        usesPackageHostNotifications: false
     )
     let host = try model.saveRemoteHost(name: "Server", destination: "server")
     await waitForRemoteModel { model.remoteHostStates[host.id]?.inventory != nil }
@@ -1779,7 +1791,8 @@ private func package(
     )
     let model = MainWindowModel(
         userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
-        remoteClient: RemoteSSHClient(runner: runner)
+        remoteClient: RemoteSSHClient(runner: runner),
+        usesPackageHostNotifications: false
     )
     let host = try model.saveRemoteHost(name: "Server", destination: "server")
     await waitForRemoteModel { model.remoteHostStates[host.id]?.inventory != nil }
@@ -1794,7 +1807,10 @@ private func package(
 
 @MainActor
 @Test func helperInstallStateComesFromTheHostNotTheClick() {
-    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let model = MainWindowModel(
+        userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
+        usesPackageHostNotifications: false
+    )
     let crate = ManagedPackage(manager: .cargoInstall, name: "just", installedVersion: "1", latestVersion: nil)
     let idle = PackageHostSnapshot(inventory: PackageInventory(packages: [crate]))
     let helperID = CargoHelper.binstall.promptKey

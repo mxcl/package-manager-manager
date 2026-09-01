@@ -557,6 +557,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     private let bundledCatalog: [ManagedPackage]
     private let dossierClient: PackageDossierClient?
     private let remoteClient: RemoteSSHClient
+    private let usesPackageHostNotifications: Bool
     private var dossierTask: Task<Void, Never>?
     private var dashboardBlogEntriesTask: Task<Void, Never>?
     private var remoteTasks: [UUID: Task<Void, Never>] = [:]
@@ -579,6 +580,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         dossierClient: PackageDossierClient? = nil,
         dashboardBlogURL: URL? = nil,
         remoteClient: RemoteSSHClient = RemoteSSHClient(),
+        usesPackageHostNotifications: Bool = true,
         preferencesStore: PackagePreferencesStore = PackagePreferencesStore(),
         detectCargoSetup: @escaping @Sendable (PackagePreferences) -> CargoSetupState
             = { CargoSetupState.detect(preferences: $0) }
@@ -593,6 +595,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         self.bundledCatalog = bundledCatalog
         self.dossierClient = dossierClient
         self.remoteClient = remoteClient
+        self.usesPackageHostNotifications = usesPackageHostNotifications
         super.init()
 #if DEBUG
         let isTerminalDemo = ProcessInfo.processInfo.environment["PMM_TERMINAL_DEMO"] == "1"
@@ -603,8 +606,10 @@ final class MainWindowModel: NSObject, ObservableObject {
             if let dashboardBlogURL {
                 loadDashboardBlogEntries(from: dashboardBlogURL)
             }
-            notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
-            notificationCenter.addObserver(self, selector: #selector(hostActionOutputChanged(_:)), name: PackageHostNotifications.actionOutputChanged, object: nil)
+            if usesPackageHostNotifications {
+                notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
+                notificationCenter.addObserver(self, selector: #selector(hostActionOutputChanged(_:)), name: PackageHostNotifications.actionOutputChanged, object: nil)
+            }
             reloadRemoteHosts()
         }
 #else
@@ -612,8 +617,10 @@ final class MainWindowModel: NSObject, ObservableObject {
         if let dashboardBlogURL {
             loadDashboardBlogEntries(from: dashboardBlogURL)
         }
-        notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
-        notificationCenter.addObserver(self, selector: #selector(hostActionOutputChanged(_:)), name: PackageHostNotifications.actionOutputChanged, object: nil)
+        if usesPackageHostNotifications {
+            notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
+            notificationCenter.addObserver(self, selector: #selector(hostActionOutputChanged(_:)), name: PackageHostNotifications.actionOutputChanged, object: nil)
+        }
         reloadRemoteHosts()
 #endif
     }
@@ -765,7 +772,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func reload() {
-        PackageHostNotifications.postRefreshRequested()
+        if usesPackageHostNotifications { PackageHostNotifications.postRefreshRequested() }
         reloadRemoteHosts(ignoringAppCache: true)
     }
 
@@ -1008,7 +1015,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     func install(_ package: ManagedPackage) {
         guard canInstall(package), !isPackageActionRunning else { return }
-        PackageHostNotifications.postInstallRequested(packageID: package.id)
+        if usesPackageHostNotifications { PackageHostNotifications.postInstallRequested(packageID: package.id) }
     }
 
     func uninstall(_ package: ManagedPackage) {
@@ -1017,7 +1024,7 @@ final class MainWindowModel: NSObject, ObservableObject {
             pendingRemoteUninstall = RemoteUninstallConfirmation(host: host, package: package)
             return
         }
-        PackageHostNotifications.postUninstallRequested(packageID: package.id)
+        if usesPackageHostNotifications { PackageHostNotifications.postUninstallRequested(packageID: package.id) }
     }
 
     /// The setup offer to show above the current section, if any.
@@ -1077,7 +1084,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         guard canInstallHelper, !isInstallingHelper else { return }
         // Deliberately no optimistic state: the host is the authority on whether the install
         // actually started, and claiming it here would show "Installing…" over a dropped request.
-        PackageHostNotifications.postHelperInstallRequested(id)
+        if usesPackageHostNotifications { PackageHostNotifications.postHelperInstallRequested(id) }
     }
 
     func dismissHelper(_ id: String) {
@@ -1094,7 +1101,7 @@ final class MainWindowModel: NSObject, ObservableObject {
             runRemoteAction(.update, package: package, host: host)
             return
         }
-        PackageHostNotifications.postUpdateRequested(packageID: package.id)
+        if usesPackageHostNotifications { PackageHostNotifications.postUpdateRequested(packageID: package.id) }
     }
 
     func updateAllOutdatedPackages() {
@@ -1107,7 +1114,9 @@ final class MainWindowModel: NSObject, ObservableObject {
             runRemoteAction(.updateAll, package: nil, host: host)
             return
         }
-        PackageHostNotifications.postUpdateAllRequested(packageIDs: hasMultipleSelectedPackages ? packagesToUpdate.map(\.id) : [])
+        if usesPackageHostNotifications {
+            PackageHostNotifications.postUpdateAllRequested(packageIDs: hasMultipleSelectedPackages ? packagesToUpdate.map(\.id) : [])
+        }
     }
 
     func confirmRemoteUninstall() {
@@ -1266,7 +1275,9 @@ final class MainWindowModel: NSObject, ObservableObject {
     func confirmPendingInstallPack() {
         guard let pendingInstallPackConfirmation else { return }
         self.pendingInstallPackConfirmation = nil
-        PackageHostNotifications.postInstallManyRequested(packageIDs: pendingInstallPackConfirmation.packageIDs)
+        if usesPackageHostNotifications {
+            PackageHostNotifications.postInstallManyRequested(packageIDs: pendingInstallPackConfirmation.packageIDs)
+        }
     }
 
     func cancelPendingInstallPack() {
