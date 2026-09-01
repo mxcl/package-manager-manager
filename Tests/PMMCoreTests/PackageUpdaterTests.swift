@@ -84,7 +84,7 @@ private final class ProgressRecorder: @unchecked Sendable {
 
     try updater.update(package(.cargoInstall, "cargo:ripgrep", displayName: "Ripgrep"))
 
-    #expect(runner.commands == ["/fake/cargo binstall ripgrep --no-confirm --force"])
+    #expect(runner.commands == ["/fake/cargo binstall ripgrep --no-confirm --force --locked"])
 }
 
 @Test func packageUpdaterFallsBackToCompilingWhenBinstallFails() throws {
@@ -99,7 +99,7 @@ private final class ProgressRecorder: @unchecked Sendable {
     try updater.update(package(.cargoInstall, "cargo:ripgrep", displayName: "Ripgrep"))
 
     #expect(runner.commands == [
-        "/fake/cargo binstall ripgrep --no-confirm --force",
+        "/fake/cargo binstall ripgrep --no-confirm --force --locked",
         "/fake/cargo install ripgrep --force --color always",
     ])
 }

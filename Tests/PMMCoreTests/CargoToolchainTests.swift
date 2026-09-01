@@ -51,7 +51,7 @@ import Testing
     // Not every crate publishes prebuilt artifacts, so compiling must remain as the trailing
     // fallback rather than the update dead-ending on a binstall miss.
     #expect(toolchain.updateCommands(for: "just", status: status) == [
-        PackageCommand(executable: "cargo", arguments: ["binstall", "just", "--no-confirm", "--force"]),
+        PackageCommand(executable: "cargo", arguments: ["binstall", "just", "--no-confirm", "--force", "--locked"]),
         PackageCommand(executable: "cargo", arguments: ["install", "just", "--force", "--color", "always"]),
     ])
 }
@@ -193,7 +193,7 @@ import Testing
     // Compiling cargo-update is the multi-minute wait binstall exists to avoid.
     try toolchain.install(.installUpdate, status: present)
 
-    #expect(runner.commands == ["/fake/cargo binstall cargo-update --no-confirm --force"])
+    #expect(runner.commands == ["/fake/cargo binstall cargo-update --no-confirm --force --locked"])
 }
 
 @Test func binstallAlwaysForces() {
@@ -216,7 +216,7 @@ import Testing
     try toolchain.install(.installUpdate, status: present)
 
     #expect(runner.commands == [
-        "/fake/cargo binstall cargo-update --no-confirm --force",
+        "/fake/cargo binstall cargo-update --no-confirm --force --locked",
         "/fake/cargo install cargo-update --force --color always",
     ])
 }
@@ -516,10 +516,10 @@ private let neitherHelperInstalled = CargoToolchainStatus(cargo: "/c", binstall:
     try toolchain.install(.installUpdate, status: status) { progress.append($0) }
 
     #expect(progress.values == [
-        .started(command: "cargo binstall cargo-update --no-confirm --force"),
+        .started(command: "cargo binstall cargo-update --no-confirm --force --locked"),
         // Between the two commands: without this the terminal jumps straight from a binstall
         // invocation to a compile with nothing explaining why.
-        .output("\ncargo binstall cargo-update --no-confirm --force failed.\n"),
+        .output("\ncargo binstall cargo-update --no-confirm --force --locked failed.\n"),
         .started(command: "cargo install cargo-update --force --color always"),
     ])
 }
