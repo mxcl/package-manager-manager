@@ -573,7 +573,7 @@ private struct DashboardDiscoverPackageLink: View {
 
 private struct DashboardSponsoredCard: View {
     @Environment(\.colorScheme) private var colorScheme
-    private let url = URL(string: "https://automicvault.com")!
+    private let url = URL(string: "https://automicvault.com?utm_source=pmm")!
     private static let ditherImage: CGImage? = {
         let extent = CGRect(x: 0, y: 0, width: 64, height: 64)
         guard let noise = CIFilter(name: "CIRandomGenerator")?.outputImage?
