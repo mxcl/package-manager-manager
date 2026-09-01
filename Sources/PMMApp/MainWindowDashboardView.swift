@@ -590,7 +590,7 @@ private struct DashboardSponsoredCard: View {
                 Image(systemName: "lock.shield")
                     .font(.system(size: 34, weight: .semibold))
                     .foregroundStyle(.white)
-                Text("Secure every install.")
+                Text("Install the missing secrets manager for developers")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(2)
