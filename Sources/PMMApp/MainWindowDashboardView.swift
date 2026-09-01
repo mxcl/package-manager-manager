@@ -593,7 +593,6 @@ private struct DashboardSponsoredCard: View {
                 Text("Install the missing secrets manager for developers")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.white)
-                    .lineLimit(2)
                 Text("Zero-trust for the tools you use every day.")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.white.opacity(0.78))
