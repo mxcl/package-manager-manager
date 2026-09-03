@@ -92,7 +92,7 @@ public struct PackageDatabase: Sendable {
             return nil
         case .homebrew:
             return formulas[name] ?? casks[name]
-        case .npm, .npx:
+        case .npm, .npx, .pnpm:
             return npms[name]
         case .uv, .uvx:
             return nil

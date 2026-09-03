@@ -7,11 +7,13 @@ import Testing
     let npm = ManagedPackage(manager: .npm, identifier: "npm:semver", installedVersion: nil, latestVersion: nil)
     let scoped = ManagedPackage(manager: .npm, identifier: "npm:@scope/tool", installedVersion: nil, latestVersion: nil)
     let directApp = ManagedPackage(manager: .macApp, identifier: "mac-app:org.videolan.vlc", catalogIdentifier: "brew:cask:vlc", installedVersion: "3", latestVersion: nil)
+    let pnpm = ManagedPackage(manager: .pnpm, identifier: "pnpm:tsx", installedVersion: nil, latestVersion: nil)
 
     #expect(PackageDossierClient.url(for: brew)?.absoluteString == "https://automicvault.com/pkg/brew/caddy.json")
     #expect(PackageDossierClient.url(for: npm)?.absoluteString == "https://automicvault.com/pkg/npm/semver.json")
     #expect(PackageDossierClient.url(for: scoped)?.absoluteString == "https://automicvault.com/pkg/npm/@scope%2Ftool.json")
     #expect(PackageDossierClient.url(for: directApp)?.absoluteString == "https://automicvault.com/pkg/brew/vlc.json")
+    #expect(PackageDossierClient.url(for: pnpm)?.absoluteString == "https://automicvault.com/pkg/npm/tsx.json")
 }
 
 @Test func decodesPackageDossierPageSubset() throws {

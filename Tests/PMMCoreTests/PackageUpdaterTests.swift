@@ -56,11 +56,12 @@ private final class ProgressRecorder: @unchecked Sendable {
     // installed, which must not be read off whatever machine runs the suite.
     let updater = PackageUpdater(
         runner: runner,
-        toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "uv": "/fake/uv"]
+        toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "pnpm": "/fake/pnpm", "uv": "/fake/uv"]
     )
 
     try updater.update(package(.homebrew, "brew:git", displayName: "Git"))
     try updater.update(package(.npm, "npm:@scope/tool", displayName: "Scoped Tool"))
+    try updater.update(package(.pnpm, "pnpm:@scope/tool", displayName: "Scoped Tool"))
     try updater.update(package(.npx, "npx:acorn", displayName: "Acorn"))
     try updater.update(package(.uv, "uv:tool:ruff", displayName: "Ruff", summary: "uv-installed tool", category: "language-runtime"))
     try updater.update(package(.uv, "uv:cpython:3.13", displayName: "uv Managed Python 3.13", latestVersion: "3.13.14", summary: "uv-managed Python", category: "language-runtime"))
@@ -68,11 +69,12 @@ private final class ProgressRecorder: @unchecked Sendable {
     #expect(runner.commands == [
         "/fake/brew upgrade git",
         "/fake/npm install -g @scope/tool@latest",
+        "/fake/pnpm update -g @scope/tool",
         "/fake/npm exec --yes --package acorn@2.0.0 -- true",
         "/fake/uv tool upgrade ruff --color always",
         "/fake/uv python install 3.13.14 --color always",
     ])
-    #expect(runner.options.map(\.terminal) == Array(repeating: true, count: 5))
+    #expect(runner.options.map(\.terminal) == Array(repeating: true, count: 6))
 }
 
 @Test func packageUpdaterPrefersBinstallWhenItIsInstalled() throws {

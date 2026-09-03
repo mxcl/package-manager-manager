@@ -256,7 +256,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
                 self.snapshot.loadingManagers?.remove(result.manager)
                 self.publishSnapshot()
             }
-            for await result in scanner.results(for: [.npm, .npx, .uv], database: database, mode: .fresh) {
+            for await result in scanner.results(for: [.npm, .npx, .pnpm, .uv], database: database, mode: .fresh) {
                 guard !Task.isCancelled else { return }
                 self.applyScanResult(
                     result,

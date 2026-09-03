@@ -569,6 +569,18 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(scoped.identifier == "npm:@scope/tool")
     #expect(scoped.section == .javascript)
 
+    let pnpm = try #require(MainWindowPackageURLRequest(identifier: "pnpm:@scope/tool"))
+    #expect(pnpm.manager == .pnpm)
+    #expect(pnpm.name == "@scope/tool")
+    #expect(pnpm.identifier == "pnpm:@scope/tool")
+    #expect(pnpm.section == .javascript)
+
+    let pnpmURL = try #require(MainWindowPackageURLRequest(url: URL(string: "pkgmgrmgr://pnpm/@scope/tool")!))
+    #expect(pnpmURL.manager == .pnpm)
+    #expect(pnpmURL.name == "@scope/tool")
+    #expect(pnpmURL.identifier == "pnpm:@scope/tool")
+    #expect(pnpmURL.section == .javascript)
+
     let python = try #require(MainWindowPackageURLRequest(identifier: "brew:python@3.13"))
     #expect(python.manager == .homebrew)
     #expect(python.name == "python@3.13")

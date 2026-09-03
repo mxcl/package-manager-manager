@@ -46,18 +46,20 @@ private final class ProgressRecorder: @unchecked Sendable {
 
 @Test func packageInstallerRunsManagerCommands() throws {
     let runner = RecordingRunner()
-    let installer = PackageInstaller(runner: runner, toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm"])
+    let installer = PackageInstaller(runner: runner, toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "pnpm": "/fake/pnpm"])
 
     try installer.install(package(.homebrew, "brew:git"))
     try installer.install(package(.homebrew, "brew:cask:visual-studio-code"))
     try installer.install(package(.npm, "npm:@scope/tool"))
+    try installer.install(package(.pnpm, "pnpm:@scope/tool"))
 
     #expect(runner.commands == [
         "/fake/brew install git",
         "/fake/brew install --cask visual-studio-code",
         "/fake/npm install -g @scope/tool@latest",
+        "/fake/pnpm add -g @scope/tool@latest",
     ])
-    #expect(runner.options.map(\.terminal) == [true, true, true])
+    #expect(runner.options.map(\.terminal) == [true, true, true, true])
 }
 
 @Test func packageInstallerReportsCommandAndOutputProgress() throws {
