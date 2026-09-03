@@ -172,6 +172,7 @@ public struct RemoteSSHClient: Sendable {
         var packages = manager.map { linuxSystemPackages($0, sections: sections) } ?? []
         packages += linuxNPM(sections: sections)
         packages += linuxPNPM(sections: sections)
+        packages += linuxBun(sections: sections)
         packages += linuxCargo(sections["CARGO"])
         packages += linuxUV(sections: sections)
 
@@ -305,6 +306,28 @@ public struct RemoteSSHClient: Sendable {
                 summary: "Globally installed pnpm package",
                 category: "developer-tools",
                 installLocation: info.path ?? root.map { "\($0)/\(name)" }
+            )
+        }
+    }
+
+    private static func linuxBun(sections: [String: String]) -> [ManagedPackage] {
+        guard let output = sections["BUN_INSTALLED"], !output.isEmpty else { return [] }
+        let parsed = PackageScanner.parseBunList(output)
+        guard !parsed.packages.isEmpty else { return [] }
+
+        let outdated = sections["BUN_OUTDATED"].map(PackageScanner.parseBunOutdated) ?? [:]
+        let installRoot = parsed.rootDirectory ?? sections["BUN_BIN"]?.trimmed
+
+        return parsed.packages.map { name, version in
+            ManagedPackage(
+                manager: .bun,
+                identifier: "bun:\(name)",
+                displayName: name,
+                installedVersion: version,
+                latestVersion: outdated[name],
+                summary: "Globally installed Bun package",
+                category: "developer-tools",
+                installLocation: installRoot.map { "\($0)/node_modules/\(name)" }
             )
         }
     }
@@ -450,7 +473,7 @@ public struct RemoteSSHClient: Sendable {
     ]
 
     private static let linuxInventoryScript = #"""
-    export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$PATH"
+    export PATH="$HOME/.bun/bin:$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$PATH"
     printf '__PMM_LINUX_V1__\n__PMM_PROFILE__\n'
     pretty=Linux
     if [ -r /etc/os-release ]; then . /etc/os-release; pretty=${PRETTY_NAME:-${NAME:-Linux}}; fi
@@ -539,6 +562,11 @@ public struct RemoteSSHClient: Sendable {
       printf '__PMM_PNPM_INSTALLED__\n'; pnpm list -g --depth=0 --json 2>/dev/null || true
       printf '__PMM_PNPM_OUTDATED__\n'; pnpm outdated -g --json 2>/dev/null || true
     fi
+    if command -v bun >/dev/null 2>&1; then
+      printf '__PMM_BUN_BIN__\n'; bun pm bin -g 2>/dev/null || true
+      printf '__PMM_BUN_INSTALLED__\n'; bun pm ls -g 2>/dev/null || true
+      printf '__PMM_BUN_OUTDATED__\n'; bun outdated -g 2>/dev/null || true
+    fi
     if command -v cargo >/dev/null 2>&1; then
       printf '__PMM_CARGO__\n'; cargo install --list --color never 2>/dev/null || true
     fi
@@ -577,6 +605,12 @@ public struct RemoteSSHClient: Sendable {
         case ("uninstall", .pnpm):
             let arguments = "remove -g \(token)"
             command = "if [ -w \"$(pnpm root -g 2>/dev/null || echo ~/.local/share/pnpm)\" ]; then pnpm \(arguments); else sudo -n \"$(command -v pnpm)\" \(arguments); fi"
+        case ("update", .bun):
+            let arguments = "update -g --latest \(token)"
+            command = "if [ -w \"$(bun pm bin -g 2>/dev/null || echo ~/.bun/bin)\" ]; then bun \(arguments); else sudo -n \"$(command -v bun)\" \(arguments); fi"
+        case ("uninstall", .bun):
+            let arguments = "remove -g \(token)"
+            command = "if [ -w \"$(bun pm bin -g 2>/dev/null || echo ~/.bun/bin)\" ]; then bun \(arguments); else sudo -n \"$(command -v bun)\" \(arguments); fi"
         case ("update", .uv) where package.summary == "uv-managed Python":
             command = "uv python install \(shellQuote(package.latestVersion ?? package.packageToken)) --color always"
         case ("uninstall", .uv) where package.summary == "uv-managed Python":
@@ -586,12 +620,12 @@ public struct RemoteSSHClient: Sendable {
         case ("uninstall", .cargoInstall): command = "cargo uninstall \(token) --color always"
         default: command = "echo 'This package action is not supported on Linux.' >&2; exit 64"
         }
-        return "set -e; export PATH=\"$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$PATH\"; \(command) 1>&2; printf '\\n__PMM_LINUX_ACTION_OK__\\n'"
+        return "set -e; export PATH=\"$HOME/.bun/bin:$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$PATH\"; \(command) 1>&2; printf '\\n__PMM_LINUX_ACTION_OK__\\n'"
     }
 
     private static let linuxUpdateAllScript = #"""
     set -e
-    export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$PATH"
+    export PATH="$HOME/.bun/bin:$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$PATH"
     [ ! -r /etc/os-release ] || . /etc/os-release
     manager=''
     case " ${ID:-} ${ID_LIKE:-} " in

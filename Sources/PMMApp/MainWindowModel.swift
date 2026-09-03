@@ -101,7 +101,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .rust: [.cargoInstall, .rustup, .mise]
         case .homebrew: [.homebrew]
         case .apps: [.homebrew, .macApp]
-        case .javascript: [.npm, .npx, .pnpm, .mise]
+        case .javascript: [.npm, .npx, .pnpm, .bun, .mise]
         case .python: [.uv, .uvx, .mise]
         case .skills: [.skills]
         default: []
@@ -229,6 +229,9 @@ struct MainWindowPackageURLRequest: Equatable {
         } else if identifier.hasPrefix("pnpm:") {
             manager = .pnpm
             name = String(identifier.trimmingPrefix("pnpm:"))
+        } else if identifier.hasPrefix("bun:") {
+            manager = .bun
+            name = String(identifier.trimmingPrefix("bun:"))
         } else if identifier.hasPrefix("mise:") {
             manager = .mise
             name = String(identifier.trimmingPrefix("mise:"))
@@ -277,6 +280,9 @@ struct MainWindowPackageURLRequest: Equatable {
         case "pnpm":
             manager = .pnpm
             identifier = "pnpm:\(name)"
+        case "bun":
+            manager = .bun
+            identifier = "bun:\(name)"
         case "mise":
             manager = .mise
             identifier = "mise:\(name)"
@@ -306,7 +312,7 @@ struct MainWindowPackageURLRequest: Equatable {
         case .apk, .apt, .dnf, .zypper: .installed
         case .macApp: .apps
         case .homebrew: .homebrew
-        case .npm, .npx, .pnpm: .javascript
+        case .npm, .npx, .pnpm, .bun: .javascript
         case .mise: .installed
         case .skills: .skills
         case .uv, .uvx: .python
@@ -386,7 +392,7 @@ func mainWindowRegistryURLString(for package: ManagedPackage) -> String? {
     case .homebrew:
         let kind = package.identifier.hasPrefix("brew:cask:") ? "cask" : "formula"
         return "https://formulae.brew.sh/\(kind)/\(package.packageToken)"
-    case .npm, .npx, .pnpm:
+    case .npm, .npx, .pnpm, .bun:
         return "https://www.npmjs.com/package/\(package.packageToken)"
     case .cargoInstall:
         return "https://crates.io/crates/\(package.packageToken)"
@@ -1823,7 +1829,7 @@ func mainWindowSetupSection(_ manager: PackageManagerKind) -> MainWindowSection?
     case .cargoInstall, .rustup: .rust
     case .apk, .apt, .dnf, .zypper: .installed
     case .homebrew: .homebrew
-    case .npm, .npx, .pnpm: .javascript
+    case .npm, .npx, .pnpm, .bun: .javascript
     case .skills: .skills
     case .uv, .uvx: .python
     case .macApp, .mise: nil
@@ -1839,7 +1845,7 @@ func mainWindowManagerSection(for package: ManagedPackage) -> MainWindowSection 
     case .apk, .apt, .dnf, .zypper: return .installed
     case .macApp: return .apps
     case .homebrew: return .homebrew
-    case .npm, .npx, .pnpm: return .javascript
+    case .npm, .npx, .pnpm, .bun: return .javascript
     case .skills: return .skills
     case .uv, .uvx: return .python
     case .mise:

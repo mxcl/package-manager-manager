@@ -252,6 +252,59 @@ import Testing
     #expect(runner.arguments?.last?.contains(#"sudo -n "$(command -v pnpm)" update -g --latest"#) == true)
 }
 
+@Test func remoteBunActionFallsBackToNoninteractiveSudoForSystemGlobalPackages() async throws {
+    let response = RemoteControlResponse(inventory: PackageInventory(packages: []))
+    let runner = RecordingRemoteRunner(result: CommandResult(
+        stdout: String(decoding: try JSONEncoder().encode(response), as: UTF8.self),
+        stderr: "",
+        status: 0
+    ))
+    let package = ManagedPackage(
+        manager: .bun,
+        identifier: "bun:@openai/codex",
+        installedVersion: "0.146.0",
+        latestVersion: "0.147.0"
+    )
+
+    _ = try await RemoteSSHClient(runner: runner).update(package, on: RemoteHost(destination: "atlas"))
+
+    #expect(runner.arguments?.last?.contains(#"bun pm bin -g"#) == true)
+    #expect(runner.arguments?.last?.contains(#"sudo -n "$(command -v bun)" update -g --latest"#) == true)
+}
+
+@Test func remoteLinuxInventoryParsesBunPackages() async throws {
+    let listOutput = """
+    /home/user node_modules (2)
+    ├── prettier@3.0.0
+    └── @openai/codex@0.146.0
+    """
+    let outdatedOutput = """
+    |--------------------------------------|
+    | Package      | Current | Update | Latest |
+    |--------------|---------|--------|--------|
+    | prettier     | 3.0.0   | 3.0.0  | 3.9.6  |
+    |--------------------------------------|
+    """
+    let payload = """
+    __PMM_LINUX_V1__
+    __PMM_PROFILE__
+    Linux:debian:1:apt
+    __PMM_BUN_BIN__
+    /home/user/.bun/bin
+    __PMM_BUN_INSTALLED__
+    \(listOutput)
+    __PMM_BUN_OUTDATED__
+    \(outdatedOutput)
+    __PMM_END__
+    """
+    let runner = RecordingRemoteRunner(result: CommandResult(stdout: payload, stderr: "", status: 0))
+    let response = try await RemoteSSHClient(runner: runner).inventory(on: RemoteHost(destination: "atlas"))
+    let bunPackages = response.inventory.packages.filter { $0.manager == .bun }
+    #expect(bunPackages.count == 2)
+    #expect(bunPackages.first { $0.displayName == "prettier" }?.latestVersion == "3.9.6")
+    #expect(bunPackages.first { $0.displayName == "@openai/codex" }?.installedVersion == "0.146.0")
+}
+
 private final class RecordingRemoteRunner: CommandRunning, @unchecked Sendable {
     private let result: CommandResult
     private let lock = NSLock()

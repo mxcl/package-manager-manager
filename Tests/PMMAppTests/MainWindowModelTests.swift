@@ -581,6 +581,18 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(pnpmURL.identifier == "pnpm:@scope/tool")
     #expect(pnpmURL.section == .javascript)
 
+    let bunPkg = try #require(MainWindowPackageURLRequest(identifier: "bun:@scope/tool"))
+    #expect(bunPkg.manager == .bun)
+    #expect(bunPkg.name == "@scope/tool")
+    #expect(bunPkg.identifier == "bun:@scope/tool")
+    #expect(bunPkg.section == .javascript)
+
+    let bunURL = try #require(MainWindowPackageURLRequest(url: URL(string: "pkgmgrmgr://bun/@scope/tool")!))
+    #expect(bunURL.manager == .bun)
+    #expect(bunURL.name == "@scope/tool")
+    #expect(bunURL.identifier == "bun:@scope/tool")
+    #expect(bunURL.section == .javascript)
+
     let python = try #require(MainWindowPackageURLRequest(identifier: "brew:python@3.13"))
     #expect(python.manager == .homebrew)
     #expect(python.name == "python@3.13")
@@ -1166,6 +1178,18 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
+@Test func javascriptSectionIncludesBunInPackageManagersAndShowsLoading() {
+    #expect(MainWindowSection.javascript.packageManagers.contains(.bun))
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        isRefreshing: true,
+        loadingManagers: [.bun]
+    ))
+    #expect(model.isLoadingCount(for: .javascript))
+}
+
+@MainActor
 @Test func dashboardInstalledThisWeekCountsOnlyCurrentInstalledPackages() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let week = Calendar.current.dateInterval(of: .weekOfYear, for: Date())!
@@ -1437,6 +1461,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .homebrew, identifier: "brew:git", installedVersion: nil, latestVersion: nil)) == "https://formulae.brew.sh/formula/git")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .homebrew, identifier: "brew:cask:visual-studio-code", installedVersion: nil, latestVersion: nil)) == "https://formulae.brew.sh/cask/visual-studio-code")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .npm, identifier: "npm:@scope/tool", installedVersion: nil, latestVersion: nil)) == "https://www.npmjs.com/package/@scope/tool")
+    #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .bun, identifier: "bun:@scope/tool", installedVersion: nil, latestVersion: nil)) == "https://www.npmjs.com/package/@scope/tool")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .cargoInstall, identifier: "cargo:ripgrep", installedVersion: nil, latestVersion: nil)) == "https://crates.io/crates/ripgrep")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .uv, identifier: "uv:tool:ruff", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/ruff/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .uv, identifier: "uv:cpython:3.13", installedVersion: nil, latestVersion: nil)) == nil)

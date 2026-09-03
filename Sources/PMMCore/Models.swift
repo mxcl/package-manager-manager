@@ -3,6 +3,7 @@ import Foundation
 public enum PackageManagerKind: String, Codable, CaseIterable, Sendable {
     case apk
     case apt
+    case bun
     case cargoInstall = "cargo-install"
     case dnf
     case macApp = "mac-app"
@@ -30,6 +31,7 @@ public enum PackageManagerKind: String, Codable, CaseIterable, Sendable {
         switch self {
         case .apk: "apk"
         case .apt: "APT"
+        case .bun: "Bun"
         case .cargoInstall: "cargo install"
         case .dnf: "DNF"
         case .macApp: "App"

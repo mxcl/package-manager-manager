@@ -28,6 +28,8 @@ public struct PackageUninstaller: Sendable {
             try run("npm", ["uninstall", "-g", package.packageToken], onProgress: onProgress)
         case .pnpm:
             try run("pnpm", ["remove", "-g", package.packageToken], onProgress: onProgress)
+        case .bun:
+            try run("bun", ["remove", "-g", package.packageToken], onProgress: onProgress)
         case .npx:
             try removeCachedPackage(package, root: homeDirectory.appendingPathComponent(".npm/_npx", isDirectory: true))
         case .skills:
@@ -47,7 +49,7 @@ public struct PackageUninstaller: Sendable {
 
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
-        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .uv, .uvx:
+        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .uv, .uvx:
             package.installedVersion != nil
         case .skills:
             package.installedVersion != nil && package.identifier.hasPrefix("skills:global:")
