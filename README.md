@@ -60,6 +60,7 @@ pkg⋅mgr² currently inventories:
 - global pnpm packages
 - Skills packages installed with `skills` or `npx skills`
 - `uv tool` tools and `uv` Python installs
+- Python applications installed with `pipx`
 - `uvx` cached environments
 - `cargo install` binaries
 - `rustup` and installed Rust toolchains

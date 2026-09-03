@@ -272,6 +272,29 @@ import Testing
     #expect(runner.arguments?.last?.contains(#"sudo -n "$(command -v bun)" update -g --latest"#) == true)
 }
 
+@Test func remoteLinuxActionRunsPipxCommands() async throws {
+    let response = RemoteControlResponse(inventory: PackageInventory(packages: []))
+    let runner = RecordingRemoteRunner(result: CommandResult(
+        stdout: String(decoding: try JSONEncoder().encode(response), as: UTF8.self),
+        stderr: "",
+        status: 0
+    ))
+    let package = ManagedPackage(
+        manager: .pipx,
+        identifier: "pipx:cowsay",
+        installedVersion: "5.0",
+        latestVersion: "6.1"
+    )
+
+    _ = try await RemoteSSHClient(runner: runner).update(package, on: RemoteHost(destination: "atlas"))
+    #expect(runner.arguments?.last?.contains("pipx upgrade") == true)
+    #expect(runner.arguments?.last?.contains("cowsay") == true)
+
+    _ = try await RemoteSSHClient(runner: runner).uninstall(package, on: RemoteHost(destination: "atlas"))
+    #expect(runner.arguments?.last?.contains("pipx uninstall") == true)
+    #expect(runner.arguments?.last?.contains("cowsay") == true)
+}
+
 @Test func remoteLinuxInventoryParsesBunPackages() async throws {
     let listOutput = """
     /home/user node_modules (2)
@@ -303,6 +326,50 @@ import Testing
     #expect(bunPackages.count == 2)
     #expect(bunPackages.first { $0.displayName == "prettier" }?.latestVersion == "3.9.6")
     #expect(bunPackages.first { $0.displayName == "@openai/codex" }?.installedVersion == "0.146.0")
+}
+
+@Test func remoteLinuxInventoryParsesPipxPackages() async throws {
+    let listJson = """
+    {
+        "pipx_spec_version": "0.1",
+        "venvs": {
+            "cowsay": {
+                "metadata": {
+                    "main_package": {
+                        "package": "cowsay",
+                        "package_version": "5.0",
+                        "apps": ["cowsay"],
+                        "app_paths": [
+                            {
+                                "__Path__": "/home/user/.local/pipx/venvs/cowsay/bin/cowsay",
+                                "__type__": "Path"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    """
+    let outdatedText = "cowsay: 5.0 -> 6.1\n"
+    let payload = """
+    __PMM_LINUX_V1__
+    __PMM_PROFILE__
+    Linux:debian:1:apt
+    __PMM_PIPX_LIST__
+    \(listJson)
+    __PMM_PIPX_OUTDATED__
+    \(outdatedText)
+    __PMM_END__
+    """
+    let runner = RecordingRemoteRunner(result: CommandResult(stdout: payload, stderr: "", status: 0))
+    let response = try await RemoteSSHClient(runner: runner).inventory(on: RemoteHost(destination: "atlas"))
+    let pipxPackages = response.inventory.packages.filter { $0.manager == .pipx }
+    #expect(pipxPackages.count == 1)
+    #expect(pipxPackages.first?.displayName == "cowsay")
+    #expect(pipxPackages.first?.installedVersion == "5.0")
+    #expect(pipxPackages.first?.latestVersion == "6.1")
+    #expect(pipxPackages.first?.binaryPath == "/home/user/.local/pipx/venvs/cowsay/bin/cowsay")
 }
 
 private final class RecordingRemoteRunner: CommandRunning, @unchecked Sendable {

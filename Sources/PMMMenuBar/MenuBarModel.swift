@@ -86,7 +86,7 @@ func menuBarEcosystemIcon(for package: ManagedPackage) -> MenuBarEcosystemIcon {
         return .asset(name: "EcosystemHomebrew", fallbackSystemName: "mug")
     case .npm, .npx, .pnpm, .bun:
         return .asset(name: "EcosystemJavaScript", fallbackSystemName: "curlybraces")
-    case .uv, .uvx:
+    case .uv, .uvx, .pipx:
         return .asset(name: "EcosystemPython", fallbackSystemName: "arrow.forward.to.line")
     case .cargoInstall, .rustup:
         return .asset(name: "EcosystemRust", fallbackSystemName: "hammer")

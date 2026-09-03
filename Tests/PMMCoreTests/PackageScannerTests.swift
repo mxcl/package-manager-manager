@@ -651,6 +651,109 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
     #expect(packages.first?.installedVersion == "2.4.1")
 }
 
+@Test func pipxParsingHelpersParseListAndOutdatedOutput() {
+    let listJson = """
+    {
+        "pipx_spec_version": "0.1",
+        "venvs": {
+            "cowsay": {
+                "metadata": {
+                    "main_package": {
+                        "package": "cowsay",
+                        "package_version": "5.0",
+                        "apps": ["cowsay"],
+                        "app_paths": [
+                            {
+                                "__Path__": "/Users/test/Library/Application Support/pipx/venvs/cowsay/bin/cowsay",
+                                "__type__": "Path"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    """
+    let packages = PackageScanner.parsePipxList(listJson, outdated: ["cowsay": "6.1"])
+    #expect(packages.count == 1)
+    #expect(packages.first?.displayName == "cowsay")
+    #expect(packages.first?.installedVersion == "5.0")
+    #expect(packages.first?.latestVersion == "6.1")
+    #expect(packages.first?.installLocation == "/Users/test/Library/Application Support/pipx/venvs/cowsay")
+    #expect(packages.first?.binaryPath == "/Users/test/Library/Application Support/pipx/venvs/cowsay/bin/cowsay")
+
+    let outdatedJson = """
+    {
+        "data": {
+            "packages": [
+                {
+                    "package": "cowsay",
+                    "latest_version": "6.1",
+                    "version": "5.0"
+                }
+            ]
+        }
+    }
+    """
+    let parsedJson = PackageScanner.parsePipxOutdated(outdatedJson)
+    #expect(parsedJson["cowsay"] == "6.1")
+
+    let outdatedText = """
+    cowsay: 5.0 -> 6.1
+    ruff: 0.1.0 -> 0.2.0
+    """
+    let parsedText = PackageScanner.parsePipxOutdated(outdatedText)
+    #expect(parsedText["cowsay"] == "6.1")
+    #expect(parsedText["ruff"] == "0.2.0")
+}
+
+@Test func pipxScannerUsesVenvAppsAndOutdatedVersions() throws {
+    let listJson = """
+    {
+        "pipx_spec_version": "0.1",
+        "venvs": {
+            "cowsay": {
+                "metadata": {
+                    "main_package": {
+                        "package": "cowsay",
+                        "package_version": "5.0",
+                        "apps": ["cowsay"],
+                        "app_paths": [
+                            {
+                                "__Path__": "/fake/venvs/cowsay/bin/cowsay",
+                                "__type__": "Path"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    """
+    let outdatedText = "cowsay: 5.0 -> 6.1\n"
+    let runner = FakeRunner(responses: [
+        "/fake/pipx list --json": CommandResult(stdout: listJson, stderr: "", status: 0),
+        "/fake/pipx list --outdated --json": CommandResult(stdout: "", stderr: "", status: 1),
+        "/fake/pipx list --outdated": CommandResult(stdout: outdatedText, stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["pipx": "/fake/pipx"])
+    let packages = try scanner.scanPipx(database: PackageDatabase())
+
+    #expect(packages == [
+        ManagedPackage(
+            manager: .pipx,
+            identifier: "pipx:cowsay",
+            displayName: "cowsay",
+            installedVersion: "5.0",
+            latestVersion: "6.1",
+            summary: "Python application installed with pipx",
+            category: "developer-tools",
+            installLocation: "/fake/venvs/cowsay",
+            binaryPath: "/fake/venvs/cowsay/bin/cowsay"
+        )
+    ])
+}
+
 @Test func homebrewScannerUsesCachedAPIMetadata() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     let formulaCache = temp.appendingPathComponent("api/formula", isDirectory: true)

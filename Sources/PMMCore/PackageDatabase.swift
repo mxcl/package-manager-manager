@@ -96,7 +96,7 @@ public struct PackageDatabase: Sendable {
             return formulas[name] ?? casks[name]
         case .npm, .npx, .pnpm, .bun:
             return npms[name]
-        case .uv, .uvx:
+        case .uv, .uvx, .pipx:
             return nil
         }
     }

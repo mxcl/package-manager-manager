@@ -593,6 +593,18 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(bunURL.identifier == "bun:@scope/tool")
     #expect(bunURL.section == .javascript)
 
+    let pipxPkg = try #require(MainWindowPackageURLRequest(identifier: "pipx:cowsay"))
+    #expect(pipxPkg.manager == .pipx)
+    #expect(pipxPkg.name == "cowsay")
+    #expect(pipxPkg.identifier == "pipx:cowsay")
+    #expect(pipxPkg.section == .python)
+
+    let pipxURL = try #require(MainWindowPackageURLRequest(url: URL(string: "pkgmgrmgr://pipx/cowsay")!))
+    #expect(pipxURL.manager == .pipx)
+    #expect(pipxURL.name == "cowsay")
+    #expect(pipxURL.identifier == "pipx:cowsay")
+    #expect(pipxURL.section == .python)
+
     let python = try #require(MainWindowPackageURLRequest(identifier: "brew:python@3.13"))
     #expect(python.manager == .homebrew)
     #expect(python.name == "python@3.13")
@@ -1463,6 +1475,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .npm, identifier: "npm:@scope/tool", installedVersion: nil, latestVersion: nil)) == "https://www.npmjs.com/package/@scope/tool")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .bun, identifier: "bun:@scope/tool", installedVersion: nil, latestVersion: nil)) == "https://www.npmjs.com/package/@scope/tool")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .cargoInstall, identifier: "cargo:ripgrep", installedVersion: nil, latestVersion: nil)) == "https://crates.io/crates/ripgrep")
+    #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .pipx, identifier: "pipx:cowsay", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/cowsay/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .uv, identifier: "uv:tool:ruff", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/ruff/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .uv, identifier: "uv:cpython:3.13", installedVersion: nil, latestVersion: nil)) == nil)
 }

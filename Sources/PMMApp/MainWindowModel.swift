@@ -241,6 +241,9 @@ struct MainWindowPackageURLRequest: Equatable {
         } else if identifier.hasPrefix("skills:global:") {
             manager = .skills
             name = String(identifier.trimmingPrefix("skills:global:"))
+        } else if identifier.hasPrefix("pipx:") {
+            manager = .pipx
+            name = String(identifier.trimmingPrefix("pipx:"))
         } else if identifier.hasPrefix("uv:") {
             manager = .uv
             name = String(identifier.trimmingPrefix("uv:")).replacingOccurrences(of: ":", with: "/")
@@ -289,6 +292,9 @@ struct MainWindowPackageURLRequest: Equatable {
         case "npx":
             manager = .npx
             identifier = "npx:\(name)"
+        case "pipx":
+            manager = .pipx
+            identifier = "pipx:\(name)"
         case "skills":
             manager = .skills
             identifier = "skills:global:\(name)"
@@ -315,7 +321,7 @@ struct MainWindowPackageURLRequest: Equatable {
         case .npm, .npx, .pnpm, .bun: .javascript
         case .mise: .installed
         case .skills: .skills
-        case .uv, .uvx: .python
+        case .uv, .uvx, .pipx: .python
         }
     }
 
@@ -396,8 +402,8 @@ func mainWindowRegistryURLString(for package: ManagedPackage) -> String? {
         return "https://www.npmjs.com/package/\(package.packageToken)"
     case .cargoInstall:
         return "https://crates.io/crates/\(package.packageToken)"
-    case .uv, .uvx:
-        guard package.identifier.hasPrefix("uv:tool:") || package.manager == .uvx else { return nil }
+    case .uv, .uvx, .pipx:
+        guard package.manager == .pipx || package.identifier.hasPrefix("uv:tool:") || package.manager == .uvx else { return nil }
         return "https://pypi.org/project/\(package.packageToken)/"
     case .apk, .apt, .dnf, .zypper, .macApp, .rustup, .mise:
         return nil
@@ -1831,7 +1837,7 @@ func mainWindowSetupSection(_ manager: PackageManagerKind) -> MainWindowSection?
     case .homebrew: .homebrew
     case .npm, .npx, .pnpm, .bun: .javascript
     case .skills: .skills
-    case .uv, .uvx: .python
+    case .uv, .uvx, .pipx: .python
     case .macApp, .mise: nil
     }
 }
@@ -1847,7 +1853,7 @@ func mainWindowManagerSection(for package: ManagedPackage) -> MainWindowSection 
     case .homebrew: return .homebrew
     case .npm, .npx, .pnpm, .bun: return .javascript
     case .skills: return .skills
-    case .uv, .uvx: return .python
+    case .uv, .uvx, .pipx: return .python
     case .mise:
         switch package.packageToken.lowercased() {
         case "node", "bun", "deno": return .javascript
