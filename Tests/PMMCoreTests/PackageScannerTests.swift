@@ -518,6 +518,7 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(goimports?.installedVersion == "0.49.0")
     #expect(goimports?.latestVersion == "0.50.0")
     #expect(goimports?.homepage == "https://pkg.go.dev/golang.org/x/tools/cmd/goimports")
+    #expect(goimports?.repo == "https://github.com/golang/tools")
     #expect(goimports?.binaryPath == "/Users/test/go/bin/goimports")
 
     let hey = packages.first { $0.displayName == "hey" }

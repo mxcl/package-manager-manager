@@ -719,6 +719,11 @@ public struct PackageScanner: @unchecked Sendable {
                     if parts.count >= 3 {
                         return "https://github.com/\(parts[1])/\(parts[2])"
                     }
+                } else if path.hasPrefix("golang.org/x/") {
+                    let parts = path.split(separator: "/")
+                    if parts.count >= 3 {
+                        return "https://github.com/golang/\(parts[2])"
+                    }
                 }
                 return nil
             }()

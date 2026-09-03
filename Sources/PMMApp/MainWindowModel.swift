@@ -96,6 +96,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .homebrew: "EcosystemHomebrew"
         case .javascript: "EcosystemJavaScript"
         case .python: "EcosystemPython"
+        case .go: "EcosystemGo"
         default: nil
         }
     }

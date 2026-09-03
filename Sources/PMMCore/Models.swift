@@ -36,7 +36,7 @@ public enum PackageManagerKind: String, Codable, CaseIterable, Sendable {
         case .bun: "Bun"
         case .cargoInstall: "cargo install"
         case .dnf: "DNF"
-        case .goInstall: "go install"
+        case .goInstall: "Go"
         case .macApp: "App"
         case .rustup: "rustup"
         case .homebrew: "Homebrew"
