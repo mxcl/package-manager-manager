@@ -248,7 +248,7 @@ public struct PackageScanner: @unchecked Sendable {
         let result = try runner.run(pnpm, ["list", "-g", "--depth=0", "--json"])
         guard result.status == 0 else { return [] }
 
-        let dependencies = parsePNPMDependencies(result.stdout)
+        let dependencies = Self.parsePNPMDependencies(result.stdout)
         return dependencies.compactMap { name, dependency in
             let version = dependency.version
             let curation = database.metadata(for: .pnpm, name: name)
@@ -762,12 +762,12 @@ public struct PackageScanner: @unchecked Sendable {
         }
     }
 
-    private struct PNPMDependency {
+    struct PNPMDependency: Equatable, Sendable {
         let version: String?
         let path: String?
     }
 
-    private func parsePNPMDependencies(_ stdout: String) -> [String: PNPMDependency] {
+    static func parsePNPMDependencies(_ stdout: String) -> [String: PNPMDependency] {
         guard let data = stdout.data(using: .utf8) else { return [:] }
         var result: [String: PNPMDependency] = [:]
 
@@ -793,9 +793,9 @@ public struct PackageScanner: @unchecked Sendable {
         return result
     }
 
-    private func pnpmOutdated(_ pnpm: String) -> [String: String] {
-        guard let stdout = try? runner.run(pnpm, ["outdated", "-g", "--json"]).stdout else { return [:] }
-        if let object = jsonObject(stdout) {
+    static func parsePNPMOutdated(_ stdout: String) -> [String: String] {
+        if let data = stdout.data(using: .utf8),
+           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             return object.reduce(into: [:]) { result, pair in
                 guard let body = pair.value as? [String: Any],
                       let latest = body["latest"] as? String ?? body["wanted"] as? String else { return }
@@ -811,6 +811,11 @@ public struct PackageScanner: @unchecked Sendable {
             }
         }
         return [:]
+    }
+
+    private func pnpmOutdated(_ pnpm: String) -> [String: String] {
+        guard let stdout = try? runner.run(pnpm, ["outdated", "-g", "--json"]).stdout else { return [:] }
+        return Self.parsePNPMOutdated(stdout)
     }
 
     private func uvTools(_ uv: String, toolDir: String?, includeOutdated: Bool, database: PackageDatabase) throws -> [ManagedPackage] {

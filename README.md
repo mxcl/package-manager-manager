@@ -41,7 +41,7 @@ over SSH, including hosts on your local network or Tailscale network.
 
 Each host gets its own Installed and Outdated sections in the sidebar. Linux
 inventory includes native packages that provide command-line tools, plus global npm,
-cargo-install, and uv packages when those tools are present. System-package actions
+pnpm, cargo-install, and uv packages when those tools are present. System-package actions
 use non-interactive sudo; without it, those packages remain visible but read-only.
 
 pkg⋅mgr² uses OpenSSH directly. Your keys, agent, host aliases, and
