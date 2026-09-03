@@ -6,6 +6,7 @@ public enum PackageManagerKind: String, Codable, CaseIterable, Sendable {
     case bun
     case cargoInstall = "cargo-install"
     case dnf
+    case goInstall = "go-install"
     case macApp = "mac-app"
     case rustup
     case homebrew
@@ -35,6 +36,7 @@ public enum PackageManagerKind: String, Codable, CaseIterable, Sendable {
         case .bun: "Bun"
         case .cargoInstall: "cargo install"
         case .dnf: "DNF"
+        case .goInstall: "go install"
         case .macApp: "App"
         case .rustup: "rustup"
         case .homebrew: "Homebrew"

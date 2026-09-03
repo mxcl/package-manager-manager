@@ -498,6 +498,87 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     ])
 }
 
+@Test func goParsingHelpersParseVersionAndListJSON() {
+    let versionOutput = """
+    /Users/test/go/bin/goimports: go1.27.1
+    \tpath\tgolang.org/x/tools/cmd/goimports
+    \tmod\tgolang.org/x/tools\tv0.49.0\th1:abc
+    \tdep\tgolang.org/x/mod\tv0.39.0
+    /Users/test/go/bin/hey: go1.27.1
+    \tpath\tgithub.com/rakyll/hey
+    \tmod\tgithub.com/rakyll/hey\tv0.1.5\th1:def
+    """
+    let packages = PackageScanner.parseGoVersionList(versionOutput, latestVersions: [
+        "golang.org/x/tools": "v0.50.0",
+        "github.com/rakyll/hey": "0.1.5",
+    ])
+    #expect(packages.count == 2)
+    let goimports = packages.first { $0.displayName == "goimports" }
+    #expect(goimports?.identifier == "go:golang.org/x/tools/cmd/goimports")
+    #expect(goimports?.installedVersion == "0.49.0")
+    #expect(goimports?.latestVersion == "0.50.0")
+    #expect(goimports?.homepage == "https://pkg.go.dev/golang.org/x/tools/cmd/goimports")
+    #expect(goimports?.binaryPath == "/Users/test/go/bin/goimports")
+
+    let hey = packages.first { $0.displayName == "hey" }
+    #expect(hey?.identifier == "go:github.com/rakyll/hey")
+    #expect(hey?.installedVersion == "0.1.5")
+    #expect(hey?.latestVersion == "0.1.5")
+    #expect(hey?.repo == "https://github.com/rakyll/hey")
+
+    let listJson = """
+    {
+    \t"Path": "golang.org/x/tools",
+    \t"Version": "v0.50.0"
+    }
+    {
+    \t"Path": "github.com/rakyll/hey",
+    \t"Version": "v0.1.5"
+    }
+    """
+    let parsedLatest = PackageScanner.parseGoListJSON(listJson)
+    #expect(parsedLatest["golang.org/x/tools"] == "0.50.0")
+    #expect(parsedLatest["github.com/rakyll/hey"] == "0.1.5")
+}
+
+@Test func goInstallScannerParsesBinariesAndMetadata() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let bin = temp.appendingPathComponent("bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+    let binaryFile = bin.appendingPathComponent("hey")
+    FileManager.default.createFile(atPath: binaryFile.path, contents: Data())
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let versionOutput = """
+    \(binaryFile.path): go1.27.1
+    \tpath\tgithub.com/rakyll/hey
+    \tmod\tgithub.com/rakyll/hey\tv0.1.5\th1:abc
+    """
+    let runner = FakeRunner(responses: [
+        "/fake/go env GOBIN GOPATH": CommandResult(stdout: "\(bin.path)\n\(temp.path)\n", stderr: "", status: 0),
+        "/fake/go version -m \(binaryFile.path)": CommandResult(stdout: versionOutput, stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["go": "/fake/go"])
+    let packages = try scanner.scanGoInstall(database: PackageDatabase())
+
+    #expect(packages == [
+        ManagedPackage(
+            manager: .goInstall,
+            identifier: "go:github.com/rakyll/hey",
+            displayName: "hey",
+            installedVersion: "0.1.5",
+            latestVersion: nil,
+            summary: "github.com/rakyll/hey",
+            category: "developer-tools",
+            homepage: "https://pkg.go.dev/github.com/rakyll/hey",
+            docs: "https://pkg.go.dev/github.com/rakyll/hey",
+            repo: "https://github.com/rakyll/hey",
+            installLocation: binaryFile.path,
+            binaryPath: binaryFile.path
+        )
+    ])
+}
+
 @Test func pnpmScannerResolvesScopedPackageWithStringBinToUnscopedBasename() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     let globalDir = temp.appendingPathComponent("pnpm/global/5", isDirectory: true)

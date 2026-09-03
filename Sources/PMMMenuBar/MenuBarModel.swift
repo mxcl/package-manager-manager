@@ -92,6 +92,8 @@ func menuBarEcosystemIcon(for package: ManagedPackage) -> MenuBarEcosystemIcon {
         return .asset(name: "EcosystemRust", fallbackSystemName: "hammer")
     case .skills:
         return .system(name: "wand.and.stars")
+    case .goInstall:
+        return .system(name: "chevron.left.forwardslash.chevron.right")
     case .macApp:
         return switch package.appProvenance ?? .unknown {
         case .homebrew: .paired(assetName: "EcosystemHomebrew", fallbackSystemName: "mug", systemName: "macwindow")

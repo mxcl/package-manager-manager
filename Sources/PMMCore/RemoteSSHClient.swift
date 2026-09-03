@@ -176,6 +176,7 @@ public struct RemoteSSHClient: Sendable {
         packages += linuxCargo(sections["CARGO"])
         packages += linuxUV(sections: sections)
         packages += linuxPipx(sections: sections)
+        packages += linuxGo(sections["GO_VERSION"])
 
         let failures = lines(sections["ERRORS"]).map { RemoteControlFailure(message: $0) }
         return RemoteControlResponse(
@@ -440,6 +441,11 @@ public struct RemoteSSHClient: Sendable {
         return PackageScanner.parsePipxList(output, outdated: outdated)
     }
 
+    private static func linuxGo(_ output: String?) -> [ManagedPackage] {
+        guard let output, !output.isEmpty else { return [] }
+        return PackageScanner.parseGoVersionList(output)
+    }
+
     private static func linuxSections(_ output: String) -> [String: String] {
         var sections: [String: [String]] = [:]
         var current: String?
@@ -588,6 +594,20 @@ public struct RemoteSSHClient: Sendable {
       printf '__PMM_PIPX_LIST__\n'; pipx list --json 2>/dev/null || true
       printf '__PMM_PIPX_OUTDATED__\n'; pipx list --outdated --json 2>/dev/null || pipx list --outdated 2>/dev/null || true
     fi
+    if command -v go >/dev/null 2>&1; then
+      gobin=$(go env GOBIN 2>/dev/null || true)
+      if [ -z "$gobin" ]; then
+        gopath=$(go env GOPATH 2>/dev/null || true)
+        [ -n "$gopath" ] && gobin="$gopath/bin" || gobin="$HOME/go/bin"
+      fi
+      if [ -d "$gobin" ]; then
+        bins=$(find "$gobin" -maxdepth 1 -type f -perm /111 2>/dev/null || true)
+        if [ -n "$bins" ]; then
+          printf '__PMM_GO_VERSION__\n'
+          go version -m $bins 2>/dev/null || true
+        fi
+      fi
+    fi
     printf '__PMM_END__\n'
     """#
 
@@ -624,6 +644,11 @@ public struct RemoteSSHClient: Sendable {
             command = "if [ -w \"$(bun pm bin -g 2>/dev/null || echo ~/.bun/bin)\" ]; then bun \(arguments); else sudo -n \"$(command -v bun)\" \(arguments); fi"
         case ("update", .pipx): command = "pipx upgrade \(token)"
         case ("uninstall", .pipx): command = "pipx uninstall \(token)"
+        case ("update", .goInstall):
+            command = "go install \(shellQuote(package.packageToken + "@latest"))"
+        case ("uninstall", .goInstall):
+            let path = shellQuote(package.binaryPath ?? package.installLocation ?? "")
+            command = "rm -f \(path)"
         case ("update", .uv) where package.summary == "uv-managed Python":
             command = "uv python install \(shellQuote(package.latestVersion ?? package.packageToken)) --color always"
         case ("uninstall", .uv) where package.summary == "uv-managed Python":

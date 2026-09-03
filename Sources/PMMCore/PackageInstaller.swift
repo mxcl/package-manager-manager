@@ -28,13 +28,15 @@ public struct PackageInstaller: Sendable {
             try run("bun", ["add", "-g", "\(package.packageToken)@latest"], onProgress: onProgress)
         case .pipx:
             try run("pipx", ["install", package.packageToken], onProgress: onProgress)
+        case .goInstall:
+            try run("go", ["install", "\(package.packageToken)@latest"], onProgress: onProgress)
         case .apk, .apt, .cargoInstall, .dnf, .zypper, .macApp, .rustup, .mise, .npx, .skills, .uv, .uvx:
             throw PackageInstallError.unsupportedManager(package.manager)
         }
     }
 
     public static func supports(_ package: ManagedPackage) -> Bool {
-        package.installedVersion == nil && [.homebrew, .npm, .pnpm, .bun, .pipx].contains(package.manager)
+        package.installedVersion == nil && [.homebrew, .npm, .pnpm, .bun, .pipx, .goInstall].contains(package.manager)
     }
 
     private func run(

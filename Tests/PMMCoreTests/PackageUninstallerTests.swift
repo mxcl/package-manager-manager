@@ -72,6 +72,28 @@ private final class ProgressRecorder: @unchecked Sendable {
     #expect(runner.options.map(\.terminal) == [true, true, true, true, true, true, true, true])
 }
 
+@Test func packageUninstallerRemovesGoBinary() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+    let binaryFile = temp.appendingPathComponent("hey")
+    FileManager.default.createFile(atPath: binaryFile.path, contents: Data())
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let runner = RecordingRunner()
+    let uninstaller = PackageUninstaller(runner: runner)
+    let pkg = ManagedPackage(
+        manager: .goInstall,
+        identifier: "go:github.com/rakyll/hey",
+        displayName: "hey",
+        installedVersion: "0.1.5",
+        latestVersion: nil,
+        binaryPath: binaryFile.path
+    )
+    #expect(FileManager.default.fileExists(atPath: binaryFile.path) == true)
+    try uninstaller.uninstall(pkg)
+    #expect(FileManager.default.fileExists(atPath: binaryFile.path) == false)
+}
+
 @Test func packageUninstallerReportsCommandAndOutputProgress() throws {
     let runner = RecordingRunner()
     runner.streamedOutput = "removed\n"

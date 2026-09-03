@@ -645,6 +645,147 @@ public struct PackageScanner: @unchecked Sendable {
         return Self.parsePipxOutdated(textStdout)
     }
 
+    public func scanGoInstall(database: PackageDatabase) throws -> [ManagedPackage] {
+        try scanGoInstall(database: database, mode: .fresh)
+    }
+
+    private func scanGoInstall(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
+        guard let go = executable(named: "go") else { return [] }
+        let binDir = goBinDirectory(go: go)
+        guard let entries = try? fileManager.contentsOfDirectory(atPath: binDir), !entries.isEmpty else { return [] }
+        let binPaths = entries.compactMap { entry -> String? in
+            guard !entry.hasPrefix(".") else { return nil }
+            let fullPath = (binDir as NSString).appendingPathComponent(entry)
+            var isDir: ObjCBool = false
+            guard fileManager.fileExists(atPath: fullPath, isDirectory: &isDir), !isDir.boolValue else { return nil }
+            return fullPath
+        }
+        guard !binPaths.isEmpty else { return [] }
+
+        let result = try runner.run(go, ["version", "-m"] + binPaths)
+        guard result.status == 0 else { return [] }
+
+        var latest: [String: String] = [:]
+        if mode.isFresh {
+            let initialPackages = Self.parseGoVersionList(result.stdout)
+            let modules = Set(initialPackages.compactMap { $0.summary })
+            if !modules.isEmpty {
+                let targets = modules.map { "\($0)@latest" }
+                if let listResult = try? runner.run(go, ["list", "-m", "-json"] + targets), listResult.status == 0 {
+                    latest = Self.parseGoListJSON(listResult.stdout)
+                }
+            }
+        }
+
+        return Self.parseGoVersionList(result.stdout, latestVersions: latest)
+    }
+
+    private func goBinDirectory(go: String) -> String {
+        if let envBin = ProcessInfo.processInfo.environment["GOBIN"], !envBin.isEmpty {
+            return envBin
+        }
+        if let result = try? runner.run(go, ["env", "GOBIN", "GOPATH"]), result.status == 0 {
+            let lines = result.stdout.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            if lines.count >= 1, !lines[0].isEmpty {
+                return lines[0]
+            }
+            if lines.count >= 2, !lines[1].isEmpty {
+                return (lines[1] as NSString).appendingPathComponent("bin")
+            }
+        }
+        return fileManager.homeDirectoryForCurrentUser.appendingPathComponent("go/bin").path
+    }
+
+    static func parseGoVersionList(
+        _ output: String,
+        latestVersions: [String: String] = [:]
+    ) -> [ManagedPackage] {
+        var packages: [ManagedPackage] = []
+        var currentBinaryPath: String?
+        var currentPath: String?
+        var currentModule: String?
+        var currentVersion: String?
+
+        func flush() {
+            guard let binaryPath = currentBinaryPath,
+                  let path = currentPath else { return }
+            let binaryName = URL(fileURLWithPath: binaryPath).lastPathComponent
+            let version = currentVersion.map { $0.hasPrefix("v") ? String($0.dropFirst()) : $0 }
+            let latest = (currentModule.flatMap { latestVersions[$0] } ?? latestVersions[path])
+                .map { $0.hasPrefix("v") ? String($0.dropFirst()) : $0 }
+            let repo: String? = {
+                if path.hasPrefix("github.com/") {
+                    let parts = path.split(separator: "/")
+                    if parts.count >= 3 {
+                        return "https://github.com/\(parts[1])/\(parts[2])"
+                    }
+                }
+                return nil
+            }()
+
+            packages.append(ManagedPackage(
+                manager: .goInstall,
+                identifier: "go:\(path)",
+                displayName: binaryName,
+                installedVersion: version,
+                latestVersion: latest,
+                summary: path,
+                category: "developer-tools",
+                homepage: "https://pkg.go.dev/\(path)",
+                docs: "https://pkg.go.dev/\(path)",
+                repo: repo,
+                lastUpdatedAt: nil,
+                pulseKind: nil,
+                installLocation: binaryPath,
+                binaryPath: binaryPath
+            ))
+        }
+
+        for line in output.components(separatedBy: .newlines) {
+            if !line.hasPrefix("\t") {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if let colonIndex = trimmed.firstIndex(of: ":") {
+                    flush()
+                    currentBinaryPath = String(trimmed[..<colonIndex])
+                    currentPath = nil
+                    currentModule = nil
+                    currentVersion = nil
+                }
+            } else {
+                let parts = line.split(separator: "\t").map(String.init)
+                guard parts.count >= 2 else { continue }
+                let key = parts[0].trimmingCharacters(in: .whitespaces)
+                let val = parts[1].trimmingCharacters(in: .whitespaces)
+                if key == "path" {
+                    currentPath = val
+                } else if key == "mod" {
+                    currentModule = val
+                    if parts.count >= 3 {
+                        currentVersion = parts[2].trimmingCharacters(in: .whitespaces)
+                    }
+                }
+            }
+        }
+        flush()
+        return packages.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+    }
+
+    static func parseGoListJSON(_ output: String) -> [String: String] {
+        var latest: [String: String] = [:]
+        guard let regex = try? NSRegularExpression(pattern: #"\{[^{}]*\}"#, options: []) else { return [:] }
+        let nsString = output as NSString
+        let matches = regex.matches(in: output, options: [], range: NSRange(location: 0, length: nsString.length))
+        for match in matches {
+            guard let range = Range(match.range, in: output),
+                  let data = String(output[range]).data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let path = json["Path"] as? String,
+                  let version = json["Version"] as? String else { continue }
+            latest[path] = version.hasPrefix("v") ? String(version.dropFirst()) : version
+        }
+        return latest
+    }
+
     private func parseCargoInstallList(
         _ output: String,
         latestVersions: [String: String] = [:]
@@ -1330,6 +1471,7 @@ public struct PackageScanner: @unchecked Sendable {
                             packages = cached
                         }
                     case .pipx: packages = try scanPipx(database: database, mode: mode)
+                    case .goInstall: packages = try scanGoInstall(database: database, mode: mode)
                     case .skills: packages = try scanSkills(database: database)
                     case .pnpm: packages = try scanPNPM(database: database, mode: mode)
                     case .uv: packages = try scanUV(database: database, mode: mode)
