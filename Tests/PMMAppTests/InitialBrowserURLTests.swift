@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import WebKit
 @testable import PMMApp
 
 @Test func initialBrowserURLAddsReadmeToGitHubRepoRoots() throws {
@@ -23,4 +24,9 @@ import Testing
     #expect(shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: false, targetFrameIsMainFrame: true))
     #expect(shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: true, targetFrameIsMainFrame: nil))
     #expect(shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: false, targetFrameIsMainFrame: nil))
+
+    // Automated script redirects or popups must never open in system browser
+    #expect(!shouldOpenNavigationInSystemBrowser(navigationType: .other, allowsEmbeddedNavigation: true, targetFrameIsMainFrame: nil))
+    #expect(!shouldOpenNavigationInSystemBrowser(navigationType: .other, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: nil))
+    #expect(!shouldOpenNavigationInSystemBrowser(navigationType: .other, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: true))
 }

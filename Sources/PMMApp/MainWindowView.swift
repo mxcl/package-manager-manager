@@ -1393,9 +1393,23 @@ struct PackageCommandProgressView: View {
                         .lineLimit(2)
                         .textSelection(.enabled)
                 }
+            } else {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Running action…")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundStyle(SystemColor.secondaryText)
+                }
             }
-            TerminalOutputTextView(output: output)
-                .frame(width: TerminalOutputTextView.scrollViewWidth, height: 300)
+            ZStack(alignment: .center) {
+                TerminalOutputTextView(output: output)
+                    .frame(width: TerminalOutputTextView.scrollViewWidth, height: 300)
+                if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && error == nil {
+                    ProgressView()
+                        .controlSize(.regular)
+                }
+            }
             if let error {
                 HStack {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -1408,7 +1422,7 @@ struct PackageCommandProgressView: View {
             }
         }
         .frame(width: TerminalOutputTextView.scrollViewWidth)
-        .padding(5)
+        .padding(14)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: SystemColor.windowTint))
     }
 }
@@ -1420,7 +1434,9 @@ private struct PackageWebView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> WKWebView {
-        let webView = WKWebView()
+        let configuration = WKWebViewConfiguration()
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+        let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         webView.underPageBackgroundColor = .white
         webView.navigationDelegate = context.coordinator
@@ -1445,8 +1461,16 @@ private struct PackageWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            guard shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: allowsEmbeddedNavigation, targetFrameIsMainFrame: navigationAction.targetFrame?.isMainFrame) else {
-                decisionHandler(.allow)
+            guard shouldOpenNavigationInSystemBrowser(
+                navigationType: navigationAction.navigationType,
+                allowsEmbeddedNavigation: allowsEmbeddedNavigation,
+                targetFrameIsMainFrame: navigationAction.targetFrame?.isMainFrame
+            ) else {
+                if navigationAction.targetFrame?.isMainFrame == true && allowsEmbeddedNavigation {
+                    decisionHandler(.allow)
+                } else {
+                    decisionHandler(.cancel)
+                }
                 return
             }
 
@@ -1458,8 +1482,13 @@ private struct PackageWebView: NSViewRepresentable {
     }
 }
 
-func shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: Bool, targetFrameIsMainFrame: Bool?) -> Bool {
-    targetFrameIsMainFrame == nil || (targetFrameIsMainFrame == true && !allowsEmbeddedNavigation)
+func shouldOpenNavigationInSystemBrowser(
+    navigationType: WKNavigationType = .linkActivated,
+    allowsEmbeddedNavigation: Bool,
+    targetFrameIsMainFrame: Bool?
+) -> Bool {
+    guard navigationType == .linkActivated else { return false }
+    return targetFrameIsMainFrame == nil || (targetFrameIsMainFrame == true && !allowsEmbeddedNavigation)
 }
 
 func initialBrowserURL(for url: URL) -> URL {
