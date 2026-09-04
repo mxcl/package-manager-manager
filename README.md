@@ -40,8 +40,8 @@ over SSH, including hosts on your local network or Tailscale network.
    or an alias from `~/.ssh/config`.
 
 Each host gets its own Installed and Outdated sections in the sidebar. Linux
-inventory includes native packages that provide command-line tools, plus global npm,
-pnpm, cargo-install, and uv packages when those tools are present. System-package actions
+inventory includes native packages that provide command-line tools, plus global Bun, npm,
+pnpm, pipx, cargo-install, and uv packages when those tools are present. System-package actions
 use non-interactive sudo; without it, those packages remain visible but read-only.
 
 pkg⋅mgr² uses OpenSSH directly. Your keys, agent, host aliases, and
@@ -83,6 +83,7 @@ Supported update paths:
 - `npm exec --yes --package package@version -- true`
 - `uv tool upgrade`
 - `uv python install`
+- `pipx upgrade`
 - `cargo install --force`
 
 Supported uninstall paths:
@@ -94,6 +95,7 @@ Supported uninstall paths:
 - remove npx cache entries
 - `uv tool uninstall`
 - `uv python uninstall`
+- `pipx uninstall`
 - remove uvx cached environments
 - `cargo uninstall`
 

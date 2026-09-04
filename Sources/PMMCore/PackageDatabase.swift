@@ -8,6 +8,7 @@ public struct PackageDatabase: Sendable {
     private let appCasks: Set<String>
     private let crates: [String: PackageMetadata]
     private let npms: [String: PackageMetadata]
+    private let pipxs: [String: PackageMetadata]
     private let apps: [String: MacAppCatalogEntry]
 
     public init(
@@ -16,6 +17,7 @@ public struct PackageDatabase: Sendable {
         appCasks: Set<String> = [],
         crates: [String: PackageMetadata] = [:],
         npms: [String: PackageMetadata] = [:],
+        pipxs: [String: PackageMetadata] = [:],
         apps: [String: MacAppCatalogEntry] = [:]
     ) {
         self.formulas = formulas
@@ -23,6 +25,7 @@ public struct PackageDatabase: Sendable {
         self.appCasks = appCasks
         self.crates = crates
         self.npms = npms
+        self.pipxs = pipxs
         self.apps = apps
     }
 
@@ -60,6 +63,7 @@ public struct PackageDatabase: Sendable {
             appCasks: decodeAppCasks(db?["casks"]),
             crates: decodeMetadataMap(db?["crates"]),
             npms: decodeMetadataMap(db?["npms"]),
+            pipxs: decodeMetadataMap(db?["pipxs"]),
             apps: decodeAppMap(db?["apps"])
         )
     }
@@ -75,7 +79,8 @@ public struct PackageDatabase: Sendable {
             managedPackages(for: .homebrew, identifierPrefix: "brew:cask", metadata: casks, homebrewPrefix: homebrewPrefix, appNames: appCasks) +
             managedPackages(for: .npm, identifierPrefix: "npm", metadata: npms) +
             managedPackages(for: .pnpm, identifierPrefix: "pnpm", metadata: npms, includePulseMetadata: false) +
-            managedPackages(for: .bun, identifierPrefix: "bun", metadata: npms, includePulseMetadata: false)
+            managedPackages(for: .bun, identifierPrefix: "bun", metadata: npms, includePulseMetadata: false) +
+            managedPackages(for: .pipx, identifierPrefix: "pipx", metadata: pipxs)
         )
         return Dictionary(grouping: packages, by: \.id).compactMap { $0.value.first }
             .sorted {
@@ -96,7 +101,9 @@ public struct PackageDatabase: Sendable {
             return formulas[name] ?? casks[name]
         case .npm, .npx, .pnpm, .bun:
             return npms[name]
-        case .uv, .uvx, .pipx:
+        case .pipx:
+            return pipxs[name]
+        case .uv, .uvx:
             return nil
         }
     }

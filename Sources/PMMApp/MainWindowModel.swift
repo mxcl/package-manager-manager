@@ -102,7 +102,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .homebrew: [.homebrew]
         case .apps: [.homebrew, .macApp]
         case .javascript: [.npm, .npx, .pnpm, .bun, .mise]
-        case .python: [.uv, .uvx, .mise]
+        case .python: [.uv, .uvx, .pipx, .mise]
         case .skills: [.skills]
         default: []
         }
@@ -901,7 +901,11 @@ final class MainWindowModel: NSObject, ObservableObject {
         cancelDiscoverPackageScroll()
         guard showsUpdateAllOutdatedPackages, extendingSelection || selectingRange else {
             packageSelectionAnchorID = package.id
-            selectPackages([package.id])
+            selectedPackageIDs = [package.id]
+            let resolved = displayedPackages.first(where: { $0.id == package.id }) ?? package
+            selectedPackage = resolved
+            selectedLinkTab = nil
+            loadDossier(for: resolved)
             return
         }
 
@@ -1477,8 +1481,22 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     private func package(matching request: MainWindowPackageURLRequest) -> ManagedPackage? {
-        (packageIndex.packagesBySection[request.section] ?? []).first(where: request.matches)
-            ?? packageIndex.packagesBySection.values.lazy.flatMap { $0 }.first(where: request.matches)
+        if let match = (packageIndex.packagesBySection[request.section] ?? []).first(where: request.matches)
+            ?? packageIndex.packagesBySection.values.lazy.flatMap({ $0 }).first(where: request.matches) {
+            return match
+        }
+        if request.manager == .pipx {
+            return ManagedPackage(
+                manager: .pipx,
+                identifier: request.identifier,
+                displayName: request.name,
+                installedVersion: nil,
+                latestVersion: nil,
+                summary: "Python application installed with pipx",
+                category: "developer-tools"
+            )
+        }
+        return nil
     }
 
     private func section(for package: ManagedPackage, preferred: MainWindowSection) -> MainWindowSection {

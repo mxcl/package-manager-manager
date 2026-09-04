@@ -1202,6 +1202,57 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
+@Test func pythonSectionIncludesPipxInPackageManagersAndShowsLoading() {
+    #expect(MainWindowSection.python.packageManagers.contains(.pipx))
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        isRefreshing: true,
+        loadingManagers: [.pipx]
+    ))
+    #expect(model.isLoadingCount(for: .python))
+}
+
+@MainActor
+@Test func uninstalledPipxPackageSynthesizesCandidateAndInstallsViaURLAndDiscover() throws {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: [],
+        isRefreshing: false
+    ))
+
+    let discovered = DiscoverFeedPackage(
+        id: "pipx:cowsay",
+        displayName: "cowsay",
+        agentSummary: "Python application installed with pipx",
+        manager: "pipx",
+        category: "developer-tools",
+        homepage: nil,
+        installURL: URL(string: "pkgmgrmgr://install?package=pipx%3Acowsay")
+    )
+
+    #expect(model.openDiscoverPackage(discovered, installing: true))
+    #expect(model.selectedPackage?.manager == .pipx)
+    #expect(model.selectedPackage?.identifier == "pipx:cowsay")
+    let expectedID = try #require(model.selectedPackage?.id)
+    #expect(model.pendingInstallPackConfirmation == MainWindowInstallPackConfirmation(
+        packageIDs: [expectedID],
+        packageCount: 1
+    ))
+    model.cancelPendingInstallPack()
+
+    #expect(model.openPackageURL(URL(string: "pkgmgrmgr://install?package=pipx%3Acowsay")!))
+    #expect(model.pendingInstallPackConfirmation == MainWindowInstallPackConfirmation(
+        packageIDs: [expectedID],
+        packageCount: 1
+    ))
+
+    #expect(model.openPackageURL(URL(string: "pkgmgrmgr://pipx/cowsay")!))
+    #expect(model.selectedPackage?.identifier == "pipx:cowsay")
+}
+
+@MainActor
 @Test func dashboardInstalledThisWeekCountsOnlyCurrentInstalledPackages() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let week = Calendar.current.dateInterval(of: .weekOfYear, for: Date())!

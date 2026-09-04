@@ -526,15 +526,15 @@ public struct PackageScanner: @unchecked Sendable {
         let outdated = mode.isFresh ? pipxOutdated(pipx) : [:]
         let result = try runner.run(pipx, ["list", "--json"])
         guard result.status == 0 else { return [] }
-        return Self.parsePipxList(result.stdout, outdated: outdated)
+        return Self.parsePipxList(result.stdout, outdated: outdated, database: database)
     }
 
-    static func parsePipxList(_ stdout: String, outdated: [String: String] = [:]) -> [ManagedPackage] {
+    static func parsePipxList(_ stdout: String, outdated: [String: String] = [:], database: PackageDatabase? = nil) -> [ManagedPackage] {
         guard let data = stdout.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let venvs = json["venvs"] as? [String: Any] else { return [] }
 
-        return venvs.compactMap { _, rawVenv in
+        return venvs.compactMap { envName, rawVenv in
             guard let venv = rawVenv as? [String: Any],
                   let metadata = venv["metadata"] as? [String: Any],
                   let mainPackage = metadata["main_package"] as? [String: Any],
@@ -548,19 +548,21 @@ public struct PackageScanner: @unchecked Sendable {
                 return url.deletingLastPathComponent().deletingLastPathComponent().path
             }
 
+            let curation = database?.metadata(for: .pipx, name: envName) ?? database?.metadata(for: .pipx, name: packageName)
+
             return ManagedPackage(
                 manager: .pipx,
-                identifier: "pipx:\(packageName)",
-                displayName: packageName,
+                identifier: "pipx:\(envName)",
+                displayName: envName,
                 installedVersion: version,
-                latestVersion: outdated[packageName],
-                summary: "Python application installed with pipx",
-                category: "developer-tools",
-                homepage: nil,
+                latestVersion: outdated[envName] ?? outdated[packageName],
+                summary: curation?.summary ?? "Python application installed with pipx",
+                category: curation?.category ?? "developer-tools",
+                homepage: curation?.homepage,
                 docs: nil,
                 repo: nil,
-                lastUpdatedAt: nil,
-                pulseKind: nil,
+                lastUpdatedAt: curation?.lastUpdatedAt,
+                pulseKind: curation?.pulseKind,
                 installLocation: installLocation,
                 binaryPath: binaryPath
             )

@@ -176,6 +176,32 @@ private final class LockedStrings: @unchecked Sendable {
     #expect(menuBarCommandInstallPackages(ids: [brew.id], snapshot: busy).isEmpty)
 }
 
+@Test func menuBarInstallSynthesizesUninstalledPipxPackageWhenNotInCatalog() {
+    let snapshot = PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: []
+    )
+
+    let package = menuBarCommandPackage(id: "pipx:cowsay", kind: .install, snapshot: snapshot)
+    #expect(package?.manager == .pipx)
+    #expect(package?.identifier == "pipx:cowsay")
+    #expect(package?.displayName == "cowsay")
+    #expect(package?.packageToken == "cowsay")
+    #expect(package?.installedVersion == nil)
+
+    let packages = menuBarCommandInstallPackages(ids: ["pipx:cowsay"], snapshot: snapshot)
+    #expect(packages.count == 1)
+    #expect(packages.first?.identifier == "pipx:cowsay")
+
+    // If already installed, install command rejects it
+    let installedPipx = ManagedPackage(manager: .pipx, identifier: "pipx:cowsay", installedVersion: "5.0", latestVersion: nil)
+    let installedSnapshot = PackageHostSnapshot(
+        inventory: PackageInventory(packages: [installedPipx]),
+        catalogPackages: []
+    )
+    #expect(menuBarCommandPackage(id: "pipx:cowsay", kind: .install, snapshot: installedSnapshot) == nil)
+}
+
 @Test func helperInstallIsHeldRatherThanDroppedWhileTheHostIsBusy() {
     let id = CargoHelper.binstall.promptKey
 

@@ -116,7 +116,25 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
     let catalogPackage = snapshot.catalogPackages.first { $0.id == id }
     switch kind {
     case .install:
-        guard let package = catalogPackage else { return nil }
+        let package: ManagedPackage
+        if let catalogPackage {
+            package = catalogPackage
+        } else if id.hasPrefix("pipx:") {
+            let trimmed = id.trimmingPrefix("pipx:")
+            let token = String(trimmed.split(separator: ":").first ?? trimmed)
+            guard !token.isEmpty else { return nil }
+            package = ManagedPackage(
+                manager: .pipx,
+                identifier: "pipx:\(token)",
+                displayName: token,
+                installedVersion: nil,
+                latestVersion: nil,
+                summary: "Python application installed with pipx",
+                category: "developer-tools"
+            )
+        } else {
+            return nil
+        }
         let isInstalled = snapshot.inventory?.packages.contains { $0.identifier == package.identifier } == true
         return !isInstalled && PackageInstaller.supports(package) ? package : nil
     case .update:

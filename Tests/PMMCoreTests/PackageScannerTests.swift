@@ -754,6 +754,50 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
     ])
 }
 
+@Test func pipxListRetainsVenvKeyForSuffixedEnvironments() {
+    let listJson = """
+    {
+        "pipx_spec_version": "0.1",
+        "venvs": {
+            "cowsay_x": {
+                "metadata": {
+                    "main_package": {
+                        "package": "cowsay",
+                        "package_version": "5.0",
+                        "apps": ["cowsay_x"],
+                        "app_paths": [
+                            {
+                                "__Path__": "/Users/test/Library/Application Support/pipx/venvs/cowsay_x/bin/cowsay_x",
+                                "__type__": "Path"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    """
+    let db = PackageDatabase(pipxs: [
+        "cowsay": PackageMetadata(summary: "Configurable talking cow", category: "entertainment", homepage: nil, version: "5.0")
+    ])
+
+    let packages = PackageScanner.parsePipxList(listJson, outdated: ["cowsay_x": "6.1"], database: db)
+    #expect(packages.count == 1)
+    let package = packages[0]
+    #expect(package.identifier == "pipx:cowsay_x")
+    #expect(package.displayName == "cowsay_x")
+    #expect(package.packageToken == "cowsay_x")
+    #expect(package.installedVersion == "5.0")
+    #expect(package.latestVersion == "6.1")
+    #expect(package.summary == "Configurable talking cow")
+    #expect(package.category == "entertainment")
+    #expect(package.binaryPath == "/Users/test/Library/Application Support/pipx/venvs/cowsay_x/bin/cowsay_x")
+
+    // Outdated lookup falls back to package name if venv name is not present
+    let fallbackOutdated = PackageScanner.parsePipxList(listJson, outdated: ["cowsay": "6.2"])
+    #expect(fallbackOutdated.first?.latestVersion == "6.2")
+}
+
 @Test func homebrewScannerUsesCachedAPIMetadata() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     let formulaCache = temp.appendingPathComponent("api/formula", isDirectory: true)

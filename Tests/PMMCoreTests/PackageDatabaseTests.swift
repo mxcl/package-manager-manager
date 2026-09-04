@@ -42,6 +42,13 @@ import Testing
               "version": "5.9.2"
             }
           },
+          "pipxs": {
+            "cowsay": {
+              "summary": "Configurable talking cow",
+              "category": "entertainment",
+              "version": "6.1"
+            }
+          },
           "apps": {
             "com.example.Editor": {
               "cask": "example-editor",
@@ -68,6 +75,9 @@ import Testing
     #expect(db.metadata(for: .cargoInstall, name: "ripgrep")?.version == "14.1.1")
     #expect(db.metadata(for: .npm, name: "typescript")?.summary == "TypeScript is a language for application scale JavaScript development")
     #expect(db.metadata(for: .npm, name: "typescript")?.version == "5.9.2")
+    #expect(db.metadata(for: .pipx, name: "cowsay")?.summary == "Configurable talking cow")
+    #expect(db.metadata(for: .pipx, name: "cowsay")?.category == "entertainment")
+    #expect(db.metadata(for: .pipx, name: "cowsay")?.version == "6.1")
     #expect(db.catalogPackages.first { $0.identifier == "brew:cask:example-editor" }?.appProvenance == .homebrew)
     #expect(db.catalogPackages.first { $0.identifier == "brew:cask:font-hack" }?.appProvenance == nil)
     let app = try #require(db.app(for: "com.example.Editor"))
@@ -117,16 +127,20 @@ import Testing
         ],
         npms: [
             "typescript": PackageMetadata(summary: "Typed JavaScript", category: "language-runtime", homepage: nil, version: "5.9.2")
+        ],
+        pipxs: [
+            "cowsay": PackageMetadata(summary: "Configurable talking cow", category: "entertainment", homepage: nil, version: "6.1")
         ]
     )
 
-    #expect(db.catalogPackages.map(\.identifier) == ["bun:typescript", "cargo:ripgrep", "brew:git", "brew:cask:git", "npm:typescript", "pnpm:typescript"])
-    #expect(db.catalogPackages.map(\.displayName) == ["typescript", "ripgrep", "git", "Git GUI", "typescript", "typescript"])
-    #expect(db.catalogPackages.map(\.installedVersion) == [nil, nil, nil, nil, nil, nil])
-    #expect(db.catalogPackages.map(\.latestVersion) == ["5.9.2", "14.1.1", "2.50.0", nil, "5.9.2", "5.9.2"])
-    #expect(db.catalogPackages.map(\.summary) == ["Typed JavaScript", "Search tool", "Distributed revision control", nil, "Typed JavaScript", "Typed JavaScript"])
-    #expect(Set(db.catalogPackages.compactMap(\.category)) == ["developer-tools", "language-runtime", "productivity"])
+    #expect(db.catalogPackages.map(\.identifier) == ["bun:typescript", "cargo:ripgrep", "brew:git", "brew:cask:git", "npm:typescript", "pipx:cowsay", "pnpm:typescript"])
+    #expect(db.catalogPackages.map(\.displayName) == ["typescript", "ripgrep", "git", "Git GUI", "typescript", "cowsay", "typescript"])
+    #expect(db.catalogPackages.map(\.installedVersion) == [nil, nil, nil, nil, nil, nil, nil])
+    #expect(db.catalogPackages.map(\.latestVersion) == ["5.9.2", "14.1.1", "2.50.0", nil, "5.9.2", "6.1", "5.9.2"])
+    #expect(db.catalogPackages.map(\.summary) == ["Typed JavaScript", "Search tool", "Distributed revision control", nil, "Typed JavaScript", "Configurable talking cow", "Typed JavaScript"])
+    #expect(Set(db.catalogPackages.compactMap(\.category)) == ["developer-tools", "entertainment", "language-runtime", "productivity"])
     #expect(db.catalogPackages.first(where: { $0.identifier == "bun:typescript" })?.manager == .bun)
+    #expect(db.catalogPackages.first(where: { $0.identifier == "pipx:cowsay" })?.manager == .pipx)
     #expect(db.catalogPackages.first(where: { $0.identifier == "pnpm:typescript" })?.manager == .pnpm)
 }
 
