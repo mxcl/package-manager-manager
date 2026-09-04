@@ -54,6 +54,7 @@ pkg⋅mgr² currently inventories:
 
 - Homebrew formulae and casks
 - tools and runtimes installed with `mise`
+- global Bun packages
 - global npm packages
 - npx cache entries
 - global pnpm packages
@@ -75,6 +76,7 @@ command to run.
 Supported update paths:
 
 - `brew upgrade`
+- `bun update -g --latest`
 - `npm install --global package@latest`
 - `pnpm update -g --latest`
 - `npm exec --yes --package package@version -- true`
@@ -85,6 +87,7 @@ Supported update paths:
 Supported uninstall paths:
 
 - `brew uninstall`
+- `bun remove -g`
 - `npm uninstall --global`
 - `pnpm remove -g`
 - remove npx cache entries

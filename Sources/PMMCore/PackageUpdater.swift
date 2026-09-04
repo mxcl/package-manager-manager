@@ -29,6 +29,8 @@ public struct PackageUpdater: Sendable {
             try run("npm", ["install", "-g", "\(package.packageToken)@latest"], onProgress: onProgress)
         case .pnpm:
             try run("pnpm", ["update", "-g", "--latest", package.packageToken], onProgress: onProgress)
+        case .bun:
+            try run("bun", ["update", "-g", "--latest", package.packageToken], onProgress: onProgress)
         case .npx:
             try run("npm", ["exec", "--yes", "--package", "\(package.packageToken)@\(package.latestVersion ?? "latest")", "--", "true"], onProgress: onProgress)
         case .uv:
@@ -45,7 +47,7 @@ public struct PackageUpdater: Sendable {
 
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
-        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .uv: package.isOutdated
+        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .uv: package.isOutdated
         case .macApp, .rustup, .mise, .skills, .uvx: false
         }
     }

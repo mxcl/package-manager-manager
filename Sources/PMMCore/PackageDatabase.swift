@@ -74,7 +74,8 @@ public struct PackageDatabase: Sendable {
             managedPackages(for: .homebrew, identifierPrefix: "brew", metadata: formulas, homebrewPrefix: homebrewPrefix) +
             managedPackages(for: .homebrew, identifierPrefix: "brew:cask", metadata: casks, homebrewPrefix: homebrewPrefix, appNames: appCasks) +
             managedPackages(for: .npm, identifierPrefix: "npm", metadata: npms) +
-            managedPackages(for: .pnpm, identifierPrefix: "pnpm", metadata: npms, includePulseMetadata: false)
+            managedPackages(for: .pnpm, identifierPrefix: "pnpm", metadata: npms, includePulseMetadata: false) +
+            managedPackages(for: .bun, identifierPrefix: "bun", metadata: npms, includePulseMetadata: false)
         )
         return Dictionary(grouping: packages, by: \.id).compactMap { $0.value.first }
             .sorted {
@@ -93,7 +94,7 @@ public struct PackageDatabase: Sendable {
             return nil
         case .homebrew:
             return formulas[name] ?? casks[name]
-        case .npm, .npx, .pnpm:
+        case .npm, .npx, .pnpm, .bun:
             return npms[name]
         case .uv, .uvx:
             return nil

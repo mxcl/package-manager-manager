@@ -473,7 +473,7 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
         "/fake/pnpm bin -g": CommandResult(stdout: "\(bin.path)\n", stderr: "", status: 0),
         "/fake/pnpm root -g": CommandResult(stdout: "\(globalDir.appendingPathComponent("node_modules").path)\n", stderr: "", status: 0),
         "/fake/pnpm list -g --depth=0 --json": CommandResult(stdout: pnpmListJSON, stderr: "", status: 0),
-        "/fake/pnpm outdated -g --json": CommandResult(stdout: #"{"@scope/pnpm-tool":{"current":"2.0.0","latest":"2.5.0"}}"#, stderr: "", status: 1),
+        "/fake/pnpm outdated -g --json": CommandResult(stdout: #"{"@scope/pnpm-tool":{"current":"2.0.0","latest":"2.5.0"}}"#, stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["pnpm": "/fake/pnpm"])
 
@@ -539,6 +539,116 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 
     let packages = try scanner.scanPNPM(database: PackageDatabase())
     #expect(packages.first?.binaryPath == bin.appendingPathComponent("my-cli").path)
+}
+
+@Test func bunParsingHelpersParseListAndOutdatedTable() {
+    let listOutput = """
+    /Users/test node_modules (42)
+    ├── @openai/codex@0.153.1
+    ├── cowsay@1.6.0
+    └── prettier@3.9.6
+    """
+    let parsed = PackageScanner.parseBunList(listOutput)
+    #expect(parsed.rootDirectory == "/Users/test")
+    #expect(parsed.packages.count == 3)
+    #expect(parsed.packages[0] == ("@openai/codex", "0.153.1"))
+    #expect(parsed.packages[1] == ("cowsay", "1.6.0"))
+    #expect(parsed.packages[2] == ("prettier", "3.9.6"))
+
+    let outdatedOutput = """
+    bun outdated v1.4.0 (1381054db)
+    |--------------------------------------|
+    | Package       | Current | Update | Latest |
+    |---------------|---------|--------|--------|
+    | prettier      | 3.0.0   | 3.0.0  | 3.9.6  |
+    | @openai/codex | 0.146.0 | 0.146.0| 0.153.1|
+    |--------------------------------------|
+    """
+    let outdated = PackageScanner.parseBunOutdated(outdatedOutput)
+    #expect(outdated["prettier"] == "3.9.6")
+    #expect(outdated["@openai/codex"] == "0.153.1")
+}
+
+@Test(arguments: ["local-tool", "@scope/cli"])
+func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
+    let path = "../../../../../tmp/tools/@scope/cli"
+    let parsed = PackageScanner.parseBunList("└── \(name)@\(path)")
+    let package = try #require(parsed.packages.first)
+    #expect(package.name == name)
+    #expect(package.version == path)
+}
+
+@Test func bunScannerUsesGlobalBinOutdatedTableAndPackageBinNames() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let modules = temp.appendingPathComponent("node_modules", isDirectory: true)
+    let package = modules.appendingPathComponent("@scope/tool", isDirectory: true)
+    let bin = temp.appendingPathComponent("bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+    try """
+    {"name":"@scope/tool","version":"1.0.0","description":"A scoped CLI","homepage":"https://example.com/tool","repository":{"url":"git+https://github.com/example/tool.git"},"bin":{"tool":"cli.js"}}
+    """.write(to: package.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+    FileManager.default.createFile(atPath: bin.appendingPathComponent("tool").path, contents: Data())
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let runner = FakeRunner(responses: [
+        "/fake/bun pm bin -g": CommandResult(stdout: "\(bin.path)\n", stderr: "", status: 0),
+        "/fake/bun pm ls -g --cwd \(FileManager.default.homeDirectoryForCurrentUser.path)": CommandResult(stdout: """
+        \(temp.path) node_modules (1)
+        └── @scope/tool@1.0.0
+        """, stderr: "", status: 0),
+        "/fake/bun outdated -g --cwd \(FileManager.default.homeDirectoryForCurrentUser.path)": CommandResult(stdout: """
+        | Package | Current | Update | Latest |
+        | @scope/tool | 1.0.0 | 1.2.0 | 1.2.0 |
+        """, stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["bun": "/fake/bun"])
+
+    let packages = try scanner.scanBun(database: PackageDatabase(npms: [
+        "@scope/tool": PackageMetadata(summary: "Ignored db summary", category: "developer-tools", homepage: nil, version: "9.9.9")
+    ]))
+
+    #expect(packages == [
+        ManagedPackage(
+            manager: .bun,
+            identifier: "bun:@scope/tool",
+            displayName: "@scope/tool",
+            installedVersion: "1.0.0",
+            latestVersion: "1.2.0",
+            summary: "A scoped CLI",
+            category: "developer-tools",
+            homepage: "https://example.com/tool",
+            repo: "https://github.com/example/tool",
+            installLocation: package.path,
+            binaryPath: bin.appendingPathComponent("tool").path
+        )
+    ])
+}
+
+@Test func bunScannerPrefersPackageJSONVersionOverLocalPathInstallVersion() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let modules = temp.appendingPathComponent("node_modules", isDirectory: true)
+    let package = modules.appendingPathComponent("local-tool", isDirectory: true)
+    let bin = temp.appendingPathComponent("bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+    try """
+    {"name":"local-tool","version":"2.4.1","description":"Local tool installed from path"}
+    """.write(to: package.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let runner = FakeRunner(responses: [
+        "/fake/bun pm bin -g": CommandResult(stdout: "\(bin.path)\n", stderr: "", status: 0),
+        "/fake/bun pm ls -g --cwd \(FileManager.default.homeDirectoryForCurrentUser.path)": CommandResult(stdout: """
+        \(temp.path) node_modules (1)
+        └── local-tool@../relative/path/to/local-tool
+        """, stderr: "", status: 0),
+        "/fake/bun outdated -g --cwd \(FileManager.default.homeDirectoryForCurrentUser.path)": CommandResult(stdout: "", stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["bun": "/fake/bun"])
+
+    let packages = try scanner.scanBun(database: PackageDatabase())
+    #expect(packages.first?.installedVersion == "2.4.1")
 }
 
 @Test func homebrewScannerUsesCachedAPIMetadata() throws {

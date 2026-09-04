@@ -273,6 +273,105 @@ public struct PackageScanner: @unchecked Sendable {
         }
     }
 
+    public func scanBun(database: PackageDatabase) throws -> [ManagedPackage] {
+        try scanBun(database: database, mode: .fresh)
+    }
+
+    private func scanBun(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
+        guard let bun = executable(named: "bun") else { return [] }
+        let binDir = successfulLine(bun, ["pm", "bin", "-g"]) ?? homeDirectory.appendingPathComponent(".bun/bin").path
+        let outdated = mode.isFresh ? bunOutdated(bun) : [:]
+        let result = try runner.run(bun, ["pm", "ls", "-g", "--cwd", homeDirectory.path])
+        guard result.status == 0 else { return [] }
+
+        let parsed = Self.parseBunList(result.stdout)
+        guard !parsed.packages.isEmpty else { return [] }
+
+        let rootDir = parsed.rootDirectory ?? homeDirectory.path
+
+        return parsed.packages.compactMap { name, version in
+            let curation = database.metadata(for: .bun, name: name)
+            let installLocation = "\(rootDir)/node_modules/\(name)"
+            let packageURL = URL(fileURLWithPath: installLocation)
+            let package = readPackageJSON(packageURL.appendingPathComponent("package.json"))
+            let binaryPath = bunBinaryPath(packageName: name, packageURL: packageURL, binDir: binDir)
+
+            return ManagedPackage(
+                manager: .bun,
+                identifier: "bun:\(name)",
+                displayName: name,
+                installedVersion: package?.version ?? version,
+                latestVersion: outdated[name],
+                summary: package?.summary,
+                category: curation?.category,
+                homepage: package?.homepage,
+                docs: nil,
+                repo: package?.repo,
+                lastUpdatedAt: curation?.lastUpdatedAt,
+                pulseKind: curation?.pulseKind,
+                installLocation: installLocation,
+                binaryPath: binaryPath
+            )
+        }
+    }
+
+    static func parseBunList(_ stdout: String) -> (rootDirectory: String?, packages: [(name: String, version: String)]) {
+        var rootDirectory: String?
+        var packages: [(name: String, version: String)] = []
+
+        let lines = stdout.components(separatedBy: .newlines)
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { continue }
+
+            if rootDirectory == nil, let range = trimmed.range(of: " node_modules") {
+                rootDirectory = String(trimmed[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+                continue
+            }
+
+            let content = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: " ├─└│\t"))
+            guard let atIndex = content.dropFirst().firstIndex(of: "@") else { continue }
+            let name = String(content[..<atIndex])
+            let version = String(content[content.index(after: atIndex)...])
+            guard !name.isEmpty, !version.isEmpty else { continue }
+            packages.append((name, version))
+        }
+
+        return (rootDirectory, packages)
+    }
+
+    static func parseBunOutdated(_ stdout: String) -> [String: String] {
+        var outdated: [String: String] = [:]
+        let lines = stdout.components(separatedBy: .newlines)
+        for line in lines {
+            let parts = line.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count >= 5 else { continue }
+            let name = parts[1]
+            let latest = parts[4]
+            if name.lowercased() == "package" || name.allSatisfy({ $0 == "-" }) || name.isEmpty {
+                continue
+            }
+            if !latest.isEmpty && !latest.allSatisfy({ $0 == "-" }) {
+                outdated[name] = latest
+            }
+        }
+        return outdated
+    }
+
+    private func bunOutdated(_ bun: String) -> [String: String] {
+        guard let stdout = try? runner.run(bun, ["outdated", "-g", "--cwd", homeDirectory.path]).stdout else { return [:] }
+        return Self.parseBunOutdated(stdout)
+    }
+
+    private func bunBinaryPath(packageName: String, packageURL: URL, binDir: String?) -> String? {
+        guard let binDir else { return nil }
+        let packageJSON = packageURL.appendingPathComponent("package.json")
+        let fallbackName = packageName.components(separatedBy: "/").last ?? packageName
+        let binNames = npmBinNames(from: packageJSON, fallback: fallbackName)
+        return binNames
+            .map { "\(binDir)/\($0)" }
+            .first { fileManager.fileExists(atPath: $0) }
+    }
     public func scanNPX(database: PackageDatabase) throws -> [ManagedPackage] {
         let cache = homeDirectory.appendingPathComponent(".npm/_npx", isDirectory: true)
         guard let cacheEntries = try? fileManager.contentsOfDirectory(at: cache, includingPropertiesForKeys: nil) else {
@@ -1090,6 +1189,7 @@ public struct PackageScanner: @unchecked Sendable {
                     case .rustup: packages = try scanRustup(database: database)
                     case .homebrew: packages = try scanHomebrew(database: database, mode: mode)
                     case .mise: packages = try scanMise(database: database)
+                    case .bun: packages = try scanBun(database: database, mode: mode)
                     case .npm: packages = try scanNPM(database: database, mode: mode)
                     case .npx:
                         let cached = try scanNPX(database: database)
