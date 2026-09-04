@@ -67,7 +67,7 @@ struct DiscoverFeedPackage: Decodable, Identifiable, Sendable {
     var ecosystem: String? {
         switch manager?.lowercased() {
         case "homebrew": "Homebrew"
-        case "npm": "JavaScript"
+        case "npm", "pnpm": "JavaScript"
         case .some(let manager): manager.capitalized
         case nil: nil
         }

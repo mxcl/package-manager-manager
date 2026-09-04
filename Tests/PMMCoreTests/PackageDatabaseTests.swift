@@ -120,12 +120,40 @@ import Testing
         ]
     )
 
-    #expect(db.catalogPackages.map(\.identifier) == ["cargo:ripgrep", "brew:git", "brew:cask:git", "npm:typescript"])
-    #expect(db.catalogPackages.map(\.displayName) == ["ripgrep", "git", "Git GUI", "typescript"])
-    #expect(db.catalogPackages.map(\.installedVersion) == [nil, nil, nil, nil])
-    #expect(db.catalogPackages.map(\.latestVersion) == ["14.1.1", "2.50.0", nil, "5.9.2"])
-    #expect(db.catalogPackages.map(\.summary) == ["Search tool", "Distributed revision control", nil, "Typed JavaScript"])
+    #expect(db.catalogPackages.map(\.identifier) == ["cargo:ripgrep", "brew:git", "brew:cask:git", "npm:typescript", "pnpm:typescript"])
+    #expect(db.catalogPackages.map(\.displayName) == ["ripgrep", "git", "Git GUI", "typescript", "typescript"])
+    #expect(db.catalogPackages.map(\.installedVersion) == [nil, nil, nil, nil, nil])
+    #expect(db.catalogPackages.map(\.latestVersion) == ["14.1.1", "2.50.0", nil, "5.9.2", "5.9.2"])
+    #expect(db.catalogPackages.map(\.summary) == ["Search tool", "Distributed revision control", nil, "Typed JavaScript", "Typed JavaScript"])
     #expect(Set(db.catalogPackages.compactMap(\.category)) == ["developer-tools", "language-runtime", "productivity"])
+    #expect(db.catalogPackages.first(where: { $0.identifier == "pnpm:typescript" })?.manager == .pnpm)
+}
+
+@Test func catalogPackagesDoesNotDuplicatePulseMetadataForPNPM() throws {
+    let db = PackageDatabase(
+        npms: [
+            "typescript": PackageMetadata(
+                summary: "Typed JavaScript",
+                category: "language-runtime",
+                homepage: nil,
+                version: "5.9.2",
+                lastUpdatedAt: "2026-06-26T22:01:54Z",
+                pulseKind: "new"
+            )
+        ]
+    )
+
+    let npmPackage = try #require(db.catalogPackages.first { $0.identifier == "npm:typescript" })
+    #expect(npmPackage.pulseKind == "new")
+    #expect(npmPackage.lastUpdatedAt == "2026-06-26T22:01:54Z")
+
+    let pnpmPackage = try #require(db.catalogPackages.first { $0.identifier == "pnpm:typescript" })
+    #expect(pnpmPackage.manager == .pnpm)
+    #expect(pnpmPackage.latestVersion == "5.9.2")
+    #expect(pnpmPackage.summary == "Typed JavaScript")
+    #expect(pnpmPackage.category == "language-runtime")
+    #expect(pnpmPackage.pulseKind == nil)
+    #expect(pnpmPackage.lastUpdatedAt == nil)
 }
 
 @Test func catalogPackagesCanIncludeKnownHomebrewInstallLocations() {

@@ -41,7 +41,7 @@ over SSH, including hosts on your local network or Tailscale network.
 
 Each host gets its own Installed and Outdated sections in the sidebar. Linux
 inventory includes native packages that provide command-line tools, plus global npm,
-cargo-install, and uv packages when those tools are present. System-package actions
+pnpm, cargo-install, and uv packages when those tools are present. System-package actions
 use non-interactive sudo; without it, those packages remain visible but read-only.
 
 pkg⋅mgr² uses OpenSSH directly. Your keys, agent, host aliases, and
@@ -56,6 +56,7 @@ pkg⋅mgr² currently inventories:
 - tools and runtimes installed with `mise`
 - global npm packages
 - npx cache entries
+- global pnpm packages
 - Skills packages installed with `skills` or `npx skills`
 - `uv tool` tools and `uv` Python installs
 - `uvx` cached environments
@@ -65,6 +66,36 @@ pkg⋅mgr² currently inventories:
 It also pulls package summaries, categories, URLs, and latest-version metadata
 where the project has a source for it. If metadata is missing, the package still
 shows up. It just looks less informed.
+
+## Updating and Removing
+
+The detail pane offers update and uninstall actions when pkg⋅mgr² knows the native
+command to run.
+
+Supported update paths:
+
+- `brew upgrade`
+- `npm install --global package@latest`
+- `pnpm update -g --latest`
+- `npm exec --yes --package package@version -- true`
+- `uv tool upgrade`
+- `uv python install`
+- `cargo install --force`
+
+Supported uninstall paths:
+
+- `brew uninstall`
+- `npm uninstall --global`
+- `pnpm remove -g`
+- remove npx cache entries
+- `uv tool uninstall`
+- `uv python uninstall`
+- remove uvx cached environments
+- `cargo uninstall`
+
+> [!IMPORTANT]
+> `rustup` is inventory-only for now. pkg⋅mgr² will show `rustup` and toolchains,
+> but it will not update or uninstall them.
 
 ## Adding New Package Managers
 

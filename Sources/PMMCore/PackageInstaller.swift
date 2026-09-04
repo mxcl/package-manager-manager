@@ -22,13 +22,15 @@ public struct PackageInstaller: Sendable {
             try run("brew", arguments, onProgress: onProgress)
         case .npm:
             try run("npm", ["install", "-g", "\(package.packageToken)@latest"], onProgress: onProgress)
+        case .pnpm:
+            try run("pnpm", ["add", "-g", "\(package.packageToken)@latest"], onProgress: onProgress)
         case .apk, .apt, .cargoInstall, .dnf, .zypper, .macApp, .rustup, .mise, .npx, .skills, .uv, .uvx:
             throw PackageInstallError.unsupportedManager(package.manager)
         }
     }
 
     public static func supports(_ package: ManagedPackage) -> Bool {
-        package.installedVersion == nil && [.homebrew, .npm].contains(package.manager)
+        package.installedVersion == nil && [.homebrew, .npm, .pnpm].contains(package.manager)
     }
 
     private func run(

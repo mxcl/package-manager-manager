@@ -73,7 +73,8 @@ public struct PackageDatabase: Sendable {
             managedPackages(for: .cargoInstall, identifierPrefix: "cargo", metadata: crates) +
             managedPackages(for: .homebrew, identifierPrefix: "brew", metadata: formulas, homebrewPrefix: homebrewPrefix) +
             managedPackages(for: .homebrew, identifierPrefix: "brew:cask", metadata: casks, homebrewPrefix: homebrewPrefix, appNames: appCasks) +
-            managedPackages(for: .npm, identifierPrefix: "npm", metadata: npms)
+            managedPackages(for: .npm, identifierPrefix: "npm", metadata: npms) +
+            managedPackages(for: .pnpm, identifierPrefix: "pnpm", metadata: npms, includePulseMetadata: false)
         )
         return Dictionary(grouping: packages, by: \.id).compactMap { $0.value.first }
             .sorted {
@@ -92,7 +93,7 @@ public struct PackageDatabase: Sendable {
             return nil
         case .homebrew:
             return formulas[name] ?? casks[name]
-        case .npm, .npx:
+        case .npm, .npx, .pnpm:
             return npms[name]
         case .uv, .uvx:
             return nil
@@ -158,7 +159,8 @@ public struct PackageDatabase: Sendable {
         identifierPrefix: String,
         metadata: [String: PackageMetadata],
         homebrewPrefix: String? = nil,
-        appNames: Set<String> = []
+        appNames: Set<String> = [],
+        includePulseMetadata: Bool = true
     ) -> [ManagedPackage] {
         metadata.map { name, metadata in
             ManagedPackage(
@@ -172,8 +174,8 @@ public struct PackageDatabase: Sendable {
                 homepage: metadata.homepage,
                 docs: metadata.docs,
                 repo: metadata.repo,
-                lastUpdatedAt: metadata.lastUpdatedAt,
-                pulseKind: metadata.pulseKind,
+                lastUpdatedAt: includePulseMetadata ? metadata.lastUpdatedAt : nil,
+                pulseKind: includePulseMetadata ? metadata.pulseKind : nil,
                 installLocation: homebrewInstallLocation(prefix: homebrewPrefix, identifierPrefix: identifierPrefix, name: name, version: metadata.version),
                 appProvenance: appNames.contains(name) ? .homebrew : nil
             )

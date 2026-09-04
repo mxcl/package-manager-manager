@@ -134,7 +134,7 @@ public struct PackageDossierClient: Sendable {
         switch package.manager {
         case .homebrew:
             "brew"
-        case .npm, .npx:
+        case .npm, .npx, .pnpm:
             "npm"
         case .cargoInstall:
             "cargo"

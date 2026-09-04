@@ -171,6 +171,7 @@ public struct RemoteSSHClient: Sendable {
         let manager = profile.count > 3 ? PackageManagerKind(rawValue: profile[3]) : nil
         var packages = manager.map { linuxSystemPackages($0, sections: sections) } ?? []
         packages += linuxNPM(sections: sections)
+        packages += linuxPNPM(sections: sections)
         packages += linuxCargo(sections["CARGO"])
         packages += linuxUV(sections: sections)
 
@@ -282,6 +283,28 @@ public struct RemoteSSHClient: Sendable {
                 summary: "Globally installed npm package",
                 category: "developer-tools",
                 installLocation: installRoot.map { "\($0)/\(name)" }
+            )
+        }
+    }
+
+    private static func linuxPNPM(sections: [String: String]) -> [ManagedPackage] {
+        let root = sections["PNPM_ROOT"]?.trimmed
+        guard let output = sections["PNPM_INSTALLED"], !output.isEmpty else { return [] }
+        let deps = PackageScanner.parsePNPMDependencies(output)
+        guard !deps.isEmpty else { return [] }
+
+        let outdated = sections["PNPM_OUTDATED"].map { PackageScanner.parsePNPMOutdated($0) } ?? [:]
+
+        return deps.map { name, info in
+            ManagedPackage(
+                manager: .pnpm,
+                identifier: "pnpm:\(name)",
+                displayName: name,
+                installedVersion: info.version,
+                latestVersion: outdated[name],
+                summary: "Globally installed pnpm package",
+                category: "developer-tools",
+                installLocation: info.path ?? root.map { "\($0)/\(name)" }
             )
         }
     }
@@ -511,6 +534,11 @@ public struct RemoteSSHClient: Sendable {
       printf '__PMM_NPM_INSTALLED__\n'; npm ls -g --depth=0 --json 2>/dev/null || true
       printf '__PMM_NPM_OUTDATED__\n'; npm outdated -g --json 2>/dev/null || true
     fi
+    if command -v pnpm >/dev/null 2>&1; then
+      printf '__PMM_PNPM_ROOT__\n'; pnpm root -g 2>/dev/null || true
+      printf '__PMM_PNPM_INSTALLED__\n'; pnpm list -g --depth=0 --json 2>/dev/null || true
+      printf '__PMM_PNPM_OUTDATED__\n'; pnpm outdated -g --json 2>/dev/null || true
+    fi
     if command -v cargo >/dev/null 2>&1; then
       printf '__PMM_CARGO__\n'; cargo install --list --color never 2>/dev/null || true
     fi
@@ -543,6 +571,12 @@ public struct RemoteSSHClient: Sendable {
         case ("uninstall", .npm):
             let arguments = "uninstall -g \(token)"
             command = "if [ -w \"$(npm root -g)\" ]; then npm \(arguments); else sudo -n \"$(command -v npm)\" \(arguments); fi"
+        case ("update", .pnpm):
+            let arguments = "update -g --latest \(shellQuote(package.packageToken))"
+            command = "if [ -w \"$(pnpm root -g 2>/dev/null || echo ~/.local/share/pnpm)\" ]; then pnpm \(arguments); else sudo -n \"$(command -v pnpm)\" \(arguments); fi"
+        case ("uninstall", .pnpm):
+            let arguments = "remove -g \(token)"
+            command = "if [ -w \"$(pnpm root -g 2>/dev/null || echo ~/.local/share/pnpm)\" ]; then pnpm \(arguments); else sudo -n \"$(command -v pnpm)\" \(arguments); fi"
         case ("update", .uv) where package.summary == "uv-managed Python":
             command = "uv python install \(shellQuote(package.latestVersion ?? package.packageToken)) --color always"
         case ("uninstall", .uv) where package.summary == "uv-managed Python":

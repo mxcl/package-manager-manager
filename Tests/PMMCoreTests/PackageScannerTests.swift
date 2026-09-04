@@ -438,6 +438,109 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     ])
 }
 
+@Test func pnpmScannerUsesGlobalRootBinOutdatedAndPackageBinNames() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let globalDir = temp.appendingPathComponent("pnpm/global/5", isDirectory: true)
+    let package = globalDir.appendingPathComponent("node_modules/@scope/pnpm-tool", isDirectory: true)
+    let bin = temp.appendingPathComponent("bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+    try #"""
+    {"name":"@scope/pnpm-tool","version":"2.0.0","description":"A pnpm CLI","homepage":"https://example.com/pnpm-tool","repository":{"url":"git+https://github.com/example/pnpm-tool.git"},"bin":{"pnpm-tool":"cli.js"}}
+    """#
+        .write(to: package.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+    FileManager.default.createFile(atPath: bin.appendingPathComponent("pnpm-tool").path, contents: Data())
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let pnpmListJSON = #"""
+    [
+      {
+        "name": "global-packages",
+        "version": "1.0.0",
+        "path": "\#(globalDir.path)",
+        "dependencies": {
+          "@scope/pnpm-tool": {
+            "from": "@scope/pnpm-tool",
+            "version": "2.0.0",
+            "path": "\#(package.path)"
+          }
+        }
+      }
+    ]
+    """#
+
+    let runner = FakeRunner(responses: [
+        "/fake/pnpm bin -g": CommandResult(stdout: "\(bin.path)\n", stderr: "", status: 0),
+        "/fake/pnpm root -g": CommandResult(stdout: "\(globalDir.appendingPathComponent("node_modules").path)\n", stderr: "", status: 0),
+        "/fake/pnpm list -g --depth=0 --json": CommandResult(stdout: pnpmListJSON, stderr: "", status: 0),
+        "/fake/pnpm outdated -g --json": CommandResult(stdout: #"{"@scope/pnpm-tool":{"current":"2.0.0","latest":"2.5.0"}}"#, stderr: "", status: 1),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["pnpm": "/fake/pnpm"])
+
+    let packages = try scanner.scanPNPM(database: PackageDatabase(npms: [
+        "@scope/pnpm-tool": PackageMetadata(summary: "Ignored db summary", category: "developer-tools", homepage: nil, version: "9.9.9")
+    ]))
+
+    #expect(packages == [
+        ManagedPackage(
+            manager: .pnpm,
+            identifier: "pnpm:@scope/pnpm-tool",
+            displayName: "@scope/pnpm-tool",
+            installedVersion: "2.0.0",
+            latestVersion: "2.5.0",
+            summary: "A pnpm CLI",
+            category: "developer-tools",
+            homepage: "https://example.com/pnpm-tool",
+            repo: "https://github.com/example/pnpm-tool",
+            installLocation: package.path,
+            binaryPath: bin.appendingPathComponent("pnpm-tool").path
+        )
+    ])
+}
+
+@Test func pnpmScannerResolvesScopedPackageWithStringBinToUnscopedBasename() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let globalDir = temp.appendingPathComponent("pnpm/global/5", isDirectory: true)
+    let package = globalDir.appendingPathComponent("node_modules/@scope/my-cli", isDirectory: true)
+    let bin = temp.appendingPathComponent("bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+    try #"""
+    {"name":"@scope/my-cli","version":"1.0.0","bin":"cli.js"}
+    """#
+        .write(to: package.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+    FileManager.default.createFile(atPath: bin.appendingPathComponent("my-cli").path, contents: Data())
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let pnpmListJSON = #"""
+    [
+      {
+        "name": "global-packages",
+        "version": "1.0.0",
+        "path": "\#(globalDir.path)",
+        "dependencies": {
+          "@scope/my-cli": {
+            "from": "@scope/my-cli",
+            "version": "1.0.0",
+            "path": "\#(package.path)"
+          }
+        }
+      }
+    ]
+    """#
+
+    let runner = FakeRunner(responses: [
+        "/fake/pnpm bin -g": CommandResult(stdout: "\(bin.path)\n", stderr: "", status: 0),
+        "/fake/pnpm root -g": CommandResult(stdout: "\(globalDir.appendingPathComponent("node_modules").path)\n", stderr: "", status: 0),
+        "/fake/pnpm list -g --depth=0 --json": CommandResult(stdout: pnpmListJSON, stderr: "", status: 0),
+        "/fake/pnpm outdated -g --json": CommandResult(stdout: "{}", stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["pnpm": "/fake/pnpm"])
+
+    let packages = try scanner.scanPNPM(database: PackageDatabase())
+    #expect(packages.first?.binaryPath == bin.appendingPathComponent("my-cli").path)
+}
+
 @Test func homebrewScannerUsesCachedAPIMetadata() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     let formulaCache = temp.appendingPathComponent("api/formula", isDirectory: true)

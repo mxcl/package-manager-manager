@@ -44,6 +44,12 @@ import Testing
     {"dependencies":{"@openai/codex":{"version":"0.146.0"}}}
     __PMM_NPM_OUTDATED__
     {"@openai/codex":{"latest":"0.147.0"}}
+    __PMM_PNPM_ROOT__
+    /home/ec2-user/.local/share/pnpm/global/5/node_modules
+    __PMM_PNPM_INSTALLED__
+    [{"dependencies":{"tsx":{"version":"4.19.0"}}}]
+    __PMM_PNPM_OUTDATED__
+    {"tsx":{"latest":"4.20.0"}}
     __PMM_CARGO__
     ripgrep v14.1.1:
         rg
@@ -57,10 +63,11 @@ import Testing
     #expect(response.hostDescription == "Amazon Linux 2023 (aarch64)")
     #expect(response.systemPackageManager == .dnf)
     #expect(response.canManageSystemPackages == true)
-    #expect(response.inventory.packages.map(\.identifier) == ["cargo:ripgrep", "dnf:bash", "npm:@openai/codex", "uv:cpython:3.10"])
+    #expect(response.inventory.packages.map(\.identifier) == ["cargo:ripgrep", "dnf:bash", "npm:@openai/codex", "pnpm:tsx", "uv:cpython:3.10"])
     #expect(response.inventory.packages.first(where: { $0.identifier == "dnf:bash" })?.latestVersion == "0:5.3-1.aarch64")
     #expect(response.inventory.packages.contains(where: { $0.identifier == "dnf:hidden-tool" }) == false)
     #expect(response.inventory.packages.first(where: { $0.identifier == "npm:@openai/codex" })?.isOutdated == true)
+    #expect(response.inventory.packages.first(where: { $0.identifier == "pnpm:tsx" })?.isOutdated == true)
 }
 
 @Test func remoteLinuxInventoryParsesAPTAPKAndZypperCommands() throws {
@@ -223,6 +230,26 @@ import Testing
 
     #expect(runner.arguments?.last?.contains(#"[ -w "$(npm root -g)" ]"#) == true)
     #expect(runner.arguments?.last?.contains(#"sudo -n "$(command -v npm)" install -g"#) == true)
+}
+
+@Test func remotePNPMActionFallsBackToNoninteractiveSudoForSystemGlobalPackages() async throws {
+    let response = RemoteControlResponse(inventory: PackageInventory(packages: []))
+    let runner = RecordingRemoteRunner(result: CommandResult(
+        stdout: String(decoding: try JSONEncoder().encode(response), as: UTF8.self),
+        stderr: "",
+        status: 0
+    ))
+    let package = ManagedPackage(
+        manager: .pnpm,
+        identifier: "pnpm:tsx",
+        installedVersion: "4.19.0",
+        latestVersion: "4.20.0"
+    )
+
+    _ = try await RemoteSSHClient(runner: runner).update(package, on: RemoteHost(destination: "atlas"))
+
+    #expect(runner.arguments?.last?.contains(#"[ -w "$(pnpm root -g 2>/dev/null || echo ~/.local/share/pnpm)" ]"#) == true)
+    #expect(runner.arguments?.last?.contains(#"sudo -n "$(command -v pnpm)" update -g --latest"#) == true)
 }
 
 private final class RecordingRemoteRunner: CommandRunning, @unchecked Sendable {

@@ -233,6 +233,46 @@ public struct PackageScanner: @unchecked Sendable {
         }
     }
 
+    public func scanPNPM(database: PackageDatabase) throws -> [ManagedPackage] {
+        try scanPNPM(database: database, mode: .fresh)
+    }
+
+    private func scanPNPM(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
+        guard let pnpm = executable(named: "pnpm") else { return [] }
+        let bin = successfulLine(pnpm, ["bin", "-g"])
+            ?? environment?["PNPM_HOME"]
+            ?? [homeDirectory.appendingPathComponent("Library/pnpm").path,
+                homeDirectory.appendingPathComponent(".local/share/pnpm").path].first { fileManager.directoryExists(atPath: $0) }
+        let root = successfulLine(pnpm, ["root", "-g"])
+        let outdated = mode.isFresh ? pnpmOutdated(pnpm) : [:]
+        let result = try runner.run(pnpm, ["list", "-g", "--depth=0", "--json"])
+        guard result.status == 0 else { return [] }
+
+        let dependencies = Self.parsePNPMDependencies(result.stdout)
+        return dependencies.compactMap { name, dependency in
+            let version = dependency.version
+            let curation = database.metadata(for: .pnpm, name: name)
+            let installLocation = dependency.path ?? root.map { "\($0)/\(name)" }
+            let package = installLocation.flatMap { readPackageJSON(URL(fileURLWithPath: $0).appendingPathComponent("package.json")) }
+            return ManagedPackage(
+                manager: .pnpm,
+                identifier: "pnpm:\(name)",
+                displayName: name,
+                installedVersion: version ?? package?.version,
+                latestVersion: outdated[name],
+                summary: package?.summary,
+                category: curation?.category,
+                homepage: package?.homepage,
+                docs: nil,
+                repo: package?.repo,
+                lastUpdatedAt: curation?.lastUpdatedAt,
+                pulseKind: curation?.pulseKind,
+                installLocation: installLocation,
+                binaryPath: pnpmBinaryPath(packageName: name, installLocation: installLocation, bin: bin)
+            )
+        }
+    }
+
     public func scanNPX(database: PackageDatabase) throws -> [ManagedPackage] {
         let cache = homeDirectory.appendingPathComponent(".npm/_npx", isDirectory: true)
         guard let cacheEntries = try? fileManager.contentsOfDirectory(at: cache, includingPropertiesForKeys: nil) else {
@@ -722,6 +762,62 @@ public struct PackageScanner: @unchecked Sendable {
         }
     }
 
+    struct PNPMDependency: Equatable, Sendable {
+        let version: String?
+        let path: String?
+    }
+
+    static func parsePNPMDependencies(_ stdout: String) -> [String: PNPMDependency] {
+        guard let data = stdout.data(using: .utf8) else { return [:] }
+        var result: [String: PNPMDependency] = [:]
+
+        let parseDict: ([String: Any]) -> Void = { dict in
+            for key in ["dependencies", "devDependencies"] {
+                guard let deps = dict[key] as? [String: Any] else { continue }
+                for (name, raw) in deps {
+                    guard let body = raw as? [String: Any] else { continue }
+                    let version = body["version"] as? String
+                    let path = body["path"] as? String
+                    result[name] = PNPMDependency(version: version, path: path)
+                }
+            }
+        }
+
+        if let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            for item in array {
+                parseDict(item)
+            }
+        } else if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            parseDict(object)
+        }
+        return result
+    }
+
+    static func parsePNPMOutdated(_ stdout: String) -> [String: String] {
+        if let data = stdout.data(using: .utf8),
+           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return object.reduce(into: [:]) { result, pair in
+                guard let body = pair.value as? [String: Any],
+                      let latest = body["latest"] as? String ?? body["wanted"] as? String else { return }
+                result[pair.key] = latest
+            }
+        }
+        if let data = stdout.data(using: .utf8),
+           let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            return array.reduce(into: [:]) { result, item in
+                guard let name = item["packageName"] as? String ?? item["name"] as? String,
+                      let latest = item["latest"] as? String ?? item["wanted"] as? String else { return }
+                result[name] = latest
+            }
+        }
+        return [:]
+    }
+
+    private func pnpmOutdated(_ pnpm: String) -> [String: String] {
+        guard let stdout = try? runner.run(pnpm, ["outdated", "-g", "--json"]).stdout else { return [:] }
+        return Self.parsePNPMOutdated(stdout)
+    }
+
     private func uvTools(_ uv: String, toolDir: String?, includeOutdated: Bool, database: PackageDatabase) throws -> [ManagedPackage] {
         let result = try runner.run(uv, ["tool", "list", "--show-paths", "--show-version-specifiers", "--show-python", "--offline", "--color", "never"])
         guard result.status == 0 else { return [] }
@@ -1006,6 +1102,7 @@ public struct PackageScanner: @unchecked Sendable {
                             packages = cached
                         }
                     case .skills: packages = try scanSkills(database: database)
+                    case .pnpm: packages = try scanPNPM(database: database, mode: mode)
                     case .uv: packages = try scanUV(database: database, mode: mode)
                     case .uvx: packages = try scanUVX(database: database)
                     }
@@ -1050,6 +1147,10 @@ public struct PackageScanner: @unchecked Sendable {
         }
     }
 
+    private func unscopedPackageName(_ name: String) -> String {
+        name.split(separator: "/").last.map(String.init) ?? name
+    }
+
     private func npmBinaryPath(packageName: String, root: String?, bin: String?) -> String? {
         guard let root, let bin else { return nil }
         let packageURL = URL(fileURLWithPath: root).appendingPathComponent(packageName, isDirectory: true)
@@ -1060,17 +1161,35 @@ public struct PackageScanner: @unchecked Sendable {
             .first { fileManager.fileExists(atPath: $0) }
     }
 
+    private func pnpmBinaryPath(packageName: String, installLocation: String?, bin: String?) -> String? {
+        guard let bin else { return nil }
+        let unscoped = unscopedPackageName(packageName)
+        if let installLocation {
+            let packageJSON = URL(fileURLWithPath: installLocation).appendingPathComponent("package.json")
+            let binNames = npmBinNames(from: packageJSON, fallback: packageName)
+            for binName in binNames {
+                let candidate = "\(bin)/\(binName)"
+                if fileManager.fileExists(atPath: candidate) {
+                    return candidate
+                }
+            }
+        }
+        let direct = "\(bin)/\(unscoped)"
+        return fileManager.fileExists(atPath: direct) ? direct : nil
+    }
+
     private func npmBinNames(from packageJSON: URL, fallback: String) -> [String] {
+        let unscopedFallback = unscopedPackageName(fallback)
         guard let data = try? Data(contentsOf: packageJSON),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let bin = json["bin"] else { return [fallback] }
+              let bin = json["bin"] else { return [unscopedFallback] }
         if bin is String {
-            return [fallback]
+            return [unscopedFallback]
         }
         if let bins = bin as? [String: Any] {
             return bins.keys.sorted()
         }
-        return [fallback]
+        return [unscopedFallback]
     }
 
     private func packageNames(in modules: URL, name: String) -> [URL] {
