@@ -811,35 +811,56 @@ private struct PackageLinkRow: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(link.title.uppercased())
-                    .font(.system(size: 9, weight: .medium))
-                    .tracking(1)
-                    .foregroundStyle(selected ? SystemColor.primaryText : SystemColor.quietText)
-                    .fixedSize(horizontal: true, vertical: false)
-                Text(mainWindowBrowserDisplayURL(link.url))
-                    .font(.system(size: 12))
-                    .foregroundStyle(selected ? SystemColor.secondaryText : SystemColor.quietText)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
-            .background {
-                if selected {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(.selection.opacity(0.22))
-                        .background {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(.ultraThinMaterial)
-                        }
+        HStack(spacing: 6) {
+            Button(action: action) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(link.title.uppercased())
+                        .font(.system(size: 9, weight: .medium))
+                        .tracking(1)
+                        .foregroundStyle(selected ? SystemColor.primaryText : SystemColor.quietText)
+                        .fixedSize(horizontal: true, vertical: false)
+                    Text(mainWindowBrowserDisplayURL(link.url))
+                        .font(.system(size: 12))
+                        .foregroundStyle(selected ? SystemColor.secondaryText : SystemColor.quietText)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
                 }
+                .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+
+            Button {
+                NSWorkspace.shared.open(link.url)
+            } label: {
+                Image(systemName: "arrow.up.forward.app")
+                    .font(.system(size: 11))
+                    .foregroundStyle(selected ? SystemColor.primaryText : SystemColor.quietText)
+            }
+            .buttonStyle(.plain)
+            .help("Open in Browser")
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+        .background {
+            if selected {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(.selection.opacity(0.22))
+                    .background {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    }
+            }
+        }
+        .contextMenu {
+            Button("Open in Browser") {
+                NSWorkspace.shared.open(link.url)
+            }
+            Button("Copy URL") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(link.url.absoluteString, forType: .string)
+            }
+        }
     }
 }
 
@@ -1393,9 +1414,23 @@ struct PackageCommandProgressView: View {
                         .lineLimit(2)
                         .textSelection(.enabled)
                 }
+            } else {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Running action…")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundStyle(SystemColor.secondaryText)
+                }
             }
-            TerminalOutputTextView(output: output)
-                .frame(width: TerminalOutputTextView.scrollViewWidth, height: 300)
+            ZStack(alignment: .center) {
+                TerminalOutputTextView(output: output)
+                    .frame(width: TerminalOutputTextView.scrollViewWidth, height: 300)
+                if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && error == nil {
+                    ProgressView()
+                        .controlSize(.regular)
+                }
+            }
             if let error {
                 HStack {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -1408,7 +1443,7 @@ struct PackageCommandProgressView: View {
             }
         }
         .frame(width: TerminalOutputTextView.scrollViewWidth)
-        .padding(5)
+        .padding(14)
         .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: SystemColor.windowTint))
     }
 }
@@ -1420,7 +1455,9 @@ private struct PackageWebView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> WKWebView {
-        let webView = WKWebView()
+        let configuration = WKWebViewConfiguration()
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+        let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         webView.underPageBackgroundColor = .white
         webView.navigationDelegate = context.coordinator
@@ -1445,21 +1482,40 @@ private struct PackageWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            guard shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: allowsEmbeddedNavigation, targetFrameIsMainFrame: navigationAction.targetFrame?.isMainFrame) else {
-                decisionHandler(.allow)
-                return
-            }
-
-            if let url = navigationAction.request.url {
-                NSWorkspace.shared.open(url)
-            }
-            decisionHandler(.cancel)
+            let policy = packageWebViewNavigationPolicy(
+                navigationType: navigationAction.navigationType,
+                allowsEmbeddedNavigation: allowsEmbeddedNavigation,
+                targetFrameIsMainFrame: navigationAction.targetFrame?.isMainFrame
+            )
+            decisionHandler(policy)
         }
     }
 }
 
-func shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: Bool, targetFrameIsMainFrame: Bool?) -> Bool {
-    targetFrameIsMainFrame == nil || (targetFrameIsMainFrame == true && !allowsEmbeddedNavigation)
+/// Determines the navigation policy for the embedded package web view.
+///
+/// To prevent malicious or unsolicited popups from opening in the user's default browser,
+/// web navigation callbacks never invoke system URLs directly. Native UI actions (such as
+/// toolbar or link buttons) provide explicit browser access instead.
+///
+/// Subframe (iframe) loading/navigation is allowed. Nil-target popups (e.g. `window.open`
+/// or `target="_blank"`) are always cancelled, even if triggered via programmatic clicks
+/// producing `.linkActivated`. Main frame navigation is permitted only during initial load.
+func packageWebViewNavigationPolicy(
+    navigationType: WKNavigationType = .linkActivated,
+    allowsEmbeddedNavigation: Bool,
+    targetFrameIsMainFrame: Bool?
+) -> WKNavigationActionPolicy {
+    guard let isMainFrame = targetFrameIsMainFrame else {
+        // targetFrame == nil represents a new window/popup request; always block it.
+        return .cancel
+    }
+    if isMainFrame {
+        // Main frame navigation is only allowed during the initial embedded page load.
+        return allowsEmbeddedNavigation ? .allow : .cancel
+    }
+    // Subframe (iframe) loading/navigation is allowed.
+    return .allow
 }
 
 func initialBrowserURL(for url: URL) -> URL {
