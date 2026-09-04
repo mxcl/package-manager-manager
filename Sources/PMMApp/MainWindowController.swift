@@ -123,6 +123,7 @@ struct MainWindowRootView: View {
                     .navigationSplitViewColumnWidth(min: 602, ideal: 876)
                     .toolbar {
                         ToolbarSpacer() // or updateAllToolbarItem comes over here
+                        openInBrowserToolbarItem
                         appUpdateToolbarItem
                     }
                 }
@@ -160,6 +161,26 @@ struct MainWindowRootView: View {
             Button("Uninstall", role: .destructive) { model.confirmRemoteUninstall() }
         } message: {
             Text("This will uninstall the package from \(model.pendingRemoteUninstall?.host.displayName ?? "the remote Mac").")
+        }
+    }
+
+    private var currentBrowserLink: MainWindowBrowserLink? {
+        guard let package = model.selectedPackage else { return nil }
+        let links = mainWindowBrowserLinks(for: package)
+        return mainWindowSelectedBrowserLink(in: links, selectedTab: model.selectedLinkTab)
+    }
+
+    @ToolbarContentBuilder
+    private var openInBrowserToolbarItem: some ToolbarContent {
+        if let link = currentBrowserLink {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    NSWorkspace.shared.open(link.url)
+                } label: {
+                    Label("Open in Browser", systemImage: "arrow.up.forward.app")
+                }
+                .help("Open in Browser")
+            }
         }
     }
 

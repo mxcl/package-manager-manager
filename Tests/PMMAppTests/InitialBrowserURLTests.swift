@@ -18,15 +18,28 @@ import WebKit
     #expect(initialBrowserURL(for: url) == url)
 }
 
-@Test func browserNavigationPolicyOpensOnlyPostLoadMainFrameNavigationExternally() {
-    #expect(!shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: true, targetFrameIsMainFrame: true))
-    #expect(!shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: false, targetFrameIsMainFrame: false))
-    #expect(shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: false, targetFrameIsMainFrame: true))
-    #expect(shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: true, targetFrameIsMainFrame: nil))
-    #expect(shouldOpenNavigationInSystemBrowser(allowsEmbeddedNavigation: false, targetFrameIsMainFrame: nil))
+@Test func packageWebViewNavigationPolicyAllowsEmbeddedInitialLoadAndSubframes() {
+    // Initial page load in the main frame is permitted
+    #expect(packageWebViewNavigationPolicy(allowsEmbeddedNavigation: true, targetFrameIsMainFrame: true) == .allow)
 
-    // Automated script redirects or popups must never open in system browser
-    #expect(!shouldOpenNavigationInSystemBrowser(navigationType: .other, allowsEmbeddedNavigation: true, targetFrameIsMainFrame: nil))
-    #expect(!shouldOpenNavigationInSystemBrowser(navigationType: .other, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: nil))
-    #expect(!shouldOpenNavigationInSystemBrowser(navigationType: .other, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: true))
+    // Ordinary subframe (iframe) loading and navigation is always permitted
+    #expect(packageWebViewNavigationPolicy(allowsEmbeddedNavigation: false, targetFrameIsMainFrame: false) == .allow)
+    #expect(packageWebViewNavigationPolicy(allowsEmbeddedNavigation: true, targetFrameIsMainFrame: false) == .allow)
+    #expect(packageWebViewNavigationPolicy(navigationType: .other, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: false) == .allow)
+    #expect(packageWebViewNavigationPolicy(navigationType: .linkActivated, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: false) == .allow)
+}
+
+@Test func packageWebViewNavigationPolicyBlocksNilTargetPopupsEvenForProgrammaticClicks() {
+    // WKNavigationType.linkActivated can be synthesized via JS `anchor.click()`.
+    // Nil-target popup creations must always be cancelled regardless of navigationType.
+    #expect(packageWebViewNavigationPolicy(navigationType: .linkActivated, allowsEmbeddedNavigation: true, targetFrameIsMainFrame: nil) == .cancel)
+    #expect(packageWebViewNavigationPolicy(navigationType: .linkActivated, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: nil) == .cancel)
+    #expect(packageWebViewNavigationPolicy(navigationType: .other, allowsEmbeddedNavigation: true, targetFrameIsMainFrame: nil) == .cancel)
+    #expect(packageWebViewNavigationPolicy(navigationType: .other, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: nil) == .cancel)
+}
+
+@Test func packageWebViewNavigationPolicyBlocksPostLoadMainFrameNavigationEvenForProgrammaticClicks() {
+    // Post-load navigations in the main frame are cancelled, including programmatic anchor.click()
+    #expect(packageWebViewNavigationPolicy(navigationType: .linkActivated, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: true) == .cancel)
+    #expect(packageWebViewNavigationPolicy(navigationType: .other, allowsEmbeddedNavigation: false, targetFrameIsMainFrame: true) == .cancel)
 }
