@@ -374,7 +374,7 @@ private struct DashboardDiscoverEditorialReader: View {
                     editorialHeaderImage
                     if let deck = editorial.deck {
                         Text(deck)
-                            .font(.title3)
+                            .font(.title2.leading(.loose))
                             .foregroundStyle(.secondary)
                     }
                     if let body = editorial.body {
@@ -448,7 +448,7 @@ private struct DashboardDiscoverMarkdown: View {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 if block.hasPrefix("## ") {
                     Text(block.dropFirst(3))
-                        .font(.title2.bold())
+                        .font(.title.bold())
                         .padding(.top, 8)
                 } else if block.split(separator: "\n").allSatisfy({ $0.hasPrefix("- ") }) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -464,7 +464,7 @@ private struct DashboardDiscoverMarkdown: View {
                 }
             }
         }
-        .font(.body)
+        .font(.title2.leading(.loose))
         .textSelection(.enabled)
     }
 }
