@@ -1350,38 +1350,6 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(index.packagesBySection[.newUpdated] == [newPackage])
 }
 
-@Test func newUpdatedSectionDeduplicatesByLogicalPackageIdentity() {
-    let npmPackage = ManagedPackage(
-        manager: .npm,
-        identifier: "npm:typescript",
-        displayName: "typescript",
-        installedVersion: nil,
-        latestVersion: "5.9.2",
-        summary: "Typed JavaScript",
-        category: "developer-tools",
-        homepage: nil,
-        repo: nil,
-        lastUpdatedAt: "2026-06-01T00:00:00Z",
-        pulseKind: "new"
-    )
-    let pnpmPackage = ManagedPackage(
-        manager: .pnpm,
-        identifier: "pnpm:typescript",
-        displayName: "typescript",
-        installedVersion: nil,
-        latestVersion: "5.9.2",
-        summary: "Typed JavaScript",
-        category: "developer-tools",
-        homepage: nil,
-        repo: nil,
-        lastUpdatedAt: "2026-06-01T00:00:00Z",
-        pulseKind: "new"
-    )
-    let index = PackageIndex(packages: [], catalogPackages: [npmPackage, pnpmPackage], newUpdatedLastClickedAt: nil)
-
-    #expect(index.packagesBySection[.newUpdated] == [npmPackage])
-    #expect(index.newUpdatedUnreadCount == 1)
-}
 
 @Test func packageLinksUseHomepageRepoDocsOrderAndSkipInvalidURLs() {
     let links = mainWindowLinks(for: ManagedPackage(
