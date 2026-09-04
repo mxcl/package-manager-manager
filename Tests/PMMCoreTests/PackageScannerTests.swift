@@ -569,6 +569,15 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(outdated["@openai/codex"] == "0.153.1")
 }
 
+@Test(arguments: ["local-tool", "@scope/cli"])
+func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
+    let path = "../../../../../tmp/tools/@scope/cli"
+    let parsed = PackageScanner.parseBunList("└── \(name)@\(path)")
+    let package = try #require(parsed.packages.first)
+    #expect(package.name == name)
+    #expect(package.version == path)
+}
+
 @Test func bunScannerUsesGlobalBinOutdatedTableAndPackageBinNames() throws {
     let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     let modules = temp.appendingPathComponent("node_modules", isDirectory: true)

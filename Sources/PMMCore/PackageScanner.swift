@@ -330,7 +330,7 @@ public struct PackageScanner: @unchecked Sendable {
             }
 
             let content = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: " ├─└│\t"))
-            guard let atIndex = content.lastIndex(of: "@"), atIndex > content.startIndex else { continue }
+            guard let atIndex = content.dropFirst().firstIndex(of: "@") else { continue }
             let name = String(content[..<atIndex])
             let version = String(content[content.index(after: atIndex)...])
             guard !name.isEmpty, !version.isEmpty else { continue }
