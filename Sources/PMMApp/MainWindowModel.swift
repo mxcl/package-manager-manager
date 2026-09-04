@@ -1706,9 +1706,13 @@ struct PackageIndex: Sendable {
             guard let installedPackage = installedByIdentifier[catalogPackage.identifier] else { return catalogPackage }
             return Self.catalogPackage(catalogPackage, withInstalledStateFrom: installedPackage)
         }
+        var seenNewIdentities = Set<String>()
         let newUpdated = catalogPackages
             .filter { $0.pulseKind == "new" }
             .sorted(by: Self.newestUpdatedFirst)
+            .filter { package in
+                seenNewIdentities.insert("\(mainWindowManagerSection(for: package)):\(package.packageToken)").inserted
+            }
 
         let catalogApps = catalogPackages.filter {
             let identifier = $0.catalogIdentifier ?? $0.identifier
