@@ -1147,6 +1147,10 @@ public struct PackageScanner: @unchecked Sendable {
         }
     }
 
+    private func unscopedPackageName(_ name: String) -> String {
+        name.split(separator: "/").last.map(String.init) ?? name
+    }
+
     private func npmBinaryPath(packageName: String, root: String?, bin: String?) -> String? {
         guard let root, let bin else { return nil }
         let packageURL = URL(fileURLWithPath: root).appendingPathComponent(packageName, isDirectory: true)
@@ -1159,6 +1163,7 @@ public struct PackageScanner: @unchecked Sendable {
 
     private func pnpmBinaryPath(packageName: String, installLocation: String?, bin: String?) -> String? {
         guard let bin else { return nil }
+        let unscoped = unscopedPackageName(packageName)
         if let installLocation {
             let packageJSON = URL(fileURLWithPath: installLocation).appendingPathComponent("package.json")
             let binNames = npmBinNames(from: packageJSON, fallback: packageName)
@@ -1169,21 +1174,22 @@ public struct PackageScanner: @unchecked Sendable {
                 }
             }
         }
-        let direct = "\(bin)/\(packageName)"
+        let direct = "\(bin)/\(unscoped)"
         return fileManager.fileExists(atPath: direct) ? direct : nil
     }
 
     private func npmBinNames(from packageJSON: URL, fallback: String) -> [String] {
+        let unscopedFallback = unscopedPackageName(fallback)
         guard let data = try? Data(contentsOf: packageJSON),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let bin = json["bin"] else { return [fallback] }
+              let bin = json["bin"] else { return [unscopedFallback] }
         if bin is String {
-            return [fallback]
+            return [unscopedFallback]
         }
         if let bins = bin as? [String: Any] {
             return bins.keys.sorted()
         }
-        return [fallback]
+        return [unscopedFallback]
     }
 
     private func packageNames(in modules: URL, name: String) -> [URL] {

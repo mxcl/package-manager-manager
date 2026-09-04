@@ -69,7 +69,7 @@ private final class ProgressRecorder: @unchecked Sendable {
     #expect(runner.commands == [
         "/fake/brew upgrade git",
         "/fake/npm install -g @scope/tool@latest",
-        "/fake/pnpm update -g @scope/tool",
+        "/fake/pnpm update -g --latest @scope/tool",
         "/fake/npm exec --yes --package acorn@2.0.0 -- true",
         "/fake/uv tool upgrade ruff --color always",
         "/fake/uv python install 3.13.14 --color always",

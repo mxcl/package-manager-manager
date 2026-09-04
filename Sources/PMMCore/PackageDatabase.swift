@@ -73,7 +73,8 @@ public struct PackageDatabase: Sendable {
             managedPackages(for: .cargoInstall, identifierPrefix: "cargo", metadata: crates) +
             managedPackages(for: .homebrew, identifierPrefix: "brew", metadata: formulas, homebrewPrefix: homebrewPrefix) +
             managedPackages(for: .homebrew, identifierPrefix: "brew:cask", metadata: casks, homebrewPrefix: homebrewPrefix, appNames: appCasks) +
-            managedPackages(for: .npm, identifierPrefix: "npm", metadata: npms)
+            managedPackages(for: .npm, identifierPrefix: "npm", metadata: npms) +
+            managedPackages(for: .pnpm, identifierPrefix: "pnpm", metadata: npms)
         )
         return Dictionary(grouping: packages, by: \.id).compactMap { $0.value.first }
             .sorted {

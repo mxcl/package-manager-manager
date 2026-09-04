@@ -572,7 +572,7 @@ public struct RemoteSSHClient: Sendable {
             let arguments = "uninstall -g \(token)"
             command = "if [ -w \"$(npm root -g)\" ]; then npm \(arguments); else sudo -n \"$(command -v npm)\" \(arguments); fi"
         case ("update", .pnpm):
-            let arguments = "update -g \(shellQuote(package.packageToken))"
+            let arguments = "update -g --latest \(shellQuote(package.packageToken))"
             command = "if [ -w \"$(pnpm root -g 2>/dev/null || echo ~/.local/share/pnpm)\" ]; then pnpm \(arguments); else sudo -n \"$(command -v pnpm)\" \(arguments); fi"
         case ("uninstall", .pnpm):
             let arguments = "remove -g \(token)"

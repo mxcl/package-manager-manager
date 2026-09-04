@@ -249,7 +249,7 @@ import Testing
     _ = try await RemoteSSHClient(runner: runner).update(package, on: RemoteHost(destination: "atlas"))
 
     #expect(runner.arguments?.last?.contains(#"[ -w "$(pnpm root -g 2>/dev/null || echo ~/.local/share/pnpm)" ]"#) == true)
-    #expect(runner.arguments?.last?.contains(#"sudo -n "$(command -v pnpm)" update -g"#) == true)
+    #expect(runner.arguments?.last?.contains(#"sudo -n "$(command -v pnpm)" update -g --latest"#) == true)
 }
 
 private final class RecordingRemoteRunner: CommandRunning, @unchecked Sendable {

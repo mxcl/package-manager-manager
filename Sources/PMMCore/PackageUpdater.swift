@@ -28,7 +28,7 @@ public struct PackageUpdater: Sendable {
         case .npm:
             try run("npm", ["install", "-g", "\(package.packageToken)@latest"], onProgress: onProgress)
         case .pnpm:
-            try run("pnpm", ["update", "-g", package.packageToken], onProgress: onProgress)
+            try run("pnpm", ["update", "-g", "--latest", package.packageToken], onProgress: onProgress)
         case .npx:
             try run("npm", ["exec", "--yes", "--package", "\(package.packageToken)@\(package.latestVersion ?? "latest")", "--", "true"], onProgress: onProgress)
         case .uv:

@@ -67,6 +67,36 @@ It also pulls package summaries, categories, URLs, and latest-version metadata
 where the project has a source for it. If metadata is missing, the package still
 shows up. It just looks less informed.
 
+## Updating and Removing
+
+The detail pane offers update and uninstall actions when pkg⋅mgr² knows the native
+command to run.
+
+Supported update paths:
+
+- `brew upgrade`
+- `npm install --global package@latest`
+- `pnpm update -g --latest`
+- `npm exec --yes --package package@version -- true`
+- `uv tool upgrade`
+- `uv python install`
+- `cargo install --force`
+
+Supported uninstall paths:
+
+- `brew uninstall`
+- `npm uninstall --global`
+- `pnpm remove -g`
+- remove npx cache entries
+- `uv tool uninstall`
+- `uv python uninstall`
+- remove uvx cached environments
+- `cargo uninstall`
+
+> [!IMPORTANT]
+> `rustup` is inventory-only for now. pkg⋅mgr² will show `rustup` and toolchains,
+> but it will not update or uninstall them.
+
 ## Adding New Package Managers
 
 Get your agent to add new package managers and give us a PR.
