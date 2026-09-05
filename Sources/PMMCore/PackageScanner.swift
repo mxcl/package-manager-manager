@@ -890,6 +890,206 @@ public struct PackageScanner: @unchecked Sendable {
         return latest
     }
 
+    // MARK: - pkgx
+
+    public func scanPkgx(database: PackageDatabase) throws -> [ManagedPackage] {
+        try scanPkgx(database: database, mode: .fresh)
+    }
+
+    private func effectivePkgxDirectory() -> String {
+        if let envDir = effectiveEnvironment["PKGX_DIR"], !envDir.isEmpty {
+            return envDir
+        }
+        let dotPkgx = homeDirectory.appendingPathComponent(".pkgx").path
+        if fileManager.fileExists(atPath: dotPkgx) {
+            return dotPkgx
+        }
+        let sharePkgx = homeDirectory.appendingPathComponent(".local/share/pkgx").path
+        if fileManager.fileExists(atPath: sharePkgx) {
+            return sharePkgx
+        }
+        return dotPkgx
+    }
+
+    func scanPkgx(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
+        guard let pkgx = executable(named: "pkgx"), !pkgx.isEmpty else { return [] }
+        let pkgxDirPath = effectivePkgxDirectory()
+        let rootURL = URL(fileURLWithPath: pkgxDirPath)
+        guard fileManager.fileExists(atPath: rootURL.path) else { return [] }
+
+        var rawPackages: [ManagedPackage] = []
+
+        func walk(directory: URL, depth: Int) {
+            guard depth <= 6 else { return }
+            guard let contents = try? fileManager.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
+                options: [.skipsHiddenFiles]
+            ) else { return }
+
+            for url in contents {
+                let resourceValues = try? url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+                let isDir = resourceValues?.isDirectory ?? false
+                let isSymlink = resourceValues?.isSymbolicLink ?? false
+
+                let name = url.lastPathComponent
+                if isDir && !isSymlink && name.hasPrefix("v") && name.dropFirst().first?.isNumber == true {
+                    let version = String(name.dropFirst())
+                    let projectDir = directory
+                    let standardizedRoot = rootURL.standardizedFileURL.path
+                    let standardizedProject = projectDir.standardizedFileURL.path
+
+                    guard standardizedProject.hasPrefix(standardizedRoot + "/") else { continue }
+                    let project = String(standardizedProject.dropFirst(standardizedRoot.count + 1))
+                    guard !project.isEmpty else { continue }
+
+                    let binDir = url.appendingPathComponent("bin")
+                    var binaryPath: String? = nil
+                    var executableNames: [String] = []
+
+                    if let binContents = try? fileManager.contentsOfDirectory(at: binDir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
+                        for binURL in binContents {
+                            executableNames.append(binURL.lastPathComponent)
+                        }
+                    }
+                    executableNames.sort()
+
+                    let projectLastComponent = URL(fileURLWithPath: project).lastPathComponent
+                    if let exactMatch = executableNames.first(where: { $0 == projectLastComponent }) {
+                        binaryPath = binDir.appendingPathComponent(exactMatch).path
+                    } else if let firstBin = executableNames.first {
+                        binaryPath = binDir.appendingPathComponent(firstBin).path
+                    }
+
+                    let metadata = database.metadata(for: .pkgx, name: project)
+                    let fallbackDisplayName = executableNames.first ?? projectLastComponent
+                    let displayName = metadata?.displayName ?? (fallbackDisplayName.isEmpty ? project : fallbackDisplayName)
+
+                    let repo: String? = {
+                        if project.hasPrefix("github.com/") {
+                            let parts = project.split(separator: "/")
+                            if parts.count >= 3 {
+                                return "https://github.com/\(parts[1])/\(parts[2])"
+                            }
+                        }
+                        return nil
+                    }()
+
+                    let package = ManagedPackage(
+                        manager: .pkgx,
+                        identifier: "pkgx:\(project)",
+                        catalogIdentifier: "pkgx:\(project)",
+                        displayName: displayName,
+                        installedVersion: version,
+                        latestVersion: nil,
+                        summary: metadata?.summary ?? "Package run and managed with pkgx",
+                        category: metadata?.category ?? "developer-tools",
+                        homepage: metadata?.homepage ?? "https://pkgx.dev/pkgs/\(project)/",
+                        docs: "https://docs.pkgx.sh",
+                        repo: repo,
+                        installLocation: url.path,
+                        binaryPath: binaryPath,
+                        executableNames: executableNames
+                    )
+                    rawPackages.append(package)
+                } else if isDir && !isSymlink {
+                    if !["bin", "lib", "share", "include", "etc", "var"].contains(name) {
+                        walk(directory: url, depth: depth + 1)
+                    }
+                }
+            }
+        }
+
+        walk(directory: rootURL, depth: 0)
+
+        var packages = ManagedPackage.consolidatingInstalledVersions(in: rawPackages)
+
+        if mode.isFresh {
+            packages = packages.map { pkg in
+                let token = pkg.packageToken
+                guard let curl = executable(named: "curl"),
+                      let result = try? runner.run(curl, ["-fsSL", "https://dist.pkgx.dev/\(token)/versions.txt"]),
+                      result.status == 0,
+                      let latest = Self.parsePkgxVersions(result.stdout) else {
+                    return pkg
+                }
+                return ManagedPackage(
+                    manager: pkg.manager,
+                    identifier: pkg.identifier,
+                    catalogIdentifier: pkg.catalogIdentifier,
+                    displayName: pkg.displayName,
+                    installedVersion: pkg.installedVersion,
+                    installedVersions: pkg.installedVersions,
+                    latestVersion: latest,
+                    summary: pkg.summary,
+                    category: pkg.category,
+                    homepage: pkg.homepage,
+                    docs: pkg.docs,
+                    repo: pkg.repo,
+                    lastUpdatedAt: pkg.lastUpdatedAt,
+                    pulseKind: pkg.pulseKind,
+                    installLocation: pkg.installLocation,
+                    binaryPath: pkg.binaryPath,
+                    executableNames: pkg.executableNames,
+                    bundleIdentifier: pkg.bundleIdentifier,
+                    bundleVersion: pkg.bundleVersion,
+                    appProvenance: pkg.appProvenance,
+                    versionSource: pkg.versionSource,
+                    advisoryURL: pkg.advisoryURL,
+                    versionCheckedAt: Date()
+                )
+            }
+        }
+
+        return packages
+    }
+
+    private struct PkgxSemver: Comparable {
+        let raw: String
+        let major: Int
+        let minor: Int
+        let patch: Int
+        let prerelease: String?
+
+        init?(string: String) {
+            var str = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            if str.hasPrefix("v") { str = String(str.dropFirst()) }
+            guard let firstChar = str.first, firstChar.isNumber else { return nil }
+
+            self.raw = str
+            let withoutBuild = str.split(separator: "+", maxSplits: 1, omittingEmptySubsequences: true).first ?? ""
+            let parts = withoutBuild.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: true)
+            let versionNums = parts[0].split(separator: ".")
+            guard let maj = Int(versionNums[0]) else { return nil }
+            self.major = maj
+            self.minor = versionNums.count > 1 ? (Int(versionNums[1]) ?? 0) : 0
+            self.patch = versionNums.count > 2 ? (Int(versionNums[2]) ?? 0) : 0
+            self.prerelease = parts.count > 1 ? String(parts[1]) : nil
+        }
+
+        static func < (lhs: PkgxSemver, rhs: PkgxSemver) -> Bool {
+            if lhs.major != rhs.major { return lhs.major < rhs.major }
+            if lhs.minor != rhs.minor { return lhs.minor < rhs.minor }
+            if lhs.patch != rhs.patch { return lhs.patch < rhs.patch }
+            switch (lhs.prerelease, rhs.prerelease) {
+            case (nil, nil): return false
+            case (nil, .some): return false
+            case (.some, nil): return true
+            case (.some(let lPre), .some(let rPre)):
+                return lPre.localizedStandardCompare(rPre) == .orderedAscending
+            }
+        }
+    }
+
+    static func parsePkgxVersions(_ output: String) -> String? {
+        let lines = output.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+        guard !lines.isEmpty else { return nil }
+        let versions = lines.compactMap(PkgxSemver.init)
+        return versions.max()?.raw
+    }
+
     private func parseCargoInstallList(
         _ output: String,
         latestVersions: [String: String] = [:]
@@ -1576,6 +1776,7 @@ public struct PackageScanner: @unchecked Sendable {
                         }
                     case .pipx: packages = try scanPipx(database: database, mode: mode)
                     case .goInstall: packages = try scanGoInstall(database: database, mode: mode)
+                    case .pkgx: packages = try scanPkgx(database: database, mode: mode)
                     case .skills: packages = try scanSkills(database: database)
                     case .pnpm: packages = try scanPNPM(database: database, mode: mode)
                     case .uv: packages = try scanUV(database: database, mode: mode)

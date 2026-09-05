@@ -13,6 +13,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
     case javascript
     case python
     case go
+    case pkgx
     case skills
     case category(String)
     case about
@@ -29,6 +30,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .javascript: "javascript"
         case .python: "python"
         case .go: "go"
+        case .pkgx: "pkgx"
         case .skills: "skills"
         case .category(let identifier): "category:\(identifier)"
         case .about: "about"
@@ -36,7 +38,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
     }
 
     static let librarySections: [MainWindowSection] = [.home, .installed, .outdated]
-    static let managerSections: [MainWindowSection] = [.rust, .homebrew, .apps, .javascript, .python, .go, .skills]
+    static let managerSections: [MainWindowSection] = [.rust, .homebrew, .apps, .javascript, .python, .go, .pkgx, .skills]
         .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
     static let categoryShortcutSections: [MainWindowSection] = [.newUpdated]
 
@@ -66,6 +68,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .javascript: "JavaScript"
         case .python: "Python"
         case .go: "Go"
+        case .pkgx: "pkgx"
         case .skills: "Skills"
         case .category(let identifier): Self.categoryTitle(identifier)
         case .about: "About"
@@ -84,6 +87,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .javascript: "curlybraces"
         case .python: "arrow.forward.to.line"
         case .go: "chevron.left.forwardslash.chevron.right"
+        case .pkgx: "cube"
         case .skills: "wand.and.stars"
         case .category(let identifier): Self.categorySystemImage(identifier)
         case .about: "info.circle"
@@ -97,12 +101,17 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .javascript: "EcosystemJavaScript"
         case .python: "EcosystemPython"
         case .go: "EcosystemGo"
+        case .pkgx: "EcosystemPkgx"
         default: nil
         }
     }
 
     var iconScale: CGFloat {
-        self == .go ? 1.35 : 1.0
+        switch self {
+        case .go: 1.35
+        case .pkgx: 1.25
+        default: 1.0
+        }
     }
 
     var packageManagers: Set<PackageManagerKind> {
@@ -113,6 +122,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .javascript: [.npm, .npx, .pnpm, .bun, .mise]
         case .python: [.uv, .uvx, .pipx, .mise]
         case .go: [.goInstall, .mise]
+        case .pkgx: [.pkgx]
         case .skills: [.skills]
         default: []
         }
@@ -248,6 +258,9 @@ struct MainWindowPackageURLRequest: Equatable {
         } else if identifier.hasPrefix("go-install:") {
             manager = .goInstall
             name = String(identifier.trimmingPrefix("go-install:"))
+        } else if identifier.hasPrefix("pkgx:") {
+            manager = .pkgx
+            name = String(identifier.trimmingPrefix("pkgx:"))
         } else if identifier.hasPrefix("mise:") {
             manager = .mise
             name = String(identifier.trimmingPrefix("mise:"))
@@ -296,6 +309,9 @@ struct MainWindowPackageURLRequest: Equatable {
         case "go", "go-install":
             manager = .goInstall
             identifier = "go:\(name)"
+        case "pkgx":
+            manager = .pkgx
+            identifier = "pkgx:\(name)"
         case "npm":
             manager = .npm
             identifier = "npm:\(name)"
@@ -342,6 +358,7 @@ struct MainWindowPackageURLRequest: Equatable {
         case .skills: .skills
         case .uv, .uvx, .pipx: .python
         case .goInstall: .go
+        case .pkgx: .pkgx
         }
     }
 
@@ -424,6 +441,8 @@ func mainWindowRegistryURLString(for package: ManagedPackage) -> String? {
         return "https://crates.io/crates/\(package.packageToken)"
     case .goInstall:
         return "https://pkg.go.dev/\(package.packageToken)"
+    case .pkgx:
+        return "https://pkgx.dev/pkgs/\(package.packageToken)/"
     case .uv, .uvx, .pipx:
         guard package.manager == .pipx || package.identifier.hasPrefix("uv:tool:") || package.manager == .uvx else { return nil }
         let distributionName = (package.catalogIdentifier?.split(separator: ":").last).map(String.init) ?? package.packageToken
@@ -1550,6 +1569,31 @@ final class MainWindowModel: NSObject, ObservableObject {
                 repo: repo
             )
         }
+        if request.manager == .pkgx {
+            let binaryName = URL(fileURLWithPath: request.name).lastPathComponent
+            let repo: String? = {
+                if request.name.hasPrefix("github.com/") {
+                    let parts = request.name.split(separator: "/")
+                    if parts.count >= 3 {
+                        return "https://github.com/\(parts[1])/\(parts[2])"
+                    }
+                }
+                return nil
+            }()
+            return ManagedPackage(
+                manager: .pkgx,
+                identifier: request.identifier,
+                catalogIdentifier: "pkgx:\(request.name)",
+                displayName: binaryName.isEmpty ? request.name : binaryName,
+                installedVersion: nil,
+                latestVersion: nil,
+                summary: "Package run and managed with pkgx",
+                category: "developer-tools",
+                homepage: "https://pkgx.dev/pkgs/\(request.name)/",
+                docs: "https://docs.pkgx.sh",
+                repo: repo
+            )
+        }
         return nil
     }
 
@@ -1813,6 +1857,7 @@ struct PackageIndex: Sendable {
             .javascript: packages.filter { mainWindowManagerSection(for: $0) == .javascript }.sorted(by: Self.alphabetical),
             .python: packages.filter { mainWindowManagerSection(for: $0) == .python }.sorted(by: Self.alphabetical),
             .go: packages.filter { mainWindowManagerSection(for: $0) == .go }.sorted(by: Self.alphabetical),
+            .pkgx: packages.filter { mainWindowManagerSection(for: $0) == .pkgx }.sorted(by: Self.alphabetical),
             .skills: packages.filter { $0.manager == .skills }.sorted(by: Self.alphabetical),
         ]
 
@@ -1912,6 +1957,7 @@ func mainWindowSetupSection(_ manager: PackageManagerKind) -> MainWindowSection?
     case .skills: .skills
     case .uv, .uvx, .pipx: .python
     case .goInstall: .go
+    case .pkgx: .pkgx
     case .macApp, .mise: nil
     }
 }
@@ -1929,6 +1975,7 @@ func mainWindowManagerSection(for package: ManagedPackage) -> MainWindowSection 
     case .skills: return .skills
     case .uv, .uvx, .pipx: return .python
     case .goInstall: return .go
+    case .pkgx: return .pkgx
     case .mise:
         switch package.packageToken.lowercased() {
         case "node", "bun", "deno": return .javascript

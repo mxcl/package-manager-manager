@@ -94,6 +94,8 @@ func menuBarEcosystemIcon(for package: ManagedPackage) -> MenuBarEcosystemIcon {
         return .system(name: "wand.and.stars")
     case .goInstall:
         return .asset(name: "EcosystemGo", fallbackSystemName: "chevron.left.forwardslash.chevron.right")
+    case .pkgx:
+        return .asset(name: "EcosystemPkgx", fallbackSystemName: "cube")
     case .macApp:
         return switch package.appProvenance ?? .unknown {
         case .homebrew: .paired(assetName: "EcosystemHomebrew", fallbackSystemName: "mug", systemName: "macwindow")
@@ -151,6 +153,23 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
                 category: "developer-tools",
                 homepage: "https://pkg.go.dev/\(token)",
                 docs: "https://pkg.go.dev/\(token)"
+            )
+        } else if id.hasPrefix("pkgx:") {
+            let trimmed = id.trimmingPrefix("pkgx:")
+            let token = String(trimmed.split(separator: ":").first ?? trimmed)
+            guard !token.isEmpty else { return nil }
+            let binaryName = URL(fileURLWithPath: token).lastPathComponent
+            package = ManagedPackage(
+                manager: .pkgx,
+                identifier: "pkgx:\(token)",
+                catalogIdentifier: "pkgx:\(token)",
+                displayName: binaryName.isEmpty ? token : binaryName,
+                installedVersion: nil,
+                latestVersion: nil,
+                summary: "Package run and managed with pkgx",
+                category: "developer-tools",
+                homepage: "https://pkgx.dev",
+                docs: "https://docs.pkgx.sh"
             )
         } else {
             return nil

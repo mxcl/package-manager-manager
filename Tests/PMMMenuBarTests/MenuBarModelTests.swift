@@ -228,6 +228,31 @@ private final class LockedStrings: @unchecked Sendable {
     #expect(menuBarCommandPackage(id: "go:github.com/rakyll/hey", kind: .install, snapshot: installedSnapshot) == nil)
 }
 
+@Test func menuBarInstallSynthesizesUninstalledPkgxPackageWhenNotInCatalog() {
+    let snapshot = PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: []
+    )
+
+    let package = menuBarCommandPackage(id: "pkgx:charm.sh/gum", kind: .install, snapshot: snapshot)
+    #expect(package?.manager == .pkgx)
+    #expect(package?.identifier == "pkgx:charm.sh/gum")
+    #expect(package?.displayName == "gum")
+    #expect(package?.packageToken == "charm.sh/gum")
+    #expect(package?.installedVersion == nil)
+
+    let packages = menuBarCommandInstallPackages(ids: ["pkgx:charm.sh/gum"], snapshot: snapshot)
+    #expect(packages.count == 1)
+    #expect(packages.first?.identifier == "pkgx:charm.sh/gum")
+
+    let installedPkgx = ManagedPackage(manager: .pkgx, identifier: "pkgx:charm.sh/gum", installedVersion: "2.0.0", latestVersion: nil)
+    let installedSnapshot = PackageHostSnapshot(
+        inventory: PackageInventory(packages: [installedPkgx]),
+        catalogPackages: []
+    )
+    #expect(menuBarCommandPackage(id: "pkgx:charm.sh/gum", kind: .install, snapshot: installedSnapshot) == nil)
+}
+
 @Test func helperInstallIsHeldRatherThanDroppedWhileTheHostIsBusy() {
     let id = CargoHelper.binstall.promptKey
 

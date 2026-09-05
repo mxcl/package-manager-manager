@@ -432,6 +432,52 @@ import Testing
     #expect(goPackages.first?.homepage == "https://pkg.go.dev/github.com/rakyll/hey")
 }
 
+@Test func remoteLinuxInventoryParsesPkgxPackages() async throws {
+    let payload = """
+    __PMM_LINUX_V1__
+    __PMM_PROFILE__
+    Linux\tx86_64\t1\tapt
+    __PMM_PKGX__
+    charm.sh/gum\t2.0.0\t/home/user/.pkgx/charm.sh/gum/v2.0.0
+    gnu.org/coreutils\t9.5.0\t/home/user/.pkgx/gnu.org/coreutils/v9.5.0
+    __PMM_END__
+    """
+    let runner = RecordingRemoteRunner(result: CommandResult(stdout: payload, stderr: "", status: 0))
+    let response = try await RemoteSSHClient(runner: runner).inventory(on: RemoteHost(destination: "atlas"))
+    let pkgxPackages = response.inventory.packages.filter { $0.manager == .pkgx }
+    #expect(pkgxPackages.count == 2)
+    let gum = pkgxPackages.first(where: { $0.identifier == "pkgx:charm.sh/gum" })
+    #expect(gum?.displayName == "gum")
+    #expect(gum?.installedVersion == "2.0.0")
+    #expect(gum?.installLocation == "/home/user/.pkgx/charm.sh/gum/v2.0.0")
+    #expect(gum?.homepage == "https://pkgx.dev/pkgs/charm.sh/gum/")
+}
+
+@Test func remoteLinuxActionScriptRunsPkgxUpdateAndUninstall() async throws {
+    let response = RemoteControlResponse(inventory: PackageInventory(packages: []))
+    let runner = RecordingRemoteRunner(result: CommandResult(
+        stdout: String(decoding: try JSONEncoder().encode(response), as: UTF8.self),
+        stderr: "",
+        status: 0
+    ))
+    let package = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        installedVersion: "2.0.0",
+        latestVersion: "2.1.0",
+        installLocation: "/home/user/.pkgx/charm.sh/gum/v2.0.0"
+    )
+
+    _ = try await RemoteSSHClient(runner: runner).update(package, on: RemoteHost(destination: "atlas"))
+    #expect(runner.arguments?.last?.contains("pkgx +") == true)
+    #expect(runner.arguments?.last?.contains("charm.sh/gum") == true)
+    #expect(runner.arguments?.last?.contains("true") == true)
+
+    _ = try await RemoteSSHClient(runner: runner).uninstall(package, on: RemoteHost(destination: "atlas"))
+    #expect(runner.arguments?.last?.contains("charm.sh/gum") == true)
+    #expect(runner.arguments?.last?.contains("rm -rf") == true)
+}
+
 private final class RecordingRemoteRunner: CommandRunning, @unchecked Sendable {
     private let result: CommandResult
     private let lock = NSLock()

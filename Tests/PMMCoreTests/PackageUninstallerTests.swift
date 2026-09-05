@@ -262,6 +262,114 @@ private final class ProgressRecorder: @unchecked Sendable {
     }
 }
 
+@Test func pkgxUninstallerRemovesPackageAndPrunesEmptyProjectDirectory() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let projectDir = temp.appendingPathComponent("charm.sh/gum", isDirectory: true)
+    let v2Dir = projectDir.appendingPathComponent("v2.0.0", isDirectory: true)
+    let v1Dir = projectDir.appendingPathComponent("v1.0.0", isDirectory: true)
+    try FileManager.default.createDirectory(at: v2Dir, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: v1Dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let uninstaller = PackageUninstaller(
+        runner: RecordingRunner(),
+        homeDirectory: temp,
+        toolPaths: ["pkgx": "/fake/pkgx"],
+        environment: ["PKGX_DIR": temp.path]
+    )
+    let v2Pkg = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "2.0.0",
+        latestVersion: nil,
+        installLocation: v2Dir.path
+    )
+    let v1Pkg = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "1.0.0",
+        latestVersion: nil,
+        installLocation: v1Dir.path
+    )
+
+    #expect(PackageUninstaller.supports(v2Pkg))
+    #expect(FileManager.default.fileExists(atPath: v2Dir.path))
+    #expect(FileManager.default.fileExists(atPath: v1Dir.path))
+
+    // Remove v2.0.0 - v1.0.0 still exists, so charm.sh/gum remains
+    try uninstaller.uninstall(v2Pkg)
+    #expect(!FileManager.default.fileExists(atPath: v2Dir.path))
+    #expect(FileManager.default.fileExists(atPath: v1Dir.path))
+    #expect(FileManager.default.fileExists(atPath: projectDir.path))
+
+    // Remove v1.0.0 - no other versions exist, so charm.sh/gum is pruned
+    try uninstaller.uninstall(v1Pkg)
+    #expect(!FileManager.default.fileExists(atPath: v1Dir.path))
+    #expect(!FileManager.default.fileExists(atPath: projectDir.path))
+
+    // Rejection: target outside PKGX_DIR
+    let outsideDir = temp.appendingPathComponent("outside/charm.sh/gum/v1.0.0", isDirectory: true)
+    try FileManager.default.createDirectory(at: outsideDir, withIntermediateDirectories: true)
+    let outsidePkg = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "1.0.0",
+        latestVersion: nil,
+        installLocation: outsideDir.path
+    )
+    #expect(throws: PackageUninstallError.self) {
+        try uninstaller.uninstall(outsidePkg)
+    }
+    #expect(FileManager.default.fileExists(atPath: outsideDir.path))
+
+    // Rejection: target is not a directory
+    let fileTarget = temp.appendingPathComponent("charm.sh/gum/v3.0.0")
+    try FileManager.default.createDirectory(at: projectDir, withIntermediateDirectories: true)
+    FileManager.default.createFile(atPath: fileTarget.path, contents: Data())
+    let filePkg = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "3.0.0",
+        latestVersion: nil,
+        installLocation: fileTarget.path
+    )
+    #expect(throws: PackageUninstallError.self) {
+        try uninstaller.uninstall(filePkg)
+    }
+    #expect(FileManager.default.fileExists(atPath: fileTarget.path))
+
+    // Rejection: target path does not match package identifier
+    let otherDir = temp.appendingPathComponent("other.org/tool/v1.0.0", isDirectory: true)
+    try FileManager.default.createDirectory(at: otherDir, withIntermediateDirectories: true)
+    let mismatchedPkg = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "1.0.0",
+        latestVersion: nil,
+        installLocation: otherDir.path
+    )
+    #expect(throws: PackageUninstallError.self) {
+        try uninstaller.uninstall(mismatchedPkg)
+    }
+    #expect(FileManager.default.fileExists(atPath: otherDir.path))
+
+    // Rejection: missing executable pkgx
+    let uninstallerWithoutPkgx = PackageUninstaller(
+        runner: RecordingRunner(),
+        homeDirectory: temp,
+        toolPaths: ["pkgx": ""],
+        environment: ["PKGX_DIR": temp.path]
+    )
+    #expect(throws: PackageUninstallError.missingExecutable("pkgx")) {
+        try uninstallerWithoutPkgx.uninstall(mismatchedPkg)
+    }
+}
+
 @Test func packageUninstallerDoesNotSupportRustup() throws {
     let package = package(.rustup, "rustup:rustup")
 

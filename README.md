@@ -42,7 +42,7 @@ over SSH, including hosts on your local network or Tailscale network.
 Each host gets its own Installed and Outdated sections in the sidebar. Linux
 inventory includes native packages that provide command-line tools, plus global
 npm, pnpm, and Bun packages, pipx applications, `cargo install` and `go install`
-binaries, and `uv tool` tools when those managers are present. System-package
+binaries, `pkgx` packages, and `uv tool` tools when those managers are present. System-package
 actions use non-interactive sudo; without it, those packages remain visible but read-only.
 
 pkg⋅mgr² uses OpenSSH directly. Your keys, agent, host aliases, and
@@ -63,6 +63,7 @@ pkg⋅mgr² currently inventories:
 - `uvx` cached environments
 - `cargo install` binaries
 - `go install` binaries
+- packages run and managed with `pkgx`
 - `rustup` and installed Rust toolchains
 
 It also pulls package summaries, categories, URLs, and latest-version metadata
@@ -78,8 +79,8 @@ See [what’s new in pnpm, Bun, pipx, and Go support](https://mxcl.dev/package-m
 
 ## Installing
 
-On your local Mac, install packages through Homebrew, npm, pnpm, Bun, pipx, or
-Go from a package’s detail pane. The corresponding package manager must already
+On your local Mac, install packages through Homebrew, npm, pnpm, Bun, pipx, Go,
+or pkgx from a package’s detail pane. The corresponding package manager must already
 be available. Remote hosts support updates and removals, but not new installs.
 
 ## Updating and Removing
@@ -98,6 +99,7 @@ Supported update paths:
 - `uv python install`
 - `pipx upgrade`
 - `go install package@latest`
+- `pkgx +package true`
 - `cargo install --force`
 
 Supported uninstall paths:
@@ -112,6 +114,7 @@ Supported uninstall paths:
 - `pipx uninstall`
 - remove uvx cached environments
 - remove Go binaries after checking their location and embedded package path
+- remove package from `~/.pkgx`
 - `cargo uninstall`
 
 > [!IMPORTANT]

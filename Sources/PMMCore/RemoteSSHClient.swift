@@ -177,6 +177,7 @@ public struct RemoteSSHClient: Sendable {
         packages += linuxUV(sections: sections)
         packages += linuxPipx(sections: sections)
         packages += linuxGo(version: sections["GO_VERSION"], outdated: sections["GO_OUTDATED"])
+        packages += linuxPkgx(sections["PKGX"])
 
         let failures = lines(sections["ERRORS"]).map { RemoteControlFailure(message: $0) }
         return RemoteControlResponse(
@@ -447,6 +448,35 @@ public struct RemoteSSHClient: Sendable {
         return PackageScanner.parseGoVersionList(version, latestVersions: latest)
     }
 
+    private static func linuxPkgx(_ output: String?) -> [ManagedPackage] {
+        guard let output, !output.isEmpty else { return [] }
+        var rawPackages: [ManagedPackage] = []
+        for line in lines(output) {
+            let parts = line.split(separator: "\t").map(String.init)
+            guard parts.count >= 3 else { continue }
+            let project = parts[0]
+            let version = parts[1]
+            let vdir = parts[2]
+            let shortName = URL(fileURLWithPath: project).lastPathComponent
+            let repo: String? = project.hasPrefix("github.com/") ? "https://" + project : nil
+            rawPackages.append(ManagedPackage(
+                manager: .pkgx,
+                identifier: "pkgx:\(project)",
+                catalogIdentifier: "pkgx:\(project)",
+                displayName: shortName,
+                installedVersion: version,
+                latestVersion: nil,
+                summary: "Package run and managed with pkgx",
+                category: "developer-tools",
+                homepage: "https://pkgx.dev/pkgs/\(project)/",
+                docs: "https://docs.pkgx.sh",
+                repo: repo,
+                installLocation: vdir
+            ))
+        }
+        return ManagedPackage.consolidatingInstalledVersions(in: rawPackages)
+    }
+
     private static func linuxSections(_ output: String) -> [String: String] {
         var sections: [String: [String]] = [:]
         var current: String?
@@ -619,6 +649,23 @@ public struct RemoteSSHClient: Sendable {
         fi
       fi
     fi
+    if command -v pkgx >/dev/null 2>&1; then
+      pkgx_dir="${PKGX_DIR:-$HOME/.pkgx}"
+      [ ! -d "$pkgx_dir" ] && [ -d "$HOME/.local/share/pkgx" ] && pkgx_dir="$HOME/.local/share/pkgx"
+      if [ -d "$pkgx_dir" ]; then
+        pkgx_pkgs=$(find "$pkgx_dir" -mindepth 2 -maxdepth 5 -type d -name 'v[0-9]*' 2>/dev/null || true)
+        if [ -n "$pkgx_pkgs" ]; then
+          printf '__PMM_PKGX__\n'
+          printf '%s\n' "$pkgx_pkgs" | while read -r vdir; do
+            [ -z "$vdir" ] && continue
+            pdir=$(dirname "$vdir")
+            proj=${pdir#$pkgx_dir/}
+            ver=${vdir##*/v}
+            printf '%s\t%s\t%s\n' "$proj" "$ver" "$vdir"
+          done
+        fi
+      fi
+    fi
     printf '__PMM_END__\n'
     """#
 
@@ -682,6 +729,43 @@ public struct RemoteSSHClient: Sendable {
               fi
             else
               echo "go command not found" >&2; exit 1
+            fi
+            """
+        case ("update", .pkgx):
+            command = "pkgx +\(token) true"
+        case ("uninstall", .pkgx):
+            let location = shellQuote(package.installLocation ?? "")
+            let expectedProject = package.identifier.hasPrefix("pkgx:") ? String(package.identifier.dropFirst(5)) : package.packageToken
+            let token = shellQuote(expectedProject)
+            command = """
+            if command -v pkgx >/dev/null 2>&1; then
+              pkgx_dir="${PKGX_DIR:-$HOME/.pkgx}"
+              [ ! -d "$pkgx_dir" ] && [ -d "$HOME/.local/share/pkgx" ] && pkgx_dir="$HOME/.local/share/pkgx"
+              if [ -n "$pkgx_dir" ] && [ -d "$pkgx_dir" ]; then
+                target_dir=$(cd \(location) 2>/dev/null && pwd || true)
+                root_dir=$(cd "$pkgx_dir" 2>/dev/null && pwd || true)
+                if [ -n "$target_dir" ] && [ -n "$root_dir" ] && [ "${target_dir#$root_dir/}" != "$target_dir" ] && [ -d "$target_dir" ]; then
+                  rel="${target_dir#$root_dir/}"
+                  case "$rel" in
+                    \(expectedProject)/v*|\(expectedProject))
+                      rm -rf "$target_dir"
+                      pdir=$(dirname "$target_dir")
+                      if [ "$pdir" != "$root_dir" ] && [ -d "$pdir" ] && [ -z "$(find "$pdir" -mindepth 1 -type d 2>/dev/null)" ]; then
+                        rm -rf "$pdir"
+                      fi
+                      ;;
+                    *)
+                      echo "Target at $target_dir does not match package \(token)" >&2; exit 1
+                      ;;
+                  esac
+                else
+                  echo "Directory \(location) not found or not in pkgx directory $pkgx_dir" >&2; exit 1
+                fi
+              else
+                echo "pkgx directory not found" >&2; exit 1
+              fi
+            else
+              echo "pkgx command not found" >&2; exit 1
             fi
             """
         case ("update", .uv) where package.summary == "uv-managed Python":

@@ -53,6 +53,8 @@ public struct PackageUninstaller: Sendable {
             try run("pipx", ["uninstall", package.packageToken], onProgress: onProgress)
         case .goInstall:
             try removeGoPackage(package)
+        case .pkgx:
+            try removePkgxPackage(package)
         case .uvx:
             try removeInstallLocation(package)
         }
@@ -60,7 +62,7 @@ public struct PackageUninstaller: Sendable {
 
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
-        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .uvx, .goInstall:
+        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .uvx, .goInstall, .pkgx:
             package.installedVersion != nil
         case .skills:
             package.installedVersion != nil && package.identifier.hasPrefix("skills:global:")
@@ -199,6 +201,65 @@ public struct PackageUninstaller: Sendable {
                        Self.parseGoPackagePath(from: res.stdout) == expectedPath {
                         try? FileManager.default.removeItem(atPath: standardizedSibling)
                     }
+                }
+            }
+        }
+    }
+
+    private func effectivePkgxDirectory() -> String {
+        let env = effectiveEnvironment
+        if let envDir = env["PKGX_DIR"], !envDir.isEmpty {
+            return envDir
+        }
+        let dotPkgx = homeDirectory.appendingPathComponent(".pkgx").path
+        if FileManager.default.fileExists(atPath: dotPkgx) {
+            return dotPkgx
+        }
+        let sharePkgx = homeDirectory.appendingPathComponent(".local/share/pkgx").path
+        if FileManager.default.fileExists(atPath: sharePkgx) {
+            return sharePkgx
+        }
+        return dotPkgx
+    }
+
+    private func removePkgxPackage(_ package: ManagedPackage) throws {
+        guard let location = package.installLocation else {
+            throw PackageUninstallError.missingInstallLocation(package.displayName)
+        }
+        guard let pkgx = toolPaths["pkgx"] ?? firstExecutable(named: "pkgx"), !pkgx.isEmpty else {
+            throw PackageUninstallError.missingExecutable("pkgx")
+        }
+        let pkgxDir = effectivePkgxDirectory()
+        let standardizedRoot = URL(fileURLWithPath: pkgxDir).standardizedFileURL.path
+        let standardizedLocation = URL(fileURLWithPath: location).standardizedFileURL.path
+
+        guard standardizedLocation.hasPrefix(standardizedRoot + "/") else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Install location \(location) is not inside pkgx directory \(pkgxDir)")
+        }
+
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: standardizedLocation, isDirectory: &isDir), isDir.boolValue else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Install location does not exist or is not a directory at \(location)")
+        }
+
+        let expectedProject = package.identifier.hasPrefix("pkgx:") ? String(package.identifier.dropFirst(5)) : package.packageToken
+        let relative = String(standardizedLocation.dropFirst(standardizedRoot.count + 1))
+        guard relative.hasPrefix(expectedProject + "/v") || relative == expectedProject else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Target path \(location) does not match pkgx package \(expectedProject)")
+        }
+
+        try FileManager.default.removeItem(atPath: standardizedLocation)
+
+        let projectDir = URL(fileURLWithPath: standardizedLocation).deletingLastPathComponent().path
+        if projectDir.hasPrefix(standardizedRoot + "/") {
+            if let remaining = try? FileManager.default.contentsOfDirectory(atPath: projectDir) {
+                let liveDirectories = remaining.filter { entry in
+                    let entryPath = (projectDir as NSString).appendingPathComponent(entry)
+                    var subIsDir: ObjCBool = false
+                    return FileManager.default.fileExists(atPath: entryPath, isDirectory: &subIsDir) && subIsDir.boolValue
+                }
+                if liveDirectories.isEmpty {
+                    try? FileManager.default.removeItem(atPath: projectDir)
                 }
             }
         }
