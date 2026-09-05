@@ -947,9 +947,11 @@ public struct PackageScanner: @unchecked Sendable {
                     var binaryPath: String? = nil
                     var executableNames: [String] = []
 
-                    if let binContents = try? fileManager.contentsOfDirectory(at: binDir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
+                    if let binContents = try? fileManager.contentsOfDirectory(at: binDir, includingPropertiesForKeys: [.isExecutableKey], options: [.skipsHiddenFiles]) {
                         for binURL in binContents {
-                            executableNames.append(binURL.lastPathComponent)
+                            if fileManager.isExecutableFile(atPath: binURL.path) {
+                                executableNames.append(binURL.lastPathComponent)
+                            }
                         }
                     }
                     executableNames.sort()
@@ -993,9 +995,7 @@ public struct PackageScanner: @unchecked Sendable {
                     )
                     rawPackages.append(package)
                 } else if isDir && !isSymlink {
-                    if !["bin", "lib", "share", "include", "etc", "var"].contains(name) {
-                        walk(directory: url, depth: depth + 1)
-                    }
+                    walk(directory: url, depth: depth + 1)
                 }
             }
         }
@@ -1008,7 +1008,7 @@ public struct PackageScanner: @unchecked Sendable {
             packages = packages.map { pkg in
                 let token = pkg.packageToken
                 guard let curl = executable(named: "curl"),
-                      let result = try? runner.run(curl, ["-fsSL", "https://dist.pkgx.dev/\(token)/versions.txt"]),
+                      let result = try? runner.run(curl, ["-fsSL", "--connect-timeout", "2", "--max-time", "5", "https://dist.pkgx.dev/\(token)/versions.txt"]),
                       result.status == 0,
                       let latest = Self.parsePkgxVersions(result.stdout) else {
                     return pkg
@@ -1076,7 +1076,18 @@ public struct PackageScanner: @unchecked Sendable {
             case (nil, .some): return false
             case (.some, nil): return true
             case (.some(let lPre), .some(let rPre)):
-                return lPre.localizedStandardCompare(rPre) == .orderedAscending
+                let lParts = lPre.split(separator: ".")
+                let rParts = rPre.split(separator: ".")
+                for (l, r) in zip(lParts, rParts) {
+                    if l == r { continue }
+                    if let lNum = Int(l), let rNum = Int(r) {
+                        return lNum < rNum
+                    }
+                    if Int(l) != nil { return true }
+                    if Int(r) != nil { return false }
+                    return l.compare(r, options: .literal) == .orderedAscending
+                }
+                return lParts.count < rParts.count
             }
         }
     }

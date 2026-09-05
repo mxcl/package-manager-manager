@@ -653,7 +653,8 @@ public struct RemoteSSHClient: Sendable {
       pkgx_dir="${PKGX_DIR:-$HOME/.pkgx}"
       [ ! -d "$pkgx_dir" ] && [ -d "$HOME/.local/share/pkgx" ] && pkgx_dir="$HOME/.local/share/pkgx"
       if [ -d "$pkgx_dir" ]; then
-        pkgx_pkgs=$(find "$pkgx_dir" -mindepth 2 -maxdepth 5 -type d -name 'v[0-9]*' 2>/dev/null || true)
+        # Matches local PackageScanner depth limit of 6 for nested namespaces
+        pkgx_pkgs=$(find "$pkgx_dir" -mindepth 2 -maxdepth 6 -type d -name 'v[0-9]*' 2>/dev/null || true)
         if [ -n "$pkgx_pkgs" ]; then
           printf '__PMM_PKGX__\n'
           printf '%s\n' "$pkgx_pkgs" | while read -r vdir; do
@@ -738,34 +739,31 @@ public struct RemoteSSHClient: Sendable {
             let expectedProject = package.identifier.hasPrefix("pkgx:") ? String(package.identifier.dropFirst(5)) : package.packageToken
             let token = shellQuote(expectedProject)
             command = """
-            if command -v pkgx >/dev/null 2>&1; then
-              pkgx_dir="${PKGX_DIR:-$HOME/.pkgx}"
-              [ ! -d "$pkgx_dir" ] && [ -d "$HOME/.local/share/pkgx" ] && pkgx_dir="$HOME/.local/share/pkgx"
-              if [ -n "$pkgx_dir" ] && [ -d "$pkgx_dir" ]; then
-                target_dir=$(cd \(location) 2>/dev/null && pwd || true)
-                root_dir=$(cd "$pkgx_dir" 2>/dev/null && pwd || true)
-                if [ -n "$target_dir" ] && [ -n "$root_dir" ] && [ "${target_dir#$root_dir/}" != "$target_dir" ] && [ -d "$target_dir" ]; then
-                  rel="${target_dir#$root_dir/}"
-                  case "$rel" in
-                    \(expectedProject)/v*|\(expectedProject))
-                      rm -rf "$target_dir"
-                      pdir=$(dirname "$target_dir")
-                      if [ "$pdir" != "$root_dir" ] && [ -d "$pdir" ] && [ -z "$(find "$pdir" -mindepth 1 -type d 2>/dev/null)" ]; then
-                        rm -rf "$pdir"
-                      fi
-                      ;;
-                    *)
-                      echo "Target at $target_dir does not match package \(token)" >&2; exit 1
-                      ;;
-                  esac
-                else
-                  echo "Directory \(location) not found or not in pkgx directory $pkgx_dir" >&2; exit 1
-                fi
+            pkgx_dir="${PKGX_DIR:-$HOME/.pkgx}"
+            [ ! -d "$pkgx_dir" ] && [ -d "$HOME/.local/share/pkgx" ] && pkgx_dir="$HOME/.local/share/pkgx"
+            if [ -n "$pkgx_dir" ] && [ -d "$pkgx_dir" ]; then
+              target_dir=$(cd \(location) 2>/dev/null && pwd || true)
+              root_dir=$(cd "$pkgx_dir" 2>/dev/null && pwd || true)
+              if [ -n "$target_dir" ] && [ -n "$root_dir" ] && [ "${target_dir#$root_dir/}" != "$target_dir" ] && [ -d "$target_dir" ]; then
+                rel="${target_dir#$root_dir/}"
+                expected_project=\(token)
+                case "$rel" in
+                  "$expected_project"/v*|"$expected_project")
+                    rm -rf "$target_dir"
+                    pdir=$(dirname "$target_dir")
+                    if [ "$pdir" != "$root_dir" ] && [ -d "$pdir" ] && [ -z "$(find "$pdir" -mindepth 1 -type d 2>/dev/null)" ]; then
+                      rm -rf "$pdir"
+                    fi
+                    ;;
+                  *)
+                    echo "Target at $target_dir does not match package \(token)" >&2; exit 1
+                    ;;
+                esac
               else
-                echo "pkgx directory not found" >&2; exit 1
+                echo "Directory \(location) not found or not in pkgx directory $pkgx_dir" >&2; exit 1
               fi
             else
-              echo "pkgx command not found" >&2; exit 1
+              echo "pkgx directory not found" >&2; exit 1
             fi
             """
         case ("update", .uv) where package.summary == "uv-managed Python":

@@ -240,6 +240,7 @@ private final class LockedStrings: @unchecked Sendable {
     #expect(package?.displayName == "gum")
     #expect(package?.packageToken == "charm.sh/gum")
     #expect(package?.installedVersion == nil)
+    #expect(package?.homepage == "https://pkgx.dev/pkgs/charm.sh/gum/")
 
     let packages = menuBarCommandInstallPackages(ids: ["pkgx:charm.sh/gum"], snapshot: snapshot)
     #expect(packages.count == 1)

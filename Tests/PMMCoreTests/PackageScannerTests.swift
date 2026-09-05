@@ -1723,6 +1723,17 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
     #expect(PackageScanner.parsePkgxVersions(output) == "2.0.0")
     #expect(PackageScanner.parsePkgxVersions("") == nil)
     #expect(PackageScanner.parsePkgxVersions("invalid\nnot-a-version") == nil)
+
+    let prereleases = """
+    1.0.0-alpha
+    1.0.0-alpha.1
+    1.0.0-alpha.beta
+    1.0.0-beta
+    1.0.0-beta.2
+    1.0.0-beta.11
+    1.0.0-rc.1
+    """
+    #expect(PackageScanner.parsePkgxVersions(prereleases) == "1.0.0-rc.1")
 }
 
 @Test func pkgxScannerReturnsEmptyWhenToolMissing() throws {
@@ -1744,6 +1755,10 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
     let gumBinary = gumV2Bin.appendingPathComponent("gum")
     FileManager.default.createFile(atPath: gumBinary.path, contents: Data())
     try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: gumBinary.path)
+
+    let nonExecFile = gumV2Bin.appendingPathComponent("README.txt")
+    FileManager.default.createFile(atPath: nonExecFile.path, contents: Data())
+    try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: nonExecFile.path)
 
     let denoBinary = denoBin.appendingPathComponent("deno")
     FileManager.default.createFile(atPath: denoBinary.path, contents: Data())
@@ -1782,7 +1797,7 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
     defer { try? FileManager.default.removeItem(at: temp) }
 
     let runner = FakeRunner(responses: [
-        "/fake/curl -fsSL https://dist.pkgx.dev/charm.sh/gum/versions.txt": CommandResult(
+        "/fake/curl -fsSL --connect-timeout 2 --max-time 5 https://dist.pkgx.dev/charm.sh/gum/versions.txt": CommandResult(
             stdout: "2.0.0\n2.1.0\n",
             stderr: "",
             status: 0

@@ -168,7 +168,7 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
                 latestVersion: nil,
                 summary: "Package run and managed with pkgx",
                 category: "developer-tools",
-                homepage: "https://pkgx.dev",
+                homepage: "https://pkgx.dev/pkgs/\(token)/",
                 docs: "https://docs.pkgx.sh"
             )
         } else {

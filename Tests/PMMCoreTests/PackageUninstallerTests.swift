@@ -358,16 +358,26 @@ private final class ProgressRecorder: @unchecked Sendable {
     }
     #expect(FileManager.default.fileExists(atPath: otherDir.path))
 
-    // Rejection: missing executable pkgx
+    // Removal succeeds even if pkgx executable is absent (pure validated directory removal)
     let uninstallerWithoutPkgx = PackageUninstaller(
         runner: RecordingRunner(),
         homeDirectory: temp,
         toolPaths: ["pkgx": ""],
         environment: ["PKGX_DIR": temp.path]
     )
-    #expect(throws: PackageUninstallError.missingExecutable("pkgx")) {
-        try uninstallerWithoutPkgx.uninstall(mismatchedPkg)
-    }
+    let standaloneDir = temp.appendingPathComponent("standalone.org/app/v1.0.0", isDirectory: true)
+    try FileManager.default.createDirectory(at: standaloneDir, withIntermediateDirectories: true)
+    let standalonePkg = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:standalone.org/app",
+        displayName: "app",
+        installedVersion: "1.0.0",
+        latestVersion: nil,
+        installLocation: standaloneDir.path
+    )
+    #expect(FileManager.default.fileExists(atPath: standaloneDir.path))
+    try uninstallerWithoutPkgx.uninstall(standalonePkg)
+    #expect(!FileManager.default.fileExists(atPath: standaloneDir.path))
 }
 
 @Test func packageUninstallerDoesNotSupportRustup() throws {

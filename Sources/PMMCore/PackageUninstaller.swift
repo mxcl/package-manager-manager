@@ -226,9 +226,6 @@ public struct PackageUninstaller: Sendable {
         guard let location = package.installLocation else {
             throw PackageUninstallError.missingInstallLocation(package.displayName)
         }
-        guard let pkgx = toolPaths["pkgx"] ?? firstExecutable(named: "pkgx"), !pkgx.isEmpty else {
-            throw PackageUninstallError.missingExecutable("pkgx")
-        }
         let pkgxDir = effectivePkgxDirectory()
         let standardizedRoot = URL(fileURLWithPath: pkgxDir).standardizedFileURL.path
         let standardizedLocation = URL(fileURLWithPath: location).standardizedFileURL.path
