@@ -101,6 +101,10 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         }
     }
 
+    var iconScale: CGFloat {
+        self == .go ? 1.35 : 1.0
+    }
+
     var packageManagers: Set<PackageManagerKind> {
         switch self {
         case .rust: [.cargoInstall, .rustup, .mise]
@@ -1514,6 +1518,36 @@ final class MainWindowModel: NSObject, ObservableObject {
                 latestVersion: nil,
                 summary: "Python application installed with pipx",
                 category: "developer-tools"
+            )
+        }
+        if request.manager == .goInstall {
+            let binaryName = URL(fileURLWithPath: request.name).lastPathComponent
+            let repo: String? = {
+                if request.name.hasPrefix("github.com/") {
+                    let parts = request.name.split(separator: "/")
+                    if parts.count >= 3 {
+                        return "https://github.com/\(parts[1])/\(parts[2])"
+                    }
+                } else if request.name.hasPrefix("golang.org/x/") {
+                    let parts = request.name.split(separator: "/")
+                    if parts.count >= 3 {
+                        return "https://github.com/golang/\(parts[2])"
+                    }
+                }
+                return nil
+            }()
+            return ManagedPackage(
+                manager: .goInstall,
+                identifier: request.identifier,
+                catalogIdentifier: "go:\(request.name)",
+                displayName: binaryName.isEmpty ? request.name : binaryName,
+                installedVersion: nil,
+                latestVersion: nil,
+                summary: request.name,
+                category: "developer-tools",
+                homepage: "https://pkg.go.dev/\(request.name)",
+                docs: "https://pkg.go.dev/\(request.name)",
+                repo: repo
             )
         }
         return nil

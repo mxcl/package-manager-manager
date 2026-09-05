@@ -45,7 +45,7 @@ public struct PackageUninstaller: Sendable {
         case .pipx:
             try run("pipx", ["uninstall", package.packageToken], onProgress: onProgress)
         case .goInstall:
-            try removeBinaryPath(package)
+            try removeGoPackage(package)
         case .uvx:
             try removeInstallLocation(package)
         }
@@ -115,11 +115,56 @@ public struct PackageUninstaller: Sendable {
         try FileManager.default.removeItem(atPath: path)
     }
 
-    private func removeBinaryPath(_ package: ManagedPackage) throws {
+    private func effectiveGoBinDirectory() -> String {
+        let envBin = ProcessInfo.processInfo.environment["GOBIN"]
+        if let envBin, !envBin.isEmpty { return envBin }
+        if let go = toolPaths["go"] ?? firstExecutable(named: "go"),
+           let result = try? runner.run(go, ["env", "GOBIN", "GOPATH"]), result.status == 0 {
+            let lines = result.stdout.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            if lines.count >= 1, !lines[0].isEmpty {
+                return lines[0]
+            }
+            if lines.count >= 2, !lines[1].isEmpty {
+                let firstPath = lines[1].split(separator: ":").first.map(String.init) ?? lines[1]
+                return (firstPath as NSString).appendingPathComponent("bin")
+            }
+        }
+        return homeDirectory.appendingPathComponent("go/bin").path
+    }
+
+    private func removeGoPackage(_ package: ManagedPackage) throws {
         guard let path = package.binaryPath ?? package.installLocation else {
             throw PackageUninstallError.missingInstallLocation(package.displayName)
         }
-        try FileManager.default.removeItem(atPath: path)
+        let binDir = effectiveGoBinDirectory()
+        let standardizedBinDir = URL(fileURLWithPath: binDir).standardizedFileURL.path
+        let standardizedPath = URL(fileURLWithPath: path).standardizedFileURL.path
+        let parentDir = URL(fileURLWithPath: standardizedPath).deletingLastPathComponent().path
+        guard parentDir == standardizedBinDir else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Binary path \(path) is not inside Go bin directory \(binDir)")
+        }
+        guard FileManager.default.fileExists(atPath: standardizedPath) else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Binary does not exist at \(path)")
+        }
+        if let go = toolPaths["go"] ?? firstExecutable(named: "go") {
+            let result = try runner.run(go, ["version", "-m", standardizedPath])
+            guard result.status == 0, result.stdout.contains(package.packageToken) else {
+                throw PackageUninstallError.failed("uninstall \(package.displayName)", "Binary does not match Go package \(package.packageToken)")
+            }
+        }
+        try FileManager.default.removeItem(atPath: standardizedPath)
+        for name in package.executableNames {
+            let siblingPath = (binDir as NSString).appendingPathComponent(name)
+            let standardizedSibling = URL(fileURLWithPath: siblingPath).standardizedFileURL.path
+            if standardizedSibling != standardizedPath, FileManager.default.fileExists(atPath: standardizedSibling) {
+                if let go = toolPaths["go"] ?? firstExecutable(named: "go") {
+                    if let res = try? runner.run(go, ["version", "-m", standardizedSibling]),
+                       res.status == 0, res.stdout.contains(package.packageToken) {
+                        try? FileManager.default.removeItem(atPath: standardizedSibling)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -402,12 +402,20 @@ import Testing
     \tpath\tgithub.com/rakyll/hey
     \tmod\tgithub.com/rakyll/hey\tv0.1.5\th1:abc
     """
+    let outdatedJson = """
+    {
+        "Path": "github.com/rakyll/hey",
+        "Version": "v0.1.6"
+    }
+    """
     let payload = """
     __PMM_LINUX_V1__
     __PMM_PROFILE__
     Linux:debian:1:apt
     __PMM_GO_VERSION__
     \(versionOutput)
+    __PMM_GO_OUTDATED__
+    \(outdatedJson)
     __PMM_END__
     """
     let runner = RecordingRemoteRunner(result: CommandResult(stdout: payload, stderr: "", status: 0))
@@ -416,6 +424,8 @@ import Testing
     #expect(goPackages.count == 1)
     #expect(goPackages.first?.displayName == "hey")
     #expect(goPackages.first?.installedVersion == "0.1.5")
+    #expect(goPackages.first?.latestVersion == "0.1.6")
+    #expect(goPackages.first?.isOutdated == true)
     #expect(goPackages.first?.homepage == "https://pkg.go.dev/github.com/rakyll/hey")
 }
 

@@ -1267,6 +1267,44 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
+@Test func discoverFeedPackageOpensDirectlyAndSynthesizesGoPackage() throws {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    model.apply(
+        inventory: PackageInventory(packages: []),
+        index: PackageIndex(packages: [], catalogPackages: [], newUpdatedLastClickedAt: nil)
+    )
+
+    let discovered = DiscoverFeedPackage(
+        id: "go:github.com/rakyll/hey",
+        displayName: "hey",
+        agentSummary: "github.com/rakyll/hey",
+        manager: "go",
+        category: "developer-tools",
+        homepage: nil,
+        installURL: URL(string: "pkgmgrmgr://install?package=go%3Agithub.com%2Frakyll%2Fhey")
+    )
+
+    #expect(model.openDiscoverPackage(discovered, installing: true))
+    #expect(model.selectedPackage?.manager == .goInstall)
+    #expect(model.selectedPackage?.identifier == "go:github.com/rakyll/hey")
+    let expectedID = try #require(model.selectedPackage?.id)
+    #expect(model.pendingInstallPackConfirmation == MainWindowInstallPackConfirmation(
+        packageIDs: [expectedID],
+        packageCount: 1
+    ))
+    model.cancelPendingInstallPack()
+
+    #expect(model.openPackageURL(URL(string: "pkgmgrmgr://install?package=go%3Agithub.com%2Frakyll%2Fhey")!))
+    #expect(model.pendingInstallPackConfirmation == MainWindowInstallPackConfirmation(
+        packageIDs: [expectedID],
+        packageCount: 1
+    ))
+
+    #expect(model.openPackageURL(URL(string: "pkgmgrmgr://go/github.com/rakyll/hey")!))
+    #expect(model.selectedPackage?.identifier == "go:github.com/rakyll/hey")
+}
+
+@MainActor
 @Test func dashboardInstalledThisWeekCountsOnlyCurrentInstalledPackages() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let week = Calendar.current.dateInterval(of: .weekOfYear, for: Date())!

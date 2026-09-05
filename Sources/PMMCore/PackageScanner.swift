@@ -653,54 +653,96 @@ public struct PackageScanner: @unchecked Sendable {
         guard let go = executable(named: "go") else { return [] }
         let binDir = goBinDirectory(go: go)
         guard let entries = try? fileManager.contentsOfDirectory(atPath: binDir), !entries.isEmpty else { return [] }
+        var seenCanonical = Set<String>()
         let binPaths = entries.compactMap { entry -> String? in
             guard !entry.hasPrefix(".") else { return nil }
             let fullPath = (binDir as NSString).appendingPathComponent(entry)
             var isDir: ObjCBool = false
             guard fileManager.fileExists(atPath: fullPath, isDirectory: &isDir), !isDir.boolValue else { return nil }
+            let canonical = URL(fileURLWithPath: fullPath).resolvingSymlinksInPath().path
+            guard seenCanonical.insert(canonical).inserted else { return nil }
             return fullPath
         }
         guard !binPaths.isEmpty else { return [] }
 
-        let result = try runner.run(go, ["version", "-m"] + binPaths)
-        guard result.status == 0 else { return [] }
+        let envOptions = CommandRunOptions(environment: effectiveEnvironment)
+        let result = try? runner.run(go, ["version", "-m"] + binPaths, options: envOptions)
+        let stdout: String
+        if let result, !result.stdout.isEmpty {
+            stdout = result.stdout
+        } else {
+            var outputs: [String] = []
+            for path in binPaths {
+                if let single = try? runner.run(go, ["version", "-m", path], options: envOptions), !single.stdout.isEmpty {
+                    outputs.append(single.stdout)
+                }
+            }
+            stdout = outputs.joined(separator: "\n")
+        }
+        guard !stdout.isEmpty else { return [] }
 
         var latest: [String: String] = [:]
         if mode.isFresh {
-            let initialPackages = Self.parseGoVersionList(result.stdout)
-            let modules = Set(initialPackages.compactMap { $0.summary })
-            if !modules.isEmpty {
-                let targets = modules.map { "\($0)@latest" }
-                if let listResult = try? runner.run(go, ["list", "-m", "-json"] + targets), listResult.status == 0 {
-                    latest = Self.parseGoListJSON(listResult.stdout)
+            let modules = Self.extractGoModules(from: stdout)
+            for mod in modules {
+                if let listResult = try? runner.run(go, ["list", "-m", "-json", "\(mod)@latest"], options: envOptions),
+                   listResult.status == 0, !listResult.stdout.isEmpty {
+                    let parsed = Self.parseGoListJSON(listResult.stdout)
+                    latest.merge(parsed) { _, new in new }
                 }
             }
         }
 
-        return Self.parseGoVersionList(result.stdout, latestVersions: latest)
+        return Self.parseGoVersionList(stdout, latestVersions: latest)
     }
 
     private func goBinDirectory(go: String) -> String {
-        if let envBin = ProcessInfo.processInfo.environment["GOBIN"], !envBin.isEmpty {
+        if let envBin = effectiveEnvironment["GOBIN"], !envBin.isEmpty {
             return envBin
         }
-        if let result = try? runner.run(go, ["env", "GOBIN", "GOPATH"]), result.status == 0 {
+        if let envGopath = effectiveEnvironment["GOPATH"], !envGopath.isEmpty {
+            let firstGopath = envGopath.split(separator: ":").first.map(String.init) ?? envGopath
+            return (firstGopath as NSString).appendingPathComponent("bin")
+        }
+        if let result = try? runner.run(go, ["env", "GOBIN", "GOPATH"], options: CommandRunOptions(environment: effectiveEnvironment)), result.status == 0 {
             let lines = result.stdout.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             if lines.count >= 1, !lines[0].isEmpty {
                 return lines[0]
             }
             if lines.count >= 2, !lines[1].isEmpty {
-                return (lines[1] as NSString).appendingPathComponent("bin")
+                let firstPath = lines[1].split(separator: ":").first.map(String.init) ?? lines[1]
+                return (firstPath as NSString).appendingPathComponent("bin")
             }
         }
         return fileManager.homeDirectoryForCurrentUser.appendingPathComponent("go/bin").path
+    }
+
+    static func extractGoModules(from output: String) -> [String] {
+        var modules = Set<String>()
+        for line in output.components(separatedBy: .newlines) {
+            let parts = line.split(separator: "\t").map(String.init)
+            if parts.count >= 2, parts[0].trimmingCharacters(in: .whitespaces) == "mod" {
+                let mod = parts[1].trimmingCharacters(in: .whitespaces)
+                if !mod.isEmpty {
+                    modules.insert(mod)
+                }
+            }
+        }
+        return modules.sorted()
     }
 
     static func parseGoVersionList(
         _ output: String,
         latestVersions: [String: String] = [:]
     ) -> [ManagedPackage] {
-        var packages: [ManagedPackage] = []
+        struct GoParsedEntry {
+            let binaryPath: String
+            let path: String
+            let module: String?
+            let version: String?
+        }
+
+        var entries: [GoParsedEntry] = []
         var currentBinaryPath: String?
         var currentPath: String?
         var currentModule: String?
@@ -709,40 +751,11 @@ public struct PackageScanner: @unchecked Sendable {
         func flush() {
             guard let binaryPath = currentBinaryPath,
                   let path = currentPath else { return }
-            let binaryName = URL(fileURLWithPath: binaryPath).lastPathComponent
-            let version = currentVersion.map { $0.hasPrefix("v") ? String($0.dropFirst()) : $0 }
-            let latest = (currentModule.flatMap { latestVersions[$0] } ?? latestVersions[path])
-                .map { $0.hasPrefix("v") ? String($0.dropFirst()) : $0 }
-            let repo: String? = {
-                if path.hasPrefix("github.com/") {
-                    let parts = path.split(separator: "/")
-                    if parts.count >= 3 {
-                        return "https://github.com/\(parts[1])/\(parts[2])"
-                    }
-                } else if path.hasPrefix("golang.org/x/") {
-                    let parts = path.split(separator: "/")
-                    if parts.count >= 3 {
-                        return "https://github.com/golang/\(parts[2])"
-                    }
-                }
-                return nil
-            }()
-
-            packages.append(ManagedPackage(
-                manager: .goInstall,
-                identifier: "go:\(path)",
-                displayName: binaryName,
-                installedVersion: version,
-                latestVersion: latest,
-                summary: path,
-                category: "developer-tools",
-                homepage: "https://pkg.go.dev/\(path)",
-                docs: "https://pkg.go.dev/\(path)",
-                repo: repo,
-                lastUpdatedAt: nil,
-                pulseKind: nil,
-                installLocation: binaryPath,
-                binaryPath: binaryPath
+            entries.append(GoParsedEntry(
+                binaryPath: binaryPath,
+                path: path,
+                module: currentModule,
+                version: currentVersion
             ))
         }
 
@@ -772,6 +785,61 @@ public struct PackageScanner: @unchecked Sendable {
             }
         }
         flush()
+
+        // Consolidate entries by package path to avoid ID collisions
+        var grouped: [String: [GoParsedEntry]] = [:]
+        var order: [String] = []
+        for entry in entries {
+            if grouped[entry.path] == nil {
+                order.append(entry.path)
+            }
+            grouped[entry.path, default: []].append(entry)
+        }
+
+        var packages: [ManagedPackage] = []
+        for path in order {
+            guard let group = grouped[path], let primary = group.first else { continue }
+            let allBinaryPaths = Array(Set(group.map(\.binaryPath))).sorted()
+            let allBinaryNames = allBinaryPaths.map { URL(fileURLWithPath: $0).lastPathComponent }
+            let primaryName = URL(fileURLWithPath: primary.binaryPath).lastPathComponent
+            let version = primary.version.map { $0.hasPrefix("v") ? String($0.dropFirst()) : $0 }
+            let latest = (primary.module.flatMap { latestVersions[$0] } ?? latestVersions[path])
+                .map { $0.hasPrefix("v") ? String($0.dropFirst()) : $0 }
+            let repo: String? = {
+                if path.hasPrefix("github.com/") {
+                    let parts = path.split(separator: "/")
+                    if parts.count >= 3 {
+                        return "https://github.com/\(parts[1])/\(parts[2])"
+                    }
+                } else if path.hasPrefix("golang.org/x/") {
+                    let parts = path.split(separator: "/")
+                    if parts.count >= 3 {
+                        return "https://github.com/golang/\(parts[2])"
+                    }
+                }
+                return nil
+            }()
+
+            packages.append(ManagedPackage(
+                manager: .goInstall,
+                identifier: "go:\(path)",
+                catalogIdentifier: (primary.module != nil && primary.module != path) ? "go:\(primary.module!)" : nil,
+                displayName: primaryName,
+                installedVersion: version,
+                latestVersion: latest,
+                summary: path,
+                category: "developer-tools",
+                homepage: "https://pkg.go.dev/\(path)",
+                docs: "https://pkg.go.dev/\(path)",
+                repo: repo,
+                lastUpdatedAt: nil,
+                pulseKind: nil,
+                installLocation: primary.binaryPath,
+                binaryPath: primary.binaryPath,
+                executableNames: allBinaryNames
+            ))
+        }
+
         return packages.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
     }
 

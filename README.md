@@ -85,6 +85,7 @@ Supported update paths:
 - `uv tool upgrade`
 - `uv python install`
 - `pipx upgrade`
+- `go install package@latest`
 - `cargo install --force`
 
 Supported uninstall paths:
@@ -98,6 +99,7 @@ Supported uninstall paths:
 - `uv python uninstall`
 - `pipx uninstall`
 - remove uvx cached environments
+- remove Go binary from GOBIN
 - `cargo uninstall`
 
 > [!IMPORTANT]

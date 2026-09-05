@@ -140,7 +140,7 @@ struct MainWindowSidebarView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 20, height: 20)
-                    .scaleEffect(section == .go ? 1.35 : 1.0)
+                    .scaleEffect(section.iconScale)
             } else {
                 Image(systemName: section.systemImage)
                     .font(.system(size: 14, weight: .semibold))
@@ -1148,7 +1148,7 @@ struct PackageEcosystemMark: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: size, height: size)
-                    .scaleEffect(section == .go ? 1.35 : 1.0)
+                    .scaleEffect(section.iconScale)
                     .offset(y: isBaselineAligned ? imageOffset : 0)
             } else {
                 Image(systemName: section.systemImage)
