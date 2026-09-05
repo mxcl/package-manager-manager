@@ -40,9 +40,10 @@ over SSH, including hosts on your local network or Tailscale network.
    or an alias from `~/.ssh/config`.
 
 Each host gets its own Installed and Outdated sections in the sidebar. Linux
-inventory includes native packages that provide command-line tools, plus global Bun, npm,
-pnpm, pipx, cargo-install, and uv packages when those tools are present. System-package actions
-use non-interactive sudo; without it, those packages remain visible but read-only.
+inventory includes native packages that provide command-line tools, plus global
+npm, pnpm, and Bun packages, pipx applications, `cargo install` and `go install`
+binaries, and `uv tool` tools when those managers are present. System-package
+actions use non-interactive sudo; without it, those packages remain visible but read-only.
 
 pkg⋅mgr² uses OpenSSH directly. Your keys, agent, host aliases, and
 `known_hosts` stay where they already live; the app stores no SSH credentials.
@@ -54,10 +55,8 @@ pkg⋅mgr² currently inventories:
 
 - Homebrew formulae and casks
 - tools and runtimes installed with `mise`
-- global Bun packages
-- global npm packages
+- global npm, pnpm, and Bun packages
 - npx cache entries
-- global pnpm packages
 - Skills packages installed with `skills` or `npx skills`
 - `uv tool` tools and `uv` Python installs
 - Python applications installed with `pipx`
@@ -70,6 +69,19 @@ It also pulls package summaries, categories, URLs, and latest-version metadata
 where the project has a source for it. If metadata is missing, the package still
 shows up. It just looks less informed.
 
+npm, pnpm, and Bun support covers global packages, not dependencies in each
+project’s `node_modules`. pipx support covers applications in its managed
+environments. Go support reads embedded build metadata from binaries in `GOBIN`
+or the first `GOPATH` entry’s `bin` directory (usually `~/go/bin`).
+
+See [what’s new in pnpm, Bun, pipx, and Go support](https://mxcl.dev/package-manager-manager/blog/pnpm-bun-pipx-go/).
+
+## Installing
+
+On your local Mac, install packages through Homebrew, npm, pnpm, Bun, pipx, or
+Go from a package’s detail pane. The corresponding package manager must already
+be available. Remote hosts support updates and removals, but not new installs.
+
 ## Updating and Removing
 
 The detail pane offers update and uninstall actions when pkg⋅mgr² knows the native
@@ -78,9 +90,9 @@ command to run.
 Supported update paths:
 
 - `brew upgrade`
-- `bun update -g --latest`
+- `bun update --global --latest`
 - `npm install --global package@latest`
-- `pnpm update -g --latest`
+- `pnpm update --global --latest`
 - `npm exec --yes --package package@version -- true`
 - `uv tool upgrade`
 - `uv python install`
@@ -91,15 +103,15 @@ Supported update paths:
 Supported uninstall paths:
 
 - `brew uninstall`
-- `bun remove -g`
+- `bun remove --global`
 - `npm uninstall --global`
-- `pnpm remove -g`
+- `pnpm remove --global`
 - remove npx cache entries
 - `uv tool uninstall`
 - `uv python uninstall`
 - `pipx uninstall`
 - remove uvx cached environments
-- remove Go binary from GOBIN
+- remove Go binaries after checking their location and embedded package path
 - `cargo uninstall`
 
 > [!IMPORTANT]
@@ -138,7 +150,8 @@ Checklist:
   dashboard SF Symbol in `MainWindowDashboardView.swift`.
 - Map it in `PackageDossierClient.provider(for:)` only if AutomIC Vault has a
   matching provider.
-- Update the README lists under "What It Finds" and "Updating and Removing".
+- Update the README’s inventory, install, and action support, plus the website’s
+  supported-tool lists and remote-host documentation where applicable.
 - Add focused tests beside the touched code: scanner parsing in
   `PackageScannerTests`, action commands in `PackageUpdaterTests` or
   `PackageUninstallerTests`, and UI grouping in `MainWindowModelTests` when a

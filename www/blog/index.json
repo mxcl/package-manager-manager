@@ -1,6 +1,15 @@
 {
   "posts": [
     {
+      "slug": "pnpm-bun-pipx-go",
+      "title": "pnpm, Bun, pipx, and Go Join the Inventory",
+      "subtitle": "Four more tools, with local installs and remote updates",
+      "category": "blog",
+      "systemImage": "shippingbox",
+      "publishedAt": "Sep 5, 2026",
+      "url": "https://mxcl.dev/package-manager-manager/blog/pnpm-bun-pipx-go/"
+    },
+    {
       "slug": "remote-hosts",
       "title": "Manage Macs and Linux Hosts",
       "subtitle": "Inspect and maintain packages over SSH",
