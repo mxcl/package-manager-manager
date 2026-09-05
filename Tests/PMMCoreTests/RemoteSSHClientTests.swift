@@ -317,6 +317,9 @@ import Testing
     _ = try await RemoteSSHClient(runner: runner).uninstall(package, on: RemoteHost(destination: "atlas"))
     #expect(runner.arguments?.last?.contains("rm -f") == true)
     #expect(runner.arguments?.last?.contains("/home/user/go/bin/hey") == true)
+    #expect(runner.arguments?.last?.contains("awk") == true)
+    #expect(runner.arguments?.last?.contains("$1==\"path\"") == true)
+    #expect(runner.arguments?.last?.contains("github.com/rakyll/hey") == true)
 }
 
 @Test func remoteLinuxInventoryParsesBunPackages() async throws {

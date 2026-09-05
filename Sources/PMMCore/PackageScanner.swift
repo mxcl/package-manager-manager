@@ -843,14 +843,45 @@ public struct PackageScanner: @unchecked Sendable {
         return packages.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
     }
 
+    static func extractJSONObjects(from output: String) -> [String] {
+        var objects: [String] = []
+        var depth = 0
+        var startIndex: String.Index?
+        var inString = false
+        var isEscaped = false
+
+        var index = output.startIndex
+        while index < output.endIndex {
+            let char = output[index]
+            if isEscaped {
+                isEscaped = false
+            } else if char == "\\" && inString {
+                isEscaped = true
+            } else if char == "\"" {
+                inString.toggle()
+            } else if !inString {
+                if char == "{" {
+                    if depth == 0 {
+                        startIndex = index
+                    }
+                    depth += 1
+                } else if char == "}" {
+                    depth -= 1
+                    if depth == 0, let start = startIndex {
+                        objects.append(String(output[start...index]))
+                        startIndex = nil
+                    }
+                }
+            }
+            index = output.index(after: index)
+        }
+        return objects
+    }
+
     static func parseGoListJSON(_ output: String) -> [String: String] {
         var latest: [String: String] = [:]
-        guard let regex = try? NSRegularExpression(pattern: #"\{[^{}]*\}"#, options: []) else { return [:] }
-        let nsString = output as NSString
-        let matches = regex.matches(in: output, options: [], range: NSRange(location: 0, length: nsString.length))
-        for match in matches {
-            guard let range = Range(match.range, in: output),
-                  let data = String(output[range]).data(using: .utf8),
+        for objectString in extractJSONObjects(from: output) {
+            guard let data = objectString.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let path = json["Path"] as? String,
                   let version = json["Version"] as? String else { continue }

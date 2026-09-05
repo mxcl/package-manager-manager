@@ -659,7 +659,8 @@ public struct RemoteSSHClient: Sendable {
             command = "go install \(shellQuote(package.packageToken + "@latest"))"
         case ("uninstall", .goInstall):
             let bin = shellQuote(package.binaryPath ?? package.installLocation ?? "")
-            let token = shellQuote(package.packageToken)
+            let expectedPath = package.identifier.hasPrefix("go:") ? String(package.identifier.dropFirst(3)) : package.packageToken
+            let token = shellQuote(expectedPath)
             command = """
             if command -v go >/dev/null 2>&1; then
               gobin=$(go env GOBIN 2>/dev/null || true)
@@ -669,14 +670,15 @@ public struct RemoteSSHClient: Sendable {
               fi
               target_dir=$(cd "$(dirname \(bin))" 2>/dev/null && pwd || true)
               expected_dir=$(cd "$gobin" 2>/dev/null && pwd || true)
-              if [ -n "$target_dir" ] && [ "$target_dir" = "$expected_dir" ] && [ -f \(bin) ]; then
-                if go version -m \(bin) 2>/dev/null | grep -Fq \(token); then
+              if [ -n "$target_dir" ] && [ "$target_dir" = "$expected_dir" ] && [ -f \(bin) ] && [ ! -d \(bin) ]; then
+                bin_path=$(go version -m \(bin) 2>/dev/null | awk '$1=="path"{print $2; exit}')
+                if [ "$bin_path" = \(token) ]; then
                   rm -f \(bin)
                 else
-                  echo "Binary at \(bin) does not match package \(token)" >&2; exit 1
+                  echo "Binary at \(bin) has Go path '$bin_path', does not match package \(token)" >&2; exit 1
                 fi
               else
-                echo "Binary \(bin) not found in Go bin directory $gobin" >&2; exit 1
+                echo "Binary \(bin) not found or is a directory in Go bin directory $gobin" >&2; exit 1
               fi
             else
               echo "go command not found" >&2; exit 1

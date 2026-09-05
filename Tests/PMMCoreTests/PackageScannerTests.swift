@@ -539,7 +539,14 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     }
     {
     \t"Path": "github.com/rakyll/hey",
-    \t"Version": "v0.1.5"
+    \t"Version": "v0.1.5",
+    \t"Origin": {
+    \t\t"VCS": "git",
+    \t\t"URL": "https://github.com/rakyll/hey",
+    \t\t"Hash": "e64ec7a3ad1ef8bc828fe61e1fb324cc2e74c604",
+    \t\t"TagSum": "t1:3zLLgy63FyJTpPNswo1aLBXp/0aV52j65uGmbmFDIkI=",
+    \t\t"Ref": "refs/tags/v0.1.5"
+    \t}
     }
     """
     let parsedLatest = PackageScanner.parseGoListJSON(listJson)
@@ -564,7 +571,7 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
         "/fake/go env GOBIN GOPATH": CommandResult(stdout: "\(bin.path)\n\(temp.path)\n", stderr: "", status: 0),
         "/fake/go version -m \(binaryFile.path)": CommandResult(stdout: versionOutput, stderr: "", status: 0),
     ])
-    let scanner = PackageScanner(runner: runner, toolPaths: ["go": "/fake/go"])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["go": "/fake/go"], environment: [:])
     let packages = try scanner.scanGoInstall(database: PackageDatabase())
 
     #expect(packages == [
@@ -616,7 +623,7 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
         // Queries module path (golang.org/x/tools) rather than package path (golang.org/x/tools/cmd/goimports)
         "/fake/go list -m -json golang.org/x/tools@latest": CommandResult(stdout: listOutput, stderr: "", status: 0),
     ])
-    let scanner = PackageScanner(runner: runner, toolPaths: ["go": "/fake/go"])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["go": "/fake/go"], environment: [:])
     let packages = try scanner.scanGoInstall(database: PackageDatabase())
 
     #expect(packages.count == 1)
