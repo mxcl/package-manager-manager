@@ -94,6 +94,8 @@ func menuBarEcosystemIcon(for package: ManagedPackage) -> MenuBarEcosystemIcon {
         return .system(name: "wand.and.stars")
     case .goInstall:
         return .asset(name: "EcosystemGo", fallbackSystemName: "chevron.left.forwardslash.chevron.right")
+    case .pkgx:
+        return .asset(name: "EcosystemPkgx", fallbackSystemName: "cube")
     case .macApp:
         return switch package.appProvenance ?? .unknown {
         case .homebrew: .paired(assetName: "EcosystemHomebrew", fallbackSystemName: "mug", systemName: "macwindow")
@@ -151,6 +153,23 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
                 category: "developer-tools",
                 homepage: "https://pkg.go.dev/\(token)",
                 docs: "https://pkg.go.dev/\(token)"
+            )
+        } else if id.hasPrefix("pkgx:") {
+            let trimmed = id.trimmingPrefix("pkgx:")
+            let token = String(trimmed.split(separator: ":").first ?? trimmed)
+            guard !token.isEmpty else { return nil }
+            let binaryName = URL(fileURLWithPath: token).lastPathComponent
+            package = ManagedPackage(
+                manager: .pkgx,
+                identifier: "pkgx:\(token)",
+                catalogIdentifier: "pkgx:\(token)",
+                displayName: binaryName.isEmpty ? token : binaryName,
+                installedVersion: nil,
+                latestVersion: nil,
+                summary: "Package run and managed with pkgx",
+                category: "developer-tools",
+                homepage: "https://pkgx.dev/pkgs/\(token)/",
+                docs: "https://docs.pkgx.sh"
             )
         } else {
             return nil
@@ -248,11 +267,57 @@ func menuBarSnapshot(
     case .update:
         guard let latestVersion = package.latestVersion,
               let index = packages.firstIndex(where: { $0.id == package.id }) else { return snapshot }
-        packages[index] = package.withInstalledVersion(latestVersion)
+        if package.manager == .pkgx {
+            let nextLocation: String? = package.installLocation.map { loc in
+                let projectDir = URL(fileURLWithPath: loc).deletingLastPathComponent().path
+                return projectDir + "/v\(latestVersion)"
+            }
+            let nextBinary: String? = {
+                guard let bin = package.binaryPath, let loc = package.installLocation else { return nil }
+                let binName = URL(fileURLWithPath: bin).lastPathComponent
+                let projectDir = URL(fileURLWithPath: loc).deletingLastPathComponent().path
+                return projectDir + "/v\(latestVersion)/bin/\(binName)"
+            }()
+            var updatedVersions = package.installedVersions
+            if let current = package.installedVersion, !updatedVersions.contains(current) {
+                updatedVersions.append(current)
+            }
+            if !updatedVersions.contains(latestVersion) {
+                updatedVersions.append(latestVersion)
+            }
+            updatedVersions.sort { $0.localizedStandardCompare($1) == .orderedDescending }
+
+            packages[index] = package.withInstalledVersion(
+                latestVersion,
+                installedVersions: updatedVersions,
+                installLocation: nextLocation,
+                binaryPath: nextBinary
+            )
+        } else {
+            packages[index] = package.withInstalledVersion(latestVersion)
+        }
     case .uninstall:
         if package.manager == .uv, package.summary == "uv-managed Python", let nextVersion = package.otherInstalledVersions.first,
            let index = packages.firstIndex(where: { $0.id == package.id }) {
             packages[index] = package.withInstalledVersion(nextVersion, installedVersions: package.otherInstalledVersions)
+        } else if package.manager == .pkgx, let nextVersion = package.otherInstalledVersions.first,
+                  let index = packages.firstIndex(where: { $0.id == package.id }) {
+            let nextLocation: String? = package.installLocation.map { loc in
+                let projectDir = URL(fileURLWithPath: loc).deletingLastPathComponent().path
+                return projectDir + "/v\(nextVersion)"
+            }
+            let nextBinary: String? = {
+                guard let bin = package.binaryPath, let loc = package.installLocation else { return nil }
+                let binName = URL(fileURLWithPath: bin).lastPathComponent
+                let projectDir = URL(fileURLWithPath: loc).deletingLastPathComponent().path
+                return projectDir + "/v\(nextVersion)/bin/\(binName)"
+            }()
+            packages[index] = package.withInstalledVersion(
+                nextVersion,
+                installedVersions: package.otherInstalledVersions,
+                installLocation: nextLocation,
+                binaryPath: nextBinary
+            )
         } else {
             packages.removeAll { $0.id == package.id }
         }
@@ -263,7 +328,12 @@ func menuBarSnapshot(
 }
 
 private extension ManagedPackage {
-    func withInstalledVersion(_ version: String?, installedVersions: [String]? = nil) -> ManagedPackage {
+    func withInstalledVersion(
+        _ version: String?,
+        installedVersions: [String]? = nil,
+        installLocation: String? = nil,
+        binaryPath: String? = nil
+    ) -> ManagedPackage {
         ManagedPackage(
             manager: manager,
             identifier: identifier,
@@ -278,8 +348,8 @@ private extension ManagedPackage {
             repo: repo,
             lastUpdatedAt: lastUpdatedAt,
             pulseKind: pulseKind,
-            installLocation: installLocation,
-            binaryPath: binaryPath,
+            installLocation: installLocation ?? self.installLocation,
+            binaryPath: binaryPath ?? self.binaryPath,
             executableNames: executableNames
         )
     }

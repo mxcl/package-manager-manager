@@ -5,21 +5,24 @@ public struct PackageUninstaller: Sendable {
     private let homeDirectory: URL
     private let toolPaths: [String: String]
     private let environment: [String: String]?
+    private let fileManager: FileManager
 
     public init(
         runner: CommandRunning = SystemCommandRunner(),
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         toolPaths: [String: String] = [:],
-        environment: [String: String]? = nil
+        environment: [String: String]? = nil,
+        fileManager: FileManager = .default
     ) {
         self.runner = runner
         self.homeDirectory = homeDirectory
         self.toolPaths = toolPaths
         self.environment = environment
+        self.fileManager = fileManager
     }
 
     private var effectiveEnvironment: [String: String] {
-        environment ?? ProcessInfo.processInfo.environment
+        environment ?? commandEnvironment()
     }
 
     public func uninstall(_ package: ManagedPackage, onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) throws {
@@ -53,6 +56,8 @@ public struct PackageUninstaller: Sendable {
             try run("pipx", ["uninstall", package.packageToken], onProgress: onProgress)
         case .goInstall:
             try removeGoPackage(package)
+        case .pkgx:
+            try removePkgxPackage(package)
         case .uvx:
             try removeInstallLocation(package)
         }
@@ -60,7 +65,7 @@ public struct PackageUninstaller: Sendable {
 
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
-        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .uvx, .goInstall:
+        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .uvx, .goInstall, .pkgx:
             package.installedVersion != nil
         case .skills:
             package.installedVersion != nil && package.identifier.hasPrefix("skills:global:")
@@ -79,7 +84,8 @@ public struct PackageUninstaller: Sendable {
         }
         let command = ([executableName] + arguments).joined(separator: " ")
         onProgress?(.started(command: command))
-        let result = try runner.run(executable, arguments, options: CommandRunOptions(terminal: true)) { output in
+        let options = CommandRunOptions(terminal: true, environment: effectiveEnvironment)
+        let result = try runner.run(executable, arguments, options: options) { output in
             onProgress?(.output(output))
         }
         guard result.status == 0 else {
@@ -200,6 +206,70 @@ public struct PackageUninstaller: Sendable {
                         try? FileManager.default.removeItem(atPath: standardizedSibling)
                     }
                 }
+            }
+        }
+    }
+
+    private func effectivePkgxDirectory() -> String {
+        PackageScanner.effectivePkgxDirectory(
+            environment: effectiveEnvironment,
+            homeDirectory: homeDirectory,
+            fileManager: fileManager
+        )
+    }
+
+    private func removePkgxPackage(_ package: ManagedPackage) throws {
+        guard let location = package.installLocation else {
+            throw PackageUninstallError.missingInstallLocation(package.displayName)
+        }
+        let pkgxDir = effectivePkgxDirectory()
+        let rootURL = URL(fileURLWithPath: pkgxDir)
+        let locationURL = URL(fileURLWithPath: location)
+
+        let realRoot = rootURL.resolvingSymlinksInPath().standardizedFileURL.path
+        let realLocation = locationURL.resolvingSymlinksInPath().standardizedFileURL.path
+
+        guard realLocation.hasPrefix(realRoot + "/") else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Install location \(location) is not inside pkgx directory \(pkgxDir)")
+        }
+
+        var checkURL = locationURL
+        while checkURL.path != rootURL.path && checkURL.path != "/" && checkURL.path != "." {
+            if (try? FileManager.default.destinationOfSymbolicLink(atPath: checkURL.path)) != nil {
+                throw PackageUninstallError.failed("uninstall \(package.displayName)", "Install location contains symbolic link at \(checkURL.path)")
+            }
+            checkURL = checkURL.deletingLastPathComponent()
+        }
+
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: realLocation, isDirectory: &isDir), isDir.boolValue else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Install location does not exist or is not a directory at \(location)")
+        }
+
+        let expectedProject = package.identifier.hasPrefix("pkgx:") ? String(package.identifier.dropFirst(5)) : package.packageToken
+        let relative = String(realLocation.dropFirst(realRoot.count + 1))
+        guard relative.hasPrefix(expectedProject + "/v") || relative == expectedProject else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Target path \(location) does not match pkgx package \(expectedProject)")
+        }
+
+        try FileManager.default.removeItem(atPath: realLocation)
+
+        var projectDir = URL(fileURLWithPath: realLocation).deletingLastPathComponent().path
+        while projectDir.hasPrefix(realRoot + "/") && projectDir != realRoot {
+            if let remaining = try? FileManager.default.contentsOfDirectory(atPath: projectDir) {
+                let liveDirectories = remaining.filter { entry in
+                    let entryPath = (projectDir as NSString).appendingPathComponent(entry)
+                    var subIsDir: ObjCBool = false
+                    return FileManager.default.fileExists(atPath: entryPath, isDirectory: &subIsDir) && subIsDir.boolValue
+                }
+                if liveDirectories.isEmpty {
+                    try? FileManager.default.removeItem(atPath: projectDir)
+                    projectDir = URL(fileURLWithPath: projectDir).deletingLastPathComponent().path
+                } else {
+                    break
+                }
+            } else {
+                break
             }
         }
     }

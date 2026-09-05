@@ -46,7 +46,7 @@ private final class ProgressRecorder: @unchecked Sendable {
 
 @Test func packageInstallerRunsManagerCommands() throws {
     let runner = RecordingRunner()
-    let installer = PackageInstaller(runner: runner, toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "pnpm": "/fake/pnpm", "bun": "/fake/bun", "pipx": "/fake/pipx", "go": "/fake/go"])
+    let installer = PackageInstaller(runner: runner, toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "pnpm": "/fake/pnpm", "bun": "/fake/bun", "pipx": "/fake/pipx", "go": "/fake/go", "pkgx": "/fake/pkgx"])
 
     try installer.install(package(.homebrew, "brew:git"))
     try installer.install(package(.homebrew, "brew:cask:visual-studio-code"))
@@ -55,6 +55,7 @@ private final class ProgressRecorder: @unchecked Sendable {
     try installer.install(package(.bun, "bun:@scope/tool"))
     try installer.install(package(.pipx, "pipx:cowsay"))
     try installer.install(package(.goInstall, "go:github.com/rakyll/hey"))
+    try installer.install(package(.pkgx, "pkgx:charm.sh/gum"))
 
     #expect(runner.commands == [
         "/fake/brew install git",
@@ -64,8 +65,9 @@ private final class ProgressRecorder: @unchecked Sendable {
         "/fake/bun add -g @scope/tool@latest",
         "/fake/pipx install cowsay",
         "/fake/go install github.com/rakyll/hey@latest",
+        "/fake/pkgx +charm.sh/gum true",
     ])
-    #expect(runner.options.map(\.terminal) == [true, true, true, true, true, true, true])
+    #expect(runner.options.map(\.terminal) == [true, true, true, true, true, true, true, true])
 }
 
 @Test func packageInstallerReportsCommandAndOutputProgress() throws {

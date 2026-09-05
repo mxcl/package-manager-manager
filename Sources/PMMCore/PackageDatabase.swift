@@ -10,6 +10,7 @@ public struct PackageDatabase: Sendable {
     private let npms: [String: PackageMetadata]
     private let pipxs: [String: PackageMetadata]
     private let gos: [String: PackageMetadata]
+    private let pkgxs: [String: PackageMetadata]
     private let apps: [String: MacAppCatalogEntry]
 
     public init(
@@ -20,6 +21,7 @@ public struct PackageDatabase: Sendable {
         npms: [String: PackageMetadata] = [:],
         pipxs: [String: PackageMetadata] = [:],
         gos: [String: PackageMetadata] = [:],
+        pkgxs: [String: PackageMetadata] = [:],
         apps: [String: MacAppCatalogEntry] = [:]
     ) {
         self.formulas = formulas
@@ -29,6 +31,7 @@ public struct PackageDatabase: Sendable {
         self.npms = npms
         self.pipxs = pipxs
         self.gos = gos
+        self.pkgxs = pkgxs
         self.apps = apps
     }
 
@@ -68,6 +71,7 @@ public struct PackageDatabase: Sendable {
             npms: decodeMetadataMap(db?["npms"]),
             pipxs: decodeMetadataMap(db?["pipxs"]),
             gos: decodeMetadataMap(db?["gos"] ?? db?["go"]),
+            pkgxs: decodeMetadataMap(db?["pkgxs"] ?? db?["pkgx"]),
             apps: decodeAppMap(db?["apps"])
         )
     }
@@ -85,7 +89,8 @@ public struct PackageDatabase: Sendable {
             managedPackages(for: .pnpm, identifierPrefix: "pnpm", metadata: npms, includePulseMetadata: false) +
             managedPackages(for: .bun, identifierPrefix: "bun", metadata: npms, includePulseMetadata: false) +
             managedPackages(for: .pipx, identifierPrefix: "pipx", metadata: pipxs) +
-            managedPackages(for: .goInstall, identifierPrefix: "go", metadata: gos)
+            managedPackages(for: .goInstall, identifierPrefix: "go", metadata: gos) +
+            managedPackages(for: .pkgx, identifierPrefix: "pkgx", metadata: pkgxs)
         )
         return Dictionary(grouping: packages, by: \.id).compactMap { $0.value.first }
             .sorted {
@@ -110,6 +115,8 @@ public struct PackageDatabase: Sendable {
             return npms[name]
         case .pipx:
             return pipxs[name]
+        case .pkgx:
+            return pkgxs[name]
         case .uv, .uvx:
             return nil
         }
@@ -179,7 +186,7 @@ public struct PackageDatabase: Sendable {
     ) -> [ManagedPackage] {
         metadata.map { name, metadata in
             let defaultDisplayName: String = {
-                if manager == .goInstall {
+                if manager == .goInstall || manager == .pkgx {
                     let last = URL(fileURLWithPath: name).lastPathComponent
                     return last.isEmpty ? name : last
                 }

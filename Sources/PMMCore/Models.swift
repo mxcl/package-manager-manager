@@ -14,6 +14,7 @@ public enum PackageManagerKind: String, Codable, CaseIterable, Sendable {
     case npm
     case npx
     case pipx
+    case pkgx
     case pnpm
     case skills
     case uv
@@ -44,6 +45,7 @@ public enum PackageManagerKind: String, Codable, CaseIterable, Sendable {
         case .npm: "npm"
         case .npx: "npx"
         case .pipx: "pipx"
+        case .pkgx: "pkgx"
         case .pnpm: "pnpm"
         case .skills: "Skills"
         case .uv: "uv"

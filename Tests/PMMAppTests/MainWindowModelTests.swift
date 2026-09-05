@@ -617,6 +617,18 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(goURL.identifier == "go:github.com/rakyll/hey")
     #expect(goURL.section == .go)
 
+    let pkgxPkg = try #require(MainWindowPackageURLRequest(identifier: "pkgx:charm.sh/gum"))
+    #expect(pkgxPkg.manager == .pkgx)
+    #expect(pkgxPkg.name == "charm.sh/gum")
+    #expect(pkgxPkg.identifier == "pkgx:charm.sh/gum")
+    #expect(pkgxPkg.section == .pkgx)
+
+    let pkgxURL = try #require(MainWindowPackageURLRequest(url: URL(string: "pkgmgrmgr://pkgx/charm.sh/gum")!))
+    #expect(pkgxURL.manager == .pkgx)
+    #expect(pkgxURL.name == "charm.sh/gum")
+    #expect(pkgxURL.identifier == "pkgx:charm.sh/gum")
+    #expect(pkgxURL.section == .pkgx)
+
     let python = try #require(MainWindowPackageURLRequest(identifier: "brew:python@3.13"))
     #expect(python.manager == .homebrew)
     #expect(python.name == "python@3.13")
@@ -893,6 +905,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
         package(.uvx, "ruff"),
         package(.uv, "python"),
         package(.goInstall, "hey"),
+        package(.pkgx, "gum"),
         package(.cargoInstall, "ripgrep"),
         package(.rustup, "rustup"),
         package(.homebrew, "git"),
@@ -919,13 +932,14 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     ]
     let index = PackageIndex(packages: packages, catalogPackages: [], newUpdatedLastClickedAt: nil)
 
-    #expect(MainWindowSection.managerSections.map(\.title) == ["Apps", "Go", "Homebrew", "JavaScript", "Python", "Rust", "Skills"])
+    #expect(MainWindowSection.managerSections.map(\.title) == ["Apps", "Go", "Homebrew", "JavaScript", "pkgx", "Python", "Rust", "Skills"])
     #expect(index.packagesBySection[.rust]?.map(\.displayName) == ["ripgrep", "rustup"])
     #expect(index.packagesBySection[.homebrew]?.map(\.displayName) == ["git", "visual-studio-code"])
     #expect(index.packagesBySection[.apps]?.map(\.displayName) == ["Fork", "visual-studio-code"])
     #expect(index.packagesBySection[.javascript]?.map(\.displayName) == ["acorn", "alpha", "beta", "zeta"])
     #expect(index.packagesBySection[.python]?.map(\.displayName) == ["python", "ruff"])
     #expect(index.packagesBySection[.go]?.map(\.displayName) == ["hey"])
+    #expect(index.packagesBySection[.pkgx]?.map(\.displayName) == ["gum"])
     #expect(index.packagesBySection[.skills]?.map(\.displayName) == ["example"])
 }
 
@@ -1579,6 +1593,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .bun, identifier: "bun:@scope/tool", installedVersion: nil, latestVersion: nil)) == "https://www.npmjs.com/package/@scope/tool")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .cargoInstall, identifier: "cargo:ripgrep", installedVersion: nil, latestVersion: nil)) == "https://crates.io/crates/ripgrep")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .goInstall, identifier: "go:github.com/rakyll/hey", installedVersion: nil, latestVersion: nil)) == "https://pkg.go.dev/github.com/rakyll/hey")
+    #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .pkgx, identifier: "pkgx:charm.sh/gum", installedVersion: nil, latestVersion: nil)) == "https://pkgx.dev/pkgs/charm.sh/gum/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .pipx, identifier: "pipx:cowsay", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/cowsay/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .pipx, identifier: "pipx:cowsay-x", catalogIdentifier: "pipx:cowsay", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/cowsay/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .uv, identifier: "uv:tool:ruff", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/ruff/")

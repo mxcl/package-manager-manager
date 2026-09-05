@@ -228,6 +228,32 @@ private final class LockedStrings: @unchecked Sendable {
     #expect(menuBarCommandPackage(id: "go:github.com/rakyll/hey", kind: .install, snapshot: installedSnapshot) == nil)
 }
 
+@Test func menuBarInstallSynthesizesUninstalledPkgxPackageWhenNotInCatalog() {
+    let snapshot = PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: []
+    )
+
+    let package = menuBarCommandPackage(id: "pkgx:charm.sh/gum", kind: .install, snapshot: snapshot)
+    #expect(package?.manager == .pkgx)
+    #expect(package?.identifier == "pkgx:charm.sh/gum")
+    #expect(package?.displayName == "gum")
+    #expect(package?.packageToken == "charm.sh/gum")
+    #expect(package?.installedVersion == nil)
+    #expect(package?.homepage == "https://pkgx.dev/pkgs/charm.sh/gum/")
+
+    let packages = menuBarCommandInstallPackages(ids: ["pkgx:charm.sh/gum"], snapshot: snapshot)
+    #expect(packages.count == 1)
+    #expect(packages.first?.identifier == "pkgx:charm.sh/gum")
+
+    let installedPkgx = ManagedPackage(manager: .pkgx, identifier: "pkgx:charm.sh/gum", installedVersion: "2.0.0", latestVersion: nil)
+    let installedSnapshot = PackageHostSnapshot(
+        inventory: PackageInventory(packages: [installedPkgx]),
+        catalogPackages: []
+    )
+    #expect(menuBarCommandPackage(id: "pkgx:charm.sh/gum", kind: .install, snapshot: installedSnapshot) == nil)
+}
+
 @Test func helperInstallIsHeldRatherThanDroppedWhileTheHostIsBusy() {
     let id = CargoHelper.binstall.promptKey
 
@@ -327,4 +353,62 @@ private final class LockedStrings: @unchecked Sendable {
 
     #expect(snapshot.inventory?.packages.first?.installedVersion == "3.13.1")
     #expect(snapshot.inventory?.packages.first?.installedVersions == ["3.13.1"])
+}
+
+@Test func uninstallingPkgxPackageKeepsOtherInstalledVersions() {
+    let gum = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "2.0.0",
+        installedVersions: ["2.0.0", "1.0.0"],
+        latestVersion: "2.1.0",
+        installLocation: "/Users/test/.pkgx/charm.sh/gum/v2.0.0",
+        binaryPath: "/Users/test/.pkgx/charm.sh/gum/v2.0.0/bin/gum"
+    )
+    let snapshot = menuBarSnapshot(
+        PackageHostSnapshot(inventory: PackageInventory(packages: [gum])),
+        applyingSuccessfulAction: .uninstall,
+        package: gum
+    )
+
+    let surviving = snapshot.inventory?.packages.first
+    #expect(surviving?.installedVersion == "1.0.0")
+    #expect(surviving?.installedVersions == ["1.0.0"])
+    #expect(surviving?.installLocation == "/Users/test/.pkgx/charm.sh/gum/v1.0.0")
+    #expect(surviving?.binaryPath == "/Users/test/.pkgx/charm.sh/gum/v1.0.0/bin/gum")
+}
+
+@Test func updatingPkgxPackageRemapsActionPathsAndSubsequentUninstallPreservesOldVersion() {
+    let gum1 = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "1.0.0",
+        installedVersions: ["1.0.0"],
+        latestVersion: "2.0.0",
+        installLocation: "/Users/test/.pkgx/charm.sh/gum/v1.0.0",
+        binaryPath: "/Users/test/.pkgx/charm.sh/gum/v1.0.0/bin/gum"
+    )
+    var snapshot = PackageHostSnapshot(inventory: PackageInventory(packages: [gum1]))
+
+    // 1. Update pkgx package from 1.0.0 to 2.0.0
+    snapshot = menuBarSnapshot(snapshot, applyingSuccessfulAction: .update, package: gum1)
+    let updatedGum = snapshot.inventory?.packages.first
+    #expect(updatedGum?.installedVersion == "2.0.0")
+    #expect(updatedGum?.installedVersions == ["2.0.0", "1.0.0"])
+    #expect(updatedGum?.otherInstalledVersions == ["1.0.0"])
+    #expect(updatedGum?.installLocation == "/Users/test/.pkgx/charm.sh/gum/v2.0.0")
+    #expect(updatedGum?.binaryPath == "/Users/test/.pkgx/charm.sh/gum/v2.0.0/bin/gum")
+    #expect(updatedGum?.isOutdated == false)
+
+    // 2. Subsequent uninstall of the updated package (v2.0.0)
+    guard let packageToUninstall = updatedGum else { return }
+    snapshot = menuBarSnapshot(snapshot, applyingSuccessfulAction: .uninstall, package: packageToUninstall)
+    let survivingGum = snapshot.inventory?.packages.first
+    #expect(survivingGum?.installedVersion == "1.0.0")
+    #expect(survivingGum?.installedVersions == ["1.0.0"])
+    #expect(survivingGum?.otherInstalledVersions == [])
+    #expect(survivingGum?.installLocation == "/Users/test/.pkgx/charm.sh/gum/v1.0.0")
+    #expect(survivingGum?.binaryPath == "/Users/test/.pkgx/charm.sh/gum/v1.0.0/bin/gum")
 }

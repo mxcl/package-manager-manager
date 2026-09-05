@@ -432,6 +432,76 @@ import Testing
     #expect(goPackages.first?.homepage == "https://pkg.go.dev/github.com/rakyll/hey")
 }
 
+@Test func remoteLinuxInventoryParsesPkgxPackages() async throws {
+    let payload = """
+    __PMM_LINUX_V1__
+    __PMM_PROFILE__
+    Linux\tx86_64\t1\tapt
+    __PMM_PKGX__
+    charm.sh/gum\t2.0.0\t/home/user/.pkgx/charm.sh/gum/v2.0.0
+    gnu.org/coreutils\t9.5.0\t/home/user/.pkgx/gnu.org/coreutils/v9.5.0
+    __PMM_PKGX_OUTDATED__
+    === charm.sh/gum ===
+    1.9.0
+    2.0.0
+    2.1.0
+    === gnu.org/coreutils ===
+    9.5.0
+    __PMM_END__
+    """
+    let runner = RecordingRemoteRunner(result: CommandResult(stdout: payload, stderr: "", status: 0))
+    let response = try await RemoteSSHClient(runner: runner).inventory(on: RemoteHost(destination: "atlas"))
+    let pkgxPackages = response.inventory.packages.filter { $0.manager == .pkgx }
+    #expect(pkgxPackages.count == 2)
+    let gum = pkgxPackages.first(where: { $0.identifier == "pkgx:charm.sh/gum" })
+    #expect(gum?.displayName == "gum")
+    #expect(gum?.installedVersion == "2.0.0")
+    #expect(gum?.latestVersion == "2.1.0")
+    #expect(gum?.isOutdated == true)
+    if let gum {
+        #expect(PackageUpdater.supports(gum) == true)
+    }
+    #expect(gum?.installLocation == "/home/user/.pkgx/charm.sh/gum/v2.0.0")
+    #expect(gum?.homepage == "https://pkgx.dev/pkgs/charm.sh/gum/")
+
+    let coreutils = pkgxPackages.first(where: { $0.identifier == "pkgx:gnu.org/coreutils" })
+    #expect(coreutils?.installedVersion == "9.5.0")
+    #expect(coreutils?.latestVersion == "9.5.0")
+    #expect(coreutils?.isOutdated == false)
+}
+
+@Test func remoteLinuxActionScriptRunsPkgxUpdateAndUninstall() async throws {
+    let response = RemoteControlResponse(inventory: PackageInventory(packages: []))
+    let runner = RecordingRemoteRunner(result: CommandResult(
+        stdout: String(decoding: try JSONEncoder().encode(response), as: UTF8.self),
+        stderr: "",
+        status: 0
+    ))
+    let package = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        installedVersion: "2.0.0",
+        latestVersion: "2.1.0",
+        installLocation: "/home/user/.pkgx/charm.sh/gum/v2.0.0"
+    )
+
+    _ = try await RemoteSSHClient(runner: runner).update(package, on: RemoteHost(destination: "atlas"))
+    let updateScript = runner.arguments?.last ?? ""
+    #expect(updateScript.contains("pkgx +") == true)
+    #expect(updateScript.contains("charm.sh/gum@2.1.0") == true)
+    #expect(updateScript.contains("true") == true)
+    #expect(updateScript.contains("expected_vdir=\"$pkgx_dir/$expected_project/v2.1.0\"") == true)
+    #expect(updateScript.contains("if [ ! -d \"$expected_vdir\" ]; then") == true)
+
+    _ = try await RemoteSSHClient(runner: runner).uninstall(package, on: RemoteHost(destination: "atlas"))
+    let uninstallScript = runner.arguments?.last ?? ""
+    #expect(uninstallScript.contains("cd -P") == true)
+    #expect(uninstallScript.contains("pwd -P") == true)
+    #expect(uninstallScript.contains("[ -L \"$curr\" ]") == true)
+    #expect(uninstallScript.contains("charm.sh/gum") == true)
+    #expect(uninstallScript.contains("rm -rf") == true)
+}
+
 private final class RecordingRemoteRunner: CommandRunning, @unchecked Sendable {
     private let result: CommandResult
     private let lock = NSLock()

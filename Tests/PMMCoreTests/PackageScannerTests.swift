@@ -1710,3 +1710,113 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
 
     #expect(try scanner.scanUVX(database: PackageDatabase()).isEmpty)
 }
+
+@Test func pkgxParsingVersionsExtractsMaxSemver() {
+    let output = """
+    0.9.0
+    1.0.0
+    1.1.0
+    2.0.0-rc1
+    2.0.0
+    1.9.9
+    """
+    #expect(PackageScanner.parsePkgxVersions(output) == "2.0.0")
+    #expect(PackageScanner.parsePkgxVersions("") == nil)
+    #expect(PackageScanner.parsePkgxVersions("invalid\nnot-a-version") == nil)
+
+    let prereleases = """
+    1.0.0-alpha
+    1.0.0-alpha.1
+    1.0.0-alpha.beta
+    1.0.0-beta
+    1.0.0-beta.2
+    1.0.0-beta.11
+    1.0.0-rc.1
+    """
+    #expect(PackageScanner.parsePkgxVersions(prereleases) == "1.0.0-rc.1")
+}
+
+@Test func pkgxScannerReturnsEmptyWhenToolMissing() throws {
+    let scanner = PackageScanner(toolPaths: ["pkgx": ""])
+    #expect(try scanner.scanPkgx(database: PackageDatabase()).isEmpty)
+}
+
+@Test func pkgxScannerParsesPackagesAndBinaries() throws {
+    let temp = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let gumV2Bin = temp.appendingPathComponent("charm.sh/gum/v2.0.0/bin", isDirectory: true)
+    let gumV1 = temp.appendingPathComponent("charm.sh/gum/v1.0.0", isDirectory: true)
+    let gumSymlink = temp.appendingPathComponent("charm.sh/gum/v*", isDirectory: false)
+    let denoBin = temp.appendingPathComponent("deno.land/v1.39.4/bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: gumV2Bin, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: gumV1, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: denoBin, withIntermediateDirectories: true)
+    try FileManager.default.createSymbolicLink(at: gumSymlink, withDestinationURL: temp.appendingPathComponent("charm.sh/gum/v2.0.0"))
+
+    let gumBinary = gumV2Bin.appendingPathComponent("gum")
+    FileManager.default.createFile(atPath: gumBinary.path, contents: Data())
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: gumBinary.path)
+
+    let nonExecFile = gumV2Bin.appendingPathComponent("README.txt")
+    FileManager.default.createFile(atPath: nonExecFile.path, contents: Data())
+    try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: nonExecFile.path)
+
+    let denoBinary = denoBin.appendingPathComponent("deno")
+    FileManager.default.createFile(atPath: denoBinary.path, contents: Data())
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: denoBinary.path)
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let scanner = PackageScanner(toolPaths: ["pkgx": "/fake/pkgx"], environment: ["PKGX_DIR": temp.path])
+    let packages = try scanner.scanPkgx(database: PackageDatabase())
+
+    #expect(packages.count == 2)
+    let gum = packages.first(where: { $0.identifier == "pkgx:charm.sh/gum" })
+    #expect(gum?.manager == .pkgx)
+    #expect(gum?.displayName == "gum")
+    #expect(gum?.installedVersions.sorted() == ["1.0.0", "2.0.0"])
+    #expect(gum?.installedVersion == "2.0.0")
+    #expect(gum?.executableNames == ["gum"])
+    #expect(gum?.binaryPath?.hasSuffix("/charm.sh/gum/v2.0.0/bin/gum") == true)
+    #expect(gum?.homepage == "https://pkgx.dev/pkgs/charm.sh/gum/")
+    #expect(gum?.docs == "https://docs.pkgx.sh")
+
+    let deno = packages.first(where: { $0.identifier == "pkgx:deno.land" })
+    #expect(deno?.manager == .pkgx)
+    #expect(deno?.displayName == "deno")
+    #expect(deno?.installedVersion == "1.39.4")
+    #expect(deno?.executableNames == ["deno"])
+    #expect(deno?.binaryPath?.hasSuffix("/deno.land/v1.39.4/bin/deno") == true)
+}
+
+@Test func pkgxScannerQueriesFreshnessWhenModeIsFresh() throws {
+    let temp = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let gumV2Bin = temp.appendingPathComponent("charm.sh/gum/v2.0.0/bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: gumV2Bin, withIntermediateDirectories: true)
+    let gumBinary = gumV2Bin.appendingPathComponent("gum")
+    FileManager.default.createFile(atPath: gumBinary.path, contents: Data())
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: gumBinary.path)
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let platform = PackageScanner.currentPkgxPlatform()
+    let runner = FakeRunner(responses: [
+        "/fake/curl -fsSL --connect-timeout 2 --max-time 5 https://dist.pkgx.dev/charm.sh/gum/\(platform)/versions.txt": CommandResult(
+            stdout: "2.0.0\n2.1.0\n",
+            stderr: "",
+            status: 0
+        ),
+        "/fake/curl -fsSL --connect-timeout 2 --max-time 5 https://dist.pkgx.dev/charm.sh/gum/versions.txt": CommandResult(
+            stdout: "2.0.0\n2.0.5\n",
+            stderr: "",
+            status: 0
+        )
+    ])
+    let scanner = PackageScanner(
+        runner: runner,
+        toolPaths: ["pkgx": "/fake/pkgx", "curl": "/fake/curl"],
+        environment: ["PKGX_DIR": temp.path]
+    )
+    let packages = try scanner.scanPkgx(database: PackageDatabase(), mode: .fresh)
+    let gum = packages.first(where: { $0.identifier == "pkgx:charm.sh/gum" })
+    #expect(gum?.installedVersion == "2.0.0")
+    #expect(gum?.latestVersion == "2.1.0")
+    #expect(gum?.isOutdated == true)
+}

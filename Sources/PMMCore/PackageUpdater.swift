@@ -2,14 +2,27 @@ import Foundation
 
 public struct PackageUpdater: Sendable {
     private let runner: CommandRunning
+    private let homeDirectory: URL
     private let toolPaths: [String: String]
+    private let environment: [String: String]?
+    private let fileManager: FileManager
 
     public init(
         runner: CommandRunning = SystemCommandRunner(),
-        toolPaths: [String: String] = [:]
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        toolPaths: [String: String] = [:],
+        environment: [String: String]? = nil,
+        fileManager: FileManager = .default
     ) {
         self.runner = runner
+        self.homeDirectory = homeDirectory
         self.toolPaths = toolPaths
+        self.environment = environment
+        self.fileManager = fileManager
+    }
+
+    private var effectiveEnvironment: [String: String] {
+        environment ?? commandEnvironment()
     }
 
     public func update(_ package: ManagedPackage, onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) throws {
@@ -43,6 +56,28 @@ public struct PackageUpdater: Sendable {
             try run("pipx", ["upgrade", package.packageToken], onProgress: onProgress)
         case .goInstall:
             try run("go", ["install", "\(package.packageToken)@latest"], onProgress: onProgress)
+        case .pkgx:
+            let targetSpecifier = package.latestVersion.map { "@\($0)" } ?? "@*"
+            try run("pkgx", ["+\(package.packageToken)\(targetSpecifier)", "true"], onProgress: onProgress)
+            if let latestVersion = package.latestVersion {
+                let pkgxDirPath = PackageScanner.effectivePkgxDirectory(
+                    environment: effectiveEnvironment,
+                    homeDirectory: homeDirectory,
+                    fileManager: fileManager
+                )
+                let rootURL = URL(fileURLWithPath: pkgxDirPath)
+                let targetDir = rootURL.appendingPathComponent(package.packageToken).appendingPathComponent("v\(latestVersion)")
+                var isDir: ObjCBool = false
+                if fileManager.fileExists(atPath: rootURL.path) {
+                    let exists = fileManager.fileExists(atPath: targetDir.path, isDirectory: &isDir) && isDir.boolValue
+                    if !exists {
+                        throw PackageUpdateError.failed(
+                            "pkgx +\(package.packageToken)\(targetSpecifier) true",
+                            "Updated version \(latestVersion) was not found in pkgx directory after update."
+                        )
+                    }
+                }
+            }
         case .uvx:
             throw PackageUpdateError.unsupportedManager(package.manager)
         }
@@ -51,7 +86,7 @@ public struct PackageUpdater: Sendable {
 
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
-        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .goInstall: package.isOutdated
+        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .goInstall, .pkgx: package.isOutdated
         case .macApp, .rustup, .mise, .skills, .uvx: false
         }
     }
@@ -83,7 +118,8 @@ public struct PackageUpdater: Sendable {
         }
         let command = ([executableName] + arguments).joined(separator: " ")
         onProgress?(.started(command: command))
-        let result = try runner.run(executable, arguments, options: CommandRunOptions(terminal: true)) { output in
+        let options = CommandRunOptions(terminal: true, environment: effectiveEnvironment)
+        let result = try runner.run(executable, arguments, options: options) { output in
             onProgress?(.output(output))
         }
         guard result.status == 0 else {

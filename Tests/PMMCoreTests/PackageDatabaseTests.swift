@@ -267,3 +267,24 @@ import Testing
     #expect(pkg.summary == "HTTP load generator")
     #expect(db.metadata(for: .goInstall, name: "github.com/rakyll/hey")?.version == "0.1.5")
 }
+
+@Test func catalogPackagesProducesPkgxPackagesFromDatabase() throws {
+    let db = PackageDatabase(
+        pkgxs: [
+            "charm.sh/gum": PackageMetadata(
+                summary: "Glamorous shell scripts",
+                category: "developer-tools",
+                homepage: "https://pkgx.dev/pkgs/charm.sh/gum/",
+                version: "2.0.0"
+            )
+        ]
+    )
+
+    let pkgxPackages = db.catalogPackages.filter { $0.manager == .pkgx }
+    #expect(pkgxPackages.count == 1)
+    let pkg = try #require(pkgxPackages.first)
+    #expect(pkg.identifier == "pkgx:charm.sh/gum")
+    #expect(pkg.displayName == "gum")
+    #expect(pkg.summary == "Glamorous shell scripts")
+    #expect(db.metadata(for: .pkgx, name: "charm.sh/gum")?.version == "2.0.0")
+}
