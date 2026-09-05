@@ -1527,6 +1527,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .bun, identifier: "bun:@scope/tool", installedVersion: nil, latestVersion: nil)) == "https://www.npmjs.com/package/@scope/tool")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .cargoInstall, identifier: "cargo:ripgrep", installedVersion: nil, latestVersion: nil)) == "https://crates.io/crates/ripgrep")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .pipx, identifier: "pipx:cowsay", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/cowsay/")
+    #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .pipx, identifier: "pipx:cowsay-x", catalogIdentifier: "pipx:cowsay", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/cowsay/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .uv, identifier: "uv:tool:ruff", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/ruff/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .uv, identifier: "uv:cpython:3.13", installedVersion: nil, latestVersion: nil)) == nil)
 }

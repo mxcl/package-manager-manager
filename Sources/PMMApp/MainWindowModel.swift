@@ -404,7 +404,8 @@ func mainWindowRegistryURLString(for package: ManagedPackage) -> String? {
         return "https://crates.io/crates/\(package.packageToken)"
     case .uv, .uvx, .pipx:
         guard package.manager == .pipx || package.identifier.hasPrefix("uv:tool:") || package.manager == .uvx else { return nil }
-        return "https://pypi.org/project/\(package.packageToken)/"
+        let distributionName = (package.catalogIdentifier?.split(separator: ":").last).map(String.init) ?? package.packageToken
+        return "https://pypi.org/project/\(distributionName)/"
     case .apk, .apt, .dnf, .zypper, .macApp, .rustup, .mise:
         return nil
     case .skills:
@@ -1489,6 +1490,7 @@ final class MainWindowModel: NSObject, ObservableObject {
             return ManagedPackage(
                 manager: .pipx,
                 identifier: request.identifier,
+                catalogIdentifier: "pipx:\(request.name)",
                 displayName: request.name,
                 installedVersion: nil,
                 latestVersion: nil,

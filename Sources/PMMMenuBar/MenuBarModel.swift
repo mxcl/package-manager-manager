@@ -126,6 +126,7 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
             package = ManagedPackage(
                 manager: .pipx,
                 identifier: "pipx:\(token)",
+                catalogIdentifier: "pipx:\(token)",
                 displayName: token,
                 installedVersion: nil,
                 latestVersion: nil,

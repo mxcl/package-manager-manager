@@ -548,14 +548,43 @@ public struct PackageScanner: @unchecked Sendable {
                 return url.deletingLastPathComponent().deletingLastPathComponent().path
             }
 
-            let curation = database?.metadata(for: .pipx, name: envName) ?? database?.metadata(for: .pipx, name: packageName)
+            let rawSuffix = mainPackage["suffix"] as? String
+            let suffix = rawSuffix?.isEmpty == false ? rawSuffix : nil
+            let suffixedPackageName = suffix.map { packageName + $0 }
+            let normalizedEnvName = envName.replacingOccurrences(of: "-", with: "_")
+            let denormalizedEnvName = envName.replacingOccurrences(of: "_", with: "-")
+            let apps = (mainPackage["apps"] as? [String]) ?? []
+
+            var candidateKeys = [envName]
+            if let suffixedPackageName {
+                candidateKeys.append(suffixedPackageName)
+                candidateKeys.append(suffixedPackageName.replacingOccurrences(of: "-", with: "_"))
+                candidateKeys.append(suffixedPackageName.replacingOccurrences(of: "_", with: "-"))
+            }
+            candidateKeys.append(normalizedEnvName)
+            candidateKeys.append(denormalizedEnvName)
+            candidateKeys.append(contentsOf: apps)
+            if suffix == nil {
+                candidateKeys.append(packageName)
+                candidateKeys.append(packageName.replacingOccurrences(of: "-", with: "_"))
+                candidateKeys.append(packageName.replacingOccurrences(of: "_", with: "-"))
+            } else {
+                candidateKeys.append(packageName)
+            }
+
+            let latestVersion = candidateKeys.compactMap { outdated[$0] }.first
+
+            let curation = database?.metadata(for: .pipx, name: envName)
+                ?? suffixedPackageName.flatMap { database?.metadata(for: .pipx, name: $0) }
+                ?? database?.metadata(for: .pipx, name: packageName)
 
             return ManagedPackage(
                 manager: .pipx,
                 identifier: "pipx:\(envName)",
+                catalogIdentifier: envName == packageName ? nil : "pipx:\(packageName)",
                 displayName: envName,
                 installedVersion: version,
-                latestVersion: outdated[envName] ?? outdated[packageName],
+                latestVersion: latestVersion,
                 summary: curation?.summary ?? "Python application installed with pipx",
                 category: curation?.category ?? "developer-tools",
                 homepage: curation?.homepage,
@@ -577,8 +606,9 @@ public struct PackageScanner: @unchecked Sendable {
            let dataObj = json["data"] as? [String: Any],
            let packages = dataObj["packages"] as? [[String: Any]] {
             for pkg in packages {
-                if let name = pkg["package"] as? String,
-                   let latest = pkg["latest_version"] as? String {
+                let name = (pkg["package"] as? String) ?? (pkg["name"] as? String) ?? (pkg["venv"] as? String)
+                if let name,
+                   let latest = (pkg["latest_version"] as? String) ?? (pkg["latest"] as? String) {
                     outdated[name] = latest
                 }
             }

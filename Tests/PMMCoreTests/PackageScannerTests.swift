@@ -785,6 +785,7 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
     #expect(packages.count == 1)
     let package = packages[0]
     #expect(package.identifier == "pipx:cowsay_x")
+    #expect(package.catalogIdentifier == "pipx:cowsay")
     #expect(package.displayName == "cowsay_x")
     #expect(package.packageToken == "cowsay_x")
     #expect(package.installedVersion == "5.0")
@@ -796,6 +797,99 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
     // Outdated lookup falls back to package name if venv name is not present
     let fallbackOutdated = PackageScanner.parsePipxList(listJson, outdated: ["cowsay": "6.2"])
     #expect(fallbackOutdated.first?.latestVersion == "6.2")
+}
+
+@Test func pipxSuffixedEnvironmentMatchesOutdatedNormalizationAndPreservesCanonicalName() throws {
+    let listJson = """
+    {
+        "pipx_spec_version": "0.1",
+        "venvs": {
+            "cowsay-x": {
+                "metadata": {
+                    "injected_packages": {},
+                    "main_package": {
+                        "app_paths": [
+                            {
+                                "__Path__": "/Users/test/.local/share/pipx/venvs/cowsay-x/bin/cowsay_x",
+                                "__type__": "Path"
+                            }
+                        ],
+                        "apps": [
+                            "cowsay_x"
+                        ],
+                        "include_apps": true,
+                        "include_dependencies": false,
+                        "man_pages": [],
+                        "man_paths": [],
+                        "package": "cowsay",
+                        "package_or_url": "cowsay==5.0",
+                        "package_version": "5.0",
+                        "pip_args": [],
+                        "suffix": "_x"
+                    },
+                    "pipx_metadata_version": "0.2",
+                    "python_version": "Python 3.12.0",
+                    "venv_args": []
+                }
+            }
+        }
+    }
+    """
+
+    let outdatedJson = """
+    {
+        "pipx_spec_version": "0.1",
+        "data": {
+            "packages": [
+                {
+                    "package": "cowsay_x",
+                    "latest_version": "6.1"
+                }
+            ]
+        }
+    }
+    """
+
+    let outdatedText = """
+    cowsay_x: 5.0 -> 6.1
+    """
+
+    let parsedOutdatedJson = PackageScanner.parsePipxOutdated(outdatedJson)
+    #expect(parsedOutdatedJson == ["cowsay_x": "6.1"])
+
+    let parsedOutdatedText = PackageScanner.parsePipxOutdated(outdatedText)
+    #expect(parsedOutdatedText == ["cowsay_x": "6.1"])
+
+    let db = PackageDatabase(pipxs: [
+        "cowsay": PackageMetadata(summary: "Configurable talking cow", category: "entertainment", homepage: nil, version: "5.0")
+    ])
+
+    // Test with JSON outdated output
+    let packagesFromJson = PackageScanner.parsePipxList(listJson, outdated: parsedOutdatedJson, database: db)
+    #expect(packagesFromJson.count == 1)
+    let packageFromJson = packagesFromJson[0]
+    #expect(packageFromJson.identifier == "pipx:cowsay-x")
+    #expect(packageFromJson.catalogIdentifier == "pipx:cowsay")
+    #expect(packageFromJson.packageToken == "cowsay-x")
+    #expect(packageFromJson.displayName == "cowsay-x")
+    #expect(packageFromJson.installedVersion == "5.0")
+    #expect(packageFromJson.latestVersion == "6.1")
+    #expect(packageFromJson.isOutdated == true)
+    #expect(packageFromJson.summary == "Configurable talking cow")
+    #expect(packageFromJson.category == "entertainment")
+    #expect(packageFromJson.binaryPath == "/Users/test/.local/share/pipx/venvs/cowsay-x/bin/cowsay_x")
+
+    // Test with text outdated output
+    let packagesFromText = PackageScanner.parsePipxList(listJson, outdated: parsedOutdatedText, database: db)
+    #expect(packagesFromText.first?.latestVersion == "6.1")
+
+    // Test fallback when outdated names venv directly
+    let packagesFromVenvKey = PackageScanner.parsePipxList(listJson, outdated: ["cowsay-x": "6.3"], database: db)
+    #expect(packagesFromVenvKey.first?.latestVersion == "6.3")
+
+    // Test fallback when outdated names canonical package
+    let packagesFromPackageKey = PackageScanner.parsePipxList(listJson, outdated: ["cowsay": "6.4"], database: db)
+    #expect(packagesFromPackageKey.first?.latestVersion == "6.4")
 }
 
 @Test func homebrewScannerUsesCachedAPIMetadata() throws {
