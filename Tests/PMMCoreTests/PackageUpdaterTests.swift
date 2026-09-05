@@ -51,12 +51,19 @@ private final class ProgressRecorder: @unchecked Sendable {
 }
 
 @Test func packageUpdaterRunsManagerCommands() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let pkgxRoot = temp.appendingPathComponent(".pkgx", isDirectory: true)
+    try FileManager.default.createDirectory(at: pkgxRoot.appendingPathComponent("charm.sh/gum/v2.0.0"), withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: temp) }
+
     let runner = RecordingRunner()
     // Cargo is covered separately: which command it picks depends on whether cargo-binstall is
     // installed, which must not be read off whatever machine runs the suite.
     let updater = PackageUpdater(
         runner: runner,
-        toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "pnpm": "/fake/pnpm", "bun": "/fake/bun", "pipx": "/fake/pipx", "uv": "/fake/uv", "go": "/fake/go", "pkgx": "/fake/pkgx"]
+        homeDirectory: temp,
+        toolPaths: ["brew": "/fake/brew", "npm": "/fake/npm", "pnpm": "/fake/pnpm", "bun": "/fake/bun", "pipx": "/fake/pipx", "uv": "/fake/uv", "go": "/fake/go", "pkgx": "/fake/pkgx"],
+        environment: ["PKGX_DIR": pkgxRoot.path]
     )
 
     try updater.update(package(.homebrew, "brew:git", displayName: "Git"))
@@ -83,6 +90,7 @@ private final class ProgressRecorder: @unchecked Sendable {
         "/fake/uv python install 3.13.14 --color always",
     ])
     #expect(runner.options.map(\.terminal) == Array(repeating: true, count: 10))
+    #expect(runner.options.allSatisfy { $0.environment["PKGX_DIR"] == pkgxRoot.path })
 }
 
 @Test func pkgxUpdateRequiresExplicitTargetVersionAndVerifiesPresence() throws {

@@ -401,6 +401,40 @@ private final class ProgressRecorder: @unchecked Sendable {
     #expect(FileManager.default.fileExists(atPath: outsideNodeDir.path))
 }
 
+@Test func packageUninstallerAfterPkgxUpdateRemovesNewVersionAndPreservesOldVersion() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let projectDir = temp.appendingPathComponent("charm.sh/gum", isDirectory: true)
+    let v1Dir = projectDir.appendingPathComponent("v1.0.0", isDirectory: true)
+    let v2Dir = projectDir.appendingPathComponent("v2.0.0", isDirectory: true)
+    try FileManager.default.createDirectory(at: v1Dir, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: v2Dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let uninstaller = PackageUninstaller(
+        runner: RecordingRunner(),
+        homeDirectory: temp,
+        toolPaths: ["pkgx": "/fake/pkgx"],
+        environment: ["PKGX_DIR": temp.path]
+    )
+
+    // Represents the package state after updating from 1.0.0 to 2.0.0:
+    // installLocation points to v2.0.0 and otherInstalledVersions retains 1.0.0.
+    let updatedPkg = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "2.0.0",
+        installedVersions: ["2.0.0", "1.0.0"],
+        latestVersion: nil,
+        installLocation: v2Dir.path
+    )
+
+    try uninstaller.uninstall(updatedPkg)
+    #expect(!FileManager.default.fileExists(atPath: v2Dir.path))
+    #expect(FileManager.default.fileExists(atPath: v1Dir.path))
+    #expect(FileManager.default.fileExists(atPath: projectDir.path))
+}
+
 @Test func packageUninstallerDoesNotSupportRustup() throws {
     let package = package(.rustup, "rustup:rustup")
 

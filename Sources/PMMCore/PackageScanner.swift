@@ -896,8 +896,12 @@ public struct PackageScanner: @unchecked Sendable {
         try scanPkgx(database: database, mode: .fresh)
     }
 
-    private func effectivePkgxDirectory() -> String {
-        if let envDir = effectiveEnvironment["PKGX_DIR"], !envDir.isEmpty {
+    public static func effectivePkgxDirectory(
+        environment: [String: String] = commandEnvironment(),
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        fileManager: FileManager = .default
+    ) -> String {
+        if let envDir = environment["PKGX_DIR"], !envDir.isEmpty {
             return envDir
         }
         let dotPkgx = homeDirectory.appendingPathComponent(".pkgx").path
@@ -909,6 +913,14 @@ public struct PackageScanner: @unchecked Sendable {
             return sharePkgx
         }
         return dotPkgx
+    }
+
+    private func effectivePkgxDirectory() -> String {
+        Self.effectivePkgxDirectory(
+            environment: effectiveEnvironment,
+            homeDirectory: homeDirectory,
+            fileManager: fileManager
+        )
     }
 
     func scanPkgx(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {

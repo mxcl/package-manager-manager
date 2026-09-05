@@ -4,18 +4,25 @@ public struct PackageUpdater: Sendable {
     private let runner: CommandRunning
     private let homeDirectory: URL
     private let toolPaths: [String: String]
-    private let environment: [String: String]
+    private let environment: [String: String]?
+    private let fileManager: FileManager
 
     public init(
         runner: CommandRunning = SystemCommandRunner(),
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         toolPaths: [String: String] = [:],
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String]? = nil,
+        fileManager: FileManager = .default
     ) {
         self.runner = runner
         self.homeDirectory = homeDirectory
         self.toolPaths = toolPaths
         self.environment = environment
+        self.fileManager = fileManager
+    }
+
+    private var effectiveEnvironment: [String: String] {
+        environment ?? commandEnvironment()
     }
 
     public func update(_ package: ManagedPackage, onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) throws {
@@ -53,16 +60,16 @@ public struct PackageUpdater: Sendable {
             let targetSpecifier = package.latestVersion.map { "@\($0)" } ?? "@*"
             try run("pkgx", ["+\(package.packageToken)\(targetSpecifier)", "true"], onProgress: onProgress)
             if let latestVersion = package.latestVersion {
-                let pkgxDir = environment["PKGX_DIR"] ?? ""
-                let rootURL = pkgxDir.isEmpty ? homeDirectory.appendingPathComponent(".pkgx") : URL(fileURLWithPath: pkgxDir)
-                let fallbackURL = homeDirectory.appendingPathComponent(".local/share/pkgx")
+                let pkgxDirPath = PackageScanner.effectivePkgxDirectory(
+                    environment: effectiveEnvironment,
+                    homeDirectory: homeDirectory,
+                    fileManager: fileManager
+                )
+                let rootURL = URL(fileURLWithPath: pkgxDirPath)
                 let targetDir = rootURL.appendingPathComponent(package.packageToken).appendingPathComponent("v\(latestVersion)")
-                let fallbackTargetDir = fallbackURL.appendingPathComponent(package.packageToken).appendingPathComponent("v\(latestVersion)")
                 var isDir: ObjCBool = false
-                let rootExists = FileManager.default.fileExists(atPath: rootURL.path) || FileManager.default.fileExists(atPath: fallbackURL.path)
-                if rootExists {
-                    let exists = (FileManager.default.fileExists(atPath: targetDir.path, isDirectory: &isDir) && isDir.boolValue)
-                        || (FileManager.default.fileExists(atPath: fallbackTargetDir.path, isDirectory: &isDir) && isDir.boolValue)
+                if fileManager.fileExists(atPath: rootURL.path) {
+                    let exists = fileManager.fileExists(atPath: targetDir.path, isDirectory: &isDir) && isDir.boolValue
                     if !exists {
                         throw PackageUpdateError.failed(
                             "pkgx +\(package.packageToken)\(targetSpecifier) true",
@@ -111,7 +118,8 @@ public struct PackageUpdater: Sendable {
         }
         let command = ([executableName] + arguments).joined(separator: " ")
         onProgress?(.started(command: command))
-        let result = try runner.run(executable, arguments, options: CommandRunOptions(terminal: true)) { output in
+        let options = CommandRunOptions(terminal: true, environment: effectiveEnvironment)
+        let result = try runner.run(executable, arguments, options: options) { output in
             onProgress?(.output(output))
         }
         guard result.status == 0 else {

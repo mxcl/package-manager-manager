@@ -5,21 +5,24 @@ public struct PackageUninstaller: Sendable {
     private let homeDirectory: URL
     private let toolPaths: [String: String]
     private let environment: [String: String]?
+    private let fileManager: FileManager
 
     public init(
         runner: CommandRunning = SystemCommandRunner(),
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         toolPaths: [String: String] = [:],
-        environment: [String: String]? = nil
+        environment: [String: String]? = nil,
+        fileManager: FileManager = .default
     ) {
         self.runner = runner
         self.homeDirectory = homeDirectory
         self.toolPaths = toolPaths
         self.environment = environment
+        self.fileManager = fileManager
     }
 
     private var effectiveEnvironment: [String: String] {
-        environment ?? ProcessInfo.processInfo.environment
+        environment ?? commandEnvironment()
     }
 
     public func uninstall(_ package: ManagedPackage, onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) throws {
@@ -81,7 +84,8 @@ public struct PackageUninstaller: Sendable {
         }
         let command = ([executableName] + arguments).joined(separator: " ")
         onProgress?(.started(command: command))
-        let result = try runner.run(executable, arguments, options: CommandRunOptions(terminal: true)) { output in
+        let options = CommandRunOptions(terminal: true, environment: effectiveEnvironment)
+        let result = try runner.run(executable, arguments, options: options) { output in
             onProgress?(.output(output))
         }
         guard result.status == 0 else {
@@ -207,19 +211,11 @@ public struct PackageUninstaller: Sendable {
     }
 
     private func effectivePkgxDirectory() -> String {
-        let env = effectiveEnvironment
-        if let envDir = env["PKGX_DIR"], !envDir.isEmpty {
-            return envDir
-        }
-        let dotPkgx = homeDirectory.appendingPathComponent(".pkgx").path
-        if FileManager.default.fileExists(atPath: dotPkgx) {
-            return dotPkgx
-        }
-        let sharePkgx = homeDirectory.appendingPathComponent(".local/share/pkgx").path
-        if FileManager.default.fileExists(atPath: sharePkgx) {
-            return sharePkgx
-        }
-        return dotPkgx
+        PackageScanner.effectivePkgxDirectory(
+            environment: effectiveEnvironment,
+            homeDirectory: homeDirectory,
+            fileManager: fileManager
+        )
     }
 
     private func removePkgxPackage(_ package: ManagedPackage) throws {

@@ -267,7 +267,35 @@ func menuBarSnapshot(
     case .update:
         guard let latestVersion = package.latestVersion,
               let index = packages.firstIndex(where: { $0.id == package.id }) else { return snapshot }
-        packages[index] = package.withInstalledVersion(latestVersion)
+        if package.manager == .pkgx {
+            let nextLocation: String? = package.installLocation.map { loc in
+                let projectDir = URL(fileURLWithPath: loc).deletingLastPathComponent().path
+                return projectDir + "/v\(latestVersion)"
+            }
+            let nextBinary: String? = {
+                guard let bin = package.binaryPath, let loc = package.installLocation else { return nil }
+                let binName = URL(fileURLWithPath: bin).lastPathComponent
+                let projectDir = URL(fileURLWithPath: loc).deletingLastPathComponent().path
+                return projectDir + "/v\(latestVersion)/bin/\(binName)"
+            }()
+            var updatedVersions = package.installedVersions
+            if let current = package.installedVersion, !updatedVersions.contains(current) {
+                updatedVersions.append(current)
+            }
+            if !updatedVersions.contains(latestVersion) {
+                updatedVersions.append(latestVersion)
+            }
+            updatedVersions.sort { $0.localizedStandardCompare($1) == .orderedDescending }
+
+            packages[index] = package.withInstalledVersion(
+                latestVersion,
+                installedVersions: updatedVersions,
+                installLocation: nextLocation,
+                binaryPath: nextBinary
+            )
+        } else {
+            packages[index] = package.withInstalledVersion(latestVersion)
+        }
     case .uninstall:
         if package.manager == .uv, package.summary == "uv-managed Python", let nextVersion = package.otherInstalledVersions.first,
            let index = packages.firstIndex(where: { $0.id == package.id }) {
