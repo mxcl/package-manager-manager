@@ -2,14 +2,20 @@ import Foundation
 
 public struct PackageUpdater: Sendable {
     private let runner: CommandRunning
+    private let homeDirectory: URL
     private let toolPaths: [String: String]
+    private let environment: [String: String]
 
     public init(
         runner: CommandRunning = SystemCommandRunner(),
-        toolPaths: [String: String] = [:]
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        toolPaths: [String: String] = [:],
+        environment: [String: String] = ProcessInfo.processInfo.environment
     ) {
         self.runner = runner
+        self.homeDirectory = homeDirectory
         self.toolPaths = toolPaths
+        self.environment = environment
     }
 
     public func update(_ package: ManagedPackage, onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) throws {
@@ -44,7 +50,27 @@ public struct PackageUpdater: Sendable {
         case .goInstall:
             try run("go", ["install", "\(package.packageToken)@latest"], onProgress: onProgress)
         case .pkgx:
-            try run("pkgx", ["+\(package.packageToken)", "true"], onProgress: onProgress)
+            let targetSpecifier = package.latestVersion.map { "@\($0)" } ?? "@*"
+            try run("pkgx", ["+\(package.packageToken)\(targetSpecifier)", "true"], onProgress: onProgress)
+            if let latestVersion = package.latestVersion {
+                let pkgxDir = environment["PKGX_DIR"] ?? ""
+                let rootURL = pkgxDir.isEmpty ? homeDirectory.appendingPathComponent(".pkgx") : URL(fileURLWithPath: pkgxDir)
+                let fallbackURL = homeDirectory.appendingPathComponent(".local/share/pkgx")
+                let targetDir = rootURL.appendingPathComponent(package.packageToken).appendingPathComponent("v\(latestVersion)")
+                let fallbackTargetDir = fallbackURL.appendingPathComponent(package.packageToken).appendingPathComponent("v\(latestVersion)")
+                var isDir: ObjCBool = false
+                let rootExists = FileManager.default.fileExists(atPath: rootURL.path) || FileManager.default.fileExists(atPath: fallbackURL.path)
+                if rootExists {
+                    let exists = (FileManager.default.fileExists(atPath: targetDir.path, isDirectory: &isDir) && isDir.boolValue)
+                        || (FileManager.default.fileExists(atPath: fallbackTargetDir.path, isDirectory: &isDir) && isDir.boolValue)
+                    if !exists {
+                        throw PackageUpdateError.failed(
+                            "pkgx +\(package.packageToken)\(targetSpecifier) true",
+                            "Updated version \(latestVersion) was not found in pkgx directory after update."
+                        )
+                    }
+                }
+            }
         case .uvx:
             throw PackageUpdateError.unsupportedManager(package.manager)
         }

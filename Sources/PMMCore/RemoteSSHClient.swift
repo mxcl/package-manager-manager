@@ -177,7 +177,7 @@ public struct RemoteSSHClient: Sendable {
         packages += linuxUV(sections: sections)
         packages += linuxPipx(sections: sections)
         packages += linuxGo(version: sections["GO_VERSION"], outdated: sections["GO_OUTDATED"])
-        packages += linuxPkgx(sections["PKGX"])
+        packages += linuxPkgx(output: sections["PKGX"], outdated: sections["PKGX_OUTDATED"])
 
         let failures = lines(sections["ERRORS"]).map { RemoteControlFailure(message: $0) }
         return RemoteControlResponse(
@@ -448,8 +448,36 @@ public struct RemoteSSHClient: Sendable {
         return PackageScanner.parseGoVersionList(version, latestVersions: latest)
     }
 
-    private static func linuxPkgx(_ output: String?) -> [ManagedPackage] {
+    static func parsePkgxOutdated(_ output: String?) -> [String: String] {
+        guard let output, !output.isEmpty else { return [:] }
+        var result: [String: String] = [:]
+        var currentProject: String? = nil
+        var currentLines: [String] = []
+
+        func flush() {
+            guard let proj = currentProject else { return }
+            if let latest = PackageScanner.parsePkgxVersions(currentLines.joined(separator: "\n")) {
+                result[proj] = latest
+            }
+        }
+
+        for line in lines(output) {
+            if line.hasPrefix("=== ") && line.hasSuffix(" ===") {
+                flush()
+                let proj = String(line.dropFirst(4).dropLast(4)).trimmingCharacters(in: .whitespaces)
+                currentProject = proj
+                currentLines = []
+            } else if currentProject != nil {
+                currentLines.append(line)
+            }
+        }
+        flush()
+        return result
+    }
+
+    private static func linuxPkgx(output: String?, outdated: String?) -> [ManagedPackage] {
         guard let output, !output.isEmpty else { return [] }
+        let latestVersions = parsePkgxOutdated(outdated)
         var rawPackages: [ManagedPackage] = []
         for line in lines(output) {
             let parts = line.split(separator: "\t").map(String.init)
@@ -465,7 +493,7 @@ public struct RemoteSSHClient: Sendable {
                 catalogIdentifier: "pkgx:\(project)",
                 displayName: shortName,
                 installedVersion: version,
-                latestVersion: nil,
+                latestVersion: latestVersions[project],
                 summary: "Package run and managed with pkgx",
                 category: "developer-tools",
                 homepage: "https://pkgx.dev/pkgs/\(project)/",
@@ -664,6 +692,21 @@ public struct RemoteSSHClient: Sendable {
             ver=${vdir##*/v}
             printf '%s\t%s\t%s\n' "$proj" "$ver" "$vdir"
           done
+          printf '__PMM_PKGX_OUTDATED__\n'
+          if command -v curl >/dev/null 2>&1; then
+            arch=$(uname -m 2>/dev/null || true)
+            case "$arch" in
+              x86_64) arch="x86-64" ;;
+              aarch64|arm64) arch="aarch64" ;;
+            esac
+            os=$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
+            for proj in $(printf '%s\n' "$pkgx_pkgs" | while read -r vdir; do pdir=$(dirname "$vdir"); printf '%s\n' "${pdir#$pkgx_dir/}"; done | sort -u); do
+              vers=$(curl -fsSL --connect-timeout 2 --max-time 5 "https://dist.pkgx.dev/$proj/$os/$arch/versions.txt" 2>/dev/null || curl -fsSL --connect-timeout 2 --max-time 5 "https://dist.pkgx.dev/$proj/versions.txt" 2>/dev/null || true)
+              if [ -n "$vers" ]; then
+                printf '=== %s ===\n%s\n' "$proj" "$vers"
+              fi
+            done
+          fi
         fi
       fi
     fi
@@ -733,7 +776,23 @@ public struct RemoteSSHClient: Sendable {
             fi
             """
         case ("update", .pkgx):
-            command = "pkgx +\(token) true"
+            let expectedProject = package.identifier.hasPrefix("pkgx:") ? String(package.identifier.dropFirst(5)) : package.packageToken
+            let targetVersion = package.latestVersion ?? ""
+            let specifier = targetVersion.isEmpty ? "" : "@\(targetVersion)"
+            let tokenWithVersion = shellQuote(expectedProject + specifier)
+            let projectToken = shellQuote(expectedProject)
+            command = """
+            pkgx +\(tokenWithVersion) true
+            pkgx_dir="${PKGX_DIR:-$HOME/.pkgx}"
+            [ ! -d "$pkgx_dir" ] && [ -d "$HOME/.local/share/pkgx" ] && pkgx_dir="$HOME/.local/share/pkgx"
+            if [ -n "\(targetVersion)" ] && [ -d "$pkgx_dir" ]; then
+              expected_project=\(projectToken)
+              expected_vdir="$pkgx_dir/$expected_project/v\(targetVersion)"
+              if [ ! -d "$expected_vdir" ]; then
+                echo "Updated version \(targetVersion) was not found in $pkgx_dir after update" >&2; exit 1
+              fi
+            fi
+            """
         case ("uninstall", .pkgx):
             let location = shellQuote(package.installLocation ?? "")
             let expectedProject = package.identifier.hasPrefix("pkgx:") ? String(package.identifier.dropFirst(5)) : package.packageToken
@@ -742,18 +801,35 @@ public struct RemoteSSHClient: Sendable {
             pkgx_dir="${PKGX_DIR:-$HOME/.pkgx}"
             [ ! -d "$pkgx_dir" ] && [ -d "$HOME/.local/share/pkgx" ] && pkgx_dir="$HOME/.local/share/pkgx"
             if [ -n "$pkgx_dir" ] && [ -d "$pkgx_dir" ]; then
-              target_dir=$(cd \(location) 2>/dev/null && pwd || true)
-              root_dir=$(cd "$pkgx_dir" 2>/dev/null && pwd || true)
+              root_dir=$(cd -P "$pkgx_dir" 2>/dev/null && pwd -P || true)
+              target_dir=$(cd -P \(location) 2>/dev/null && pwd -P || true)
               if [ -n "$target_dir" ] && [ -n "$root_dir" ] && [ "${target_dir#$root_dir/}" != "$target_dir" ] && [ -d "$target_dir" ]; then
+                check_path=\(location)
+                has_symlink=0
+                curr="$check_path"
+                while [ -n "$curr" ] && [ "$curr" != "$pkgx_dir" ] && [ "$curr" != "/" ] && [ "$curr" != "." ]; do
+                  if [ -L "$curr" ]; then
+                    has_symlink=1; break
+                  fi
+                  curr=$(dirname "$curr")
+                done
+                if [ "$has_symlink" -eq 1 ]; then
+                  echo "Target path contains symbolic link in \(location)" >&2; exit 1
+                fi
                 rel="${target_dir#$root_dir/}"
                 expected_project=\(token)
                 case "$rel" in
                   "$expected_project"/v*|"$expected_project")
                     rm -rf "$target_dir"
                     pdir=$(dirname "$target_dir")
-                    if [ "$pdir" != "$root_dir" ] && [ -d "$pdir" ] && [ -z "$(find "$pdir" -mindepth 1 -type d 2>/dev/null)" ]; then
-                      rm -rf "$pdir"
-                    fi
+                    while [ "$pdir" != "$root_dir" ] && [ "$pdir" != "/" ] && [ -d "$pdir" ] && [ ! -L "$pdir" ]; do
+                      if [ -z "$(find "$pdir" -mindepth 1 -type d 2>/dev/null)" ]; then
+                        rm -rf "$pdir"
+                        pdir=$(dirname "$pdir")
+                      else
+                        break
+                      fi
+                    done
                     ;;
                   *)
                     echo "Target at $target_dir does not match package \(token)" >&2; exit 1

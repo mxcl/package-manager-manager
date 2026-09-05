@@ -77,12 +77,44 @@ private final class ProgressRecorder: @unchecked Sendable {
         "/fake/bun update -g --latest @scope/tool",
         "/fake/pipx upgrade cowsay",
         "/fake/go install github.com/rakyll/hey@latest",
-        "/fake/pkgx +charm.sh/gum true",
+        "/fake/pkgx +charm.sh/gum@2.0.0 true",
         "/fake/npm exec --yes --package acorn@2.0.0 -- true",
         "/fake/uv tool upgrade ruff --color always",
         "/fake/uv python install 3.13.14 --color always",
     ])
     #expect(runner.options.map(\.terminal) == Array(repeating: true, count: 10))
+}
+
+@Test func pkgxUpdateRequiresExplicitTargetVersionAndVerifiesPresence() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let runner = RecordingRunner()
+    let updater = PackageUpdater(
+        runner: runner,
+        homeDirectory: temp,
+        toolPaths: ["pkgx": "/fake/pkgx"],
+        environment: ["PKGX_DIR": temp.path]
+    )
+
+    let gum = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "1.0.0",
+        latestVersion: "2.0.0"
+    )
+
+    #expect(throws: PackageUpdateError.self) {
+        try updater.update(gum)
+    }
+    #expect(runner.commands == ["/fake/pkgx +charm.sh/gum@2.0.0 true"])
+
+    let targetDir = temp.appendingPathComponent("charm.sh/gum/v2.0.0", isDirectory: true)
+    try FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
+    try updater.update(gum)
+    #expect(runner.commands.count == 2)
 }
 
 @Test func packageUpdaterPrefersBinstallWhenItIsInstalled() throws {

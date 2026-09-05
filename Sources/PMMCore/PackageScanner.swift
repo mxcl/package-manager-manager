@@ -1005,10 +1005,17 @@ public struct PackageScanner: @unchecked Sendable {
         var packages = ManagedPackage.consolidatingInstalledVersions(in: rawPackages)
 
         if mode.isFresh {
+            let platform = Self.currentPkgxPlatform()
             packages = packages.map { pkg in
                 let token = pkg.packageToken
-                guard let curl = executable(named: "curl"),
-                      let result = try? runner.run(curl, ["-fsSL", "--connect-timeout", "2", "--max-time", "5", "https://dist.pkgx.dev/\(token)/versions.txt"]),
+                guard let curl = executable(named: "curl") else { return pkg }
+                let platformURL = "https://dist.pkgx.dev/\(token)/\(platform)/versions.txt"
+                let fallbackURL = "https://dist.pkgx.dev/\(token)/versions.txt"
+                var result = try? runner.run(curl, ["-fsSL", "--connect-timeout", "2", "--max-time", "5", platformURL])
+                if result == nil || result?.status != 0 {
+                    result = try? runner.run(curl, ["-fsSL", "--connect-timeout", "2", "--max-time", "5", fallbackURL])
+                }
+                guard let result,
                       result.status == 0,
                       let latest = Self.parsePkgxVersions(result.stdout) else {
                     return pkg
@@ -1042,6 +1049,28 @@ public struct PackageScanner: @unchecked Sendable {
         }
 
         return packages
+    }
+
+    static func currentPkgxPlatform() -> String {
+        #if os(macOS)
+            #if arch(arm64)
+            return "darwin/aarch64"
+            #elseif arch(x86_64)
+            return "darwin/x86-64"
+            #else
+            return "darwin/aarch64"
+            #endif
+        #elseif os(Linux)
+            #if arch(arm64)
+            return "linux/aarch64"
+            #elseif arch(x86_64)
+            return "linux/x86-64"
+            #else
+            return "linux/x86-64"
+            #endif
+        #else
+            return "darwin/aarch64"
+        #endif
     }
 
     private struct PkgxSemver: Comparable {
@@ -1081,6 +1110,7 @@ public struct PackageScanner: @unchecked Sendable {
                 for (l, r) in zip(lParts, rParts) {
                     if l == r { continue }
                     if let lNum = Int(l), let rNum = Int(r) {
+                        if lNum == rNum { continue }
                         return lNum < rNum
                     }
                     if Int(l) != nil { return true }

@@ -354,3 +354,27 @@ private final class LockedStrings: @unchecked Sendable {
     #expect(snapshot.inventory?.packages.first?.installedVersion == "3.13.1")
     #expect(snapshot.inventory?.packages.first?.installedVersions == ["3.13.1"])
 }
+
+@Test func uninstallingPkgxPackageKeepsOtherInstalledVersions() {
+    let gum = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:charm.sh/gum",
+        displayName: "gum",
+        installedVersion: "2.0.0",
+        installedVersions: ["2.0.0", "1.0.0"],
+        latestVersion: "2.1.0",
+        installLocation: "/Users/test/.pkgx/charm.sh/gum/v2.0.0",
+        binaryPath: "/Users/test/.pkgx/charm.sh/gum/v2.0.0/bin/gum"
+    )
+    let snapshot = menuBarSnapshot(
+        PackageHostSnapshot(inventory: PackageInventory(packages: [gum])),
+        applyingSuccessfulAction: .uninstall,
+        package: gum
+    )
+
+    let surviving = snapshot.inventory?.packages.first
+    #expect(surviving?.installedVersion == "1.0.0")
+    #expect(surviving?.installedVersions == ["1.0.0"])
+    #expect(surviving?.installLocation == "/Users/test/.pkgx/charm.sh/gum/v1.0.0")
+    #expect(surviving?.binaryPath == "/Users/test/.pkgx/charm.sh/gum/v1.0.0/bin/gum")
+}

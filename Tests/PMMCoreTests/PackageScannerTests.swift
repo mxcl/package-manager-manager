@@ -1796,9 +1796,15 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
     try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: gumBinary.path)
     defer { try? FileManager.default.removeItem(at: temp) }
 
+    let platform = PackageScanner.currentPkgxPlatform()
     let runner = FakeRunner(responses: [
-        "/fake/curl -fsSL --connect-timeout 2 --max-time 5 https://dist.pkgx.dev/charm.sh/gum/versions.txt": CommandResult(
+        "/fake/curl -fsSL --connect-timeout 2 --max-time 5 https://dist.pkgx.dev/charm.sh/gum/\(platform)/versions.txt": CommandResult(
             stdout: "2.0.0\n2.1.0\n",
+            stderr: "",
+            status: 0
+        ),
+        "/fake/curl -fsSL --connect-timeout 2 --max-time 5 https://dist.pkgx.dev/charm.sh/gum/versions.txt": CommandResult(
+            stdout: "2.0.0\n2.0.5\n",
             stderr: "",
             status: 0
         )

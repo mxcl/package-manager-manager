@@ -227,28 +227,39 @@ public struct PackageUninstaller: Sendable {
             throw PackageUninstallError.missingInstallLocation(package.displayName)
         }
         let pkgxDir = effectivePkgxDirectory()
-        let standardizedRoot = URL(fileURLWithPath: pkgxDir).standardizedFileURL.path
-        let standardizedLocation = URL(fileURLWithPath: location).standardizedFileURL.path
+        let rootURL = URL(fileURLWithPath: pkgxDir)
+        let locationURL = URL(fileURLWithPath: location)
 
-        guard standardizedLocation.hasPrefix(standardizedRoot + "/") else {
+        let realRoot = rootURL.resolvingSymlinksInPath().standardizedFileURL.path
+        let realLocation = locationURL.resolvingSymlinksInPath().standardizedFileURL.path
+
+        guard realLocation.hasPrefix(realRoot + "/") else {
             throw PackageUninstallError.failed("uninstall \(package.displayName)", "Install location \(location) is not inside pkgx directory \(pkgxDir)")
         }
 
+        var checkURL = locationURL
+        while checkURL.path != rootURL.path && checkURL.path != "/" && checkURL.path != "." {
+            if (try? FileManager.default.destinationOfSymbolicLink(atPath: checkURL.path)) != nil {
+                throw PackageUninstallError.failed("uninstall \(package.displayName)", "Install location contains symbolic link at \(checkURL.path)")
+            }
+            checkURL = checkURL.deletingLastPathComponent()
+        }
+
         var isDir: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: standardizedLocation, isDirectory: &isDir), isDir.boolValue else {
+        guard FileManager.default.fileExists(atPath: realLocation, isDirectory: &isDir), isDir.boolValue else {
             throw PackageUninstallError.failed("uninstall \(package.displayName)", "Install location does not exist or is not a directory at \(location)")
         }
 
         let expectedProject = package.identifier.hasPrefix("pkgx:") ? String(package.identifier.dropFirst(5)) : package.packageToken
-        let relative = String(standardizedLocation.dropFirst(standardizedRoot.count + 1))
+        let relative = String(realLocation.dropFirst(realRoot.count + 1))
         guard relative.hasPrefix(expectedProject + "/v") || relative == expectedProject else {
             throw PackageUninstallError.failed("uninstall \(package.displayName)", "Target path \(location) does not match pkgx package \(expectedProject)")
         }
 
-        try FileManager.default.removeItem(atPath: standardizedLocation)
+        try FileManager.default.removeItem(atPath: realLocation)
 
-        let projectDir = URL(fileURLWithPath: standardizedLocation).deletingLastPathComponent().path
-        if projectDir.hasPrefix(standardizedRoot + "/") {
+        var projectDir = URL(fileURLWithPath: realLocation).deletingLastPathComponent().path
+        while projectDir.hasPrefix(realRoot + "/") && projectDir != realRoot {
             if let remaining = try? FileManager.default.contentsOfDirectory(atPath: projectDir) {
                 let liveDirectories = remaining.filter { entry in
                     let entryPath = (projectDir as NSString).appendingPathComponent(entry)
@@ -257,7 +268,12 @@ public struct PackageUninstaller: Sendable {
                 }
                 if liveDirectories.isEmpty {
                     try? FileManager.default.removeItem(atPath: projectDir)
+                    projectDir = URL(fileURLWithPath: projectDir).deletingLastPathComponent().path
+                } else {
+                    break
                 }
+            } else {
+                break
             }
         }
     }

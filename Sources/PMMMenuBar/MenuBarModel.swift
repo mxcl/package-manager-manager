@@ -272,6 +272,24 @@ func menuBarSnapshot(
         if package.manager == .uv, package.summary == "uv-managed Python", let nextVersion = package.otherInstalledVersions.first,
            let index = packages.firstIndex(where: { $0.id == package.id }) {
             packages[index] = package.withInstalledVersion(nextVersion, installedVersions: package.otherInstalledVersions)
+        } else if package.manager == .pkgx, let nextVersion = package.otherInstalledVersions.first,
+                  let index = packages.firstIndex(where: { $0.id == package.id }) {
+            let nextLocation: String? = package.installLocation.map { loc in
+                let projectDir = URL(fileURLWithPath: loc).deletingLastPathComponent().path
+                return projectDir + "/v\(nextVersion)"
+            }
+            let nextBinary: String? = {
+                guard let bin = package.binaryPath, let loc = package.installLocation else { return nil }
+                let binName = URL(fileURLWithPath: bin).lastPathComponent
+                let projectDir = URL(fileURLWithPath: loc).deletingLastPathComponent().path
+                return projectDir + "/v\(nextVersion)/bin/\(binName)"
+            }()
+            packages[index] = package.withInstalledVersion(
+                nextVersion,
+                installedVersions: package.otherInstalledVersions,
+                installLocation: nextLocation,
+                binaryPath: nextBinary
+            )
         } else {
             packages.removeAll { $0.id == package.id }
         }
@@ -282,7 +300,12 @@ func menuBarSnapshot(
 }
 
 private extension ManagedPackage {
-    func withInstalledVersion(_ version: String?, installedVersions: [String]? = nil) -> ManagedPackage {
+    func withInstalledVersion(
+        _ version: String?,
+        installedVersions: [String]? = nil,
+        installLocation: String? = nil,
+        binaryPath: String? = nil
+    ) -> ManagedPackage {
         ManagedPackage(
             manager: manager,
             identifier: identifier,
@@ -297,8 +320,8 @@ private extension ManagedPackage {
             repo: repo,
             lastUpdatedAt: lastUpdatedAt,
             pulseKind: pulseKind,
-            installLocation: installLocation,
-            binaryPath: binaryPath,
+            installLocation: installLocation ?? self.installLocation,
+            binaryPath: binaryPath ?? self.binaryPath,
             executableNames: executableNames
         )
     }

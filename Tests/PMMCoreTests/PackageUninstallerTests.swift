@@ -378,6 +378,27 @@ private final class ProgressRecorder: @unchecked Sendable {
     #expect(FileManager.default.fileExists(atPath: standaloneDir.path))
     try uninstallerWithoutPkgx.uninstall(standalonePkg)
     #expect(!FileManager.default.fileExists(atPath: standaloneDir.path))
+
+    // Rejection: project directory is a symlink pointing outside PKGX_DIR
+    let externalSymlinkTargetDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let outsideNodeDir = externalSymlinkTargetDir.appendingPathComponent("nodejs.org/v1.0.0", isDirectory: true)
+    try FileManager.default.createDirectory(at: outsideNodeDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: externalSymlinkTargetDir) }
+
+    let symlinkProject = temp.appendingPathComponent("nodejs.org")
+    try FileManager.default.createSymbolicLink(at: symlinkProject, withDestinationURL: externalSymlinkTargetDir.appendingPathComponent("nodejs.org"))
+    let symlinkedPkg = ManagedPackage(
+        manager: .pkgx,
+        identifier: "pkgx:nodejs.org",
+        displayName: "node",
+        installedVersion: "1.0.0",
+        latestVersion: nil,
+        installLocation: symlinkProject.appendingPathComponent("v1.0.0").path
+    )
+    #expect(throws: PackageUninstallError.self) {
+        try uninstallerWithoutPkgx.uninstall(symlinkedPkg)
+    }
+    #expect(FileManager.default.fileExists(atPath: outsideNodeDir.path))
 }
 
 @Test func packageUninstallerDoesNotSupportRustup() throws {

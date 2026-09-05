@@ -99,7 +99,7 @@ Supported update paths:
 - `uv python install`
 - `pipx upgrade`
 - `go install package@latest`
-- `pkgx +package true`
+- `pkgx +package@version true`
 - `cargo install --force`
 
 Supported uninstall paths:
