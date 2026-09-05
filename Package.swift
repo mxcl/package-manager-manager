@@ -1,7 +1,7 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-let appVersion = "0.22.0"
+let appVersion = "0.23.0"
 
 let package = Package(
     name: "PMM",
