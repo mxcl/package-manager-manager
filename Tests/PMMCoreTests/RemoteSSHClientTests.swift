@@ -295,6 +295,33 @@ import Testing
     #expect(runner.arguments?.last?.contains("cowsay") == true)
 }
 
+@Test func remoteLinuxActionRunsGoCommands() async throws {
+    let response = RemoteControlResponse(inventory: PackageInventory(packages: []))
+    let runner = RecordingRemoteRunner(result: CommandResult(
+        stdout: String(decoding: try JSONEncoder().encode(response), as: UTF8.self),
+        stderr: "",
+        status: 0
+    ))
+    let package = ManagedPackage(
+        manager: .goInstall,
+        identifier: "go:github.com/rakyll/hey",
+        installedVersion: "0.1.5",
+        latestVersion: "0.1.6",
+        binaryPath: "/home/user/go/bin/hey"
+    )
+
+    _ = try await RemoteSSHClient(runner: runner).update(package, on: RemoteHost(destination: "atlas"))
+    #expect(runner.arguments?.last?.contains("go install") == true)
+    #expect(runner.arguments?.last?.contains("github.com/rakyll/hey@latest") == true)
+
+    _ = try await RemoteSSHClient(runner: runner).uninstall(package, on: RemoteHost(destination: "atlas"))
+    #expect(runner.arguments?.last?.contains("rm -f") == true)
+    #expect(runner.arguments?.last?.contains("/home/user/go/bin/hey") == true)
+    #expect(runner.arguments?.last?.contains("awk") == true)
+    #expect(runner.arguments?.last?.contains("$1==\"path\"") == true)
+    #expect(runner.arguments?.last?.contains("github.com/rakyll/hey") == true)
+}
+
 @Test func remoteLinuxInventoryParsesBunPackages() async throws {
     let listOutput = """
     /home/user node_modules (2)
@@ -370,6 +397,39 @@ import Testing
     #expect(pipxPackages.first?.installedVersion == "5.0")
     #expect(pipxPackages.first?.latestVersion == "6.1")
     #expect(pipxPackages.first?.binaryPath == "/home/user/.local/pipx/venvs/cowsay/bin/cowsay")
+}
+
+@Test func remoteLinuxInventoryParsesGoPackages() async throws {
+    let versionOutput = """
+    /home/user/go/bin/hey: go1.27.1
+    \tpath\tgithub.com/rakyll/hey
+    \tmod\tgithub.com/rakyll/hey\tv0.1.5\th1:abc
+    """
+    let outdatedJson = """
+    {
+        "Path": "github.com/rakyll/hey",
+        "Version": "v0.1.6"
+    }
+    """
+    let payload = """
+    __PMM_LINUX_V1__
+    __PMM_PROFILE__
+    Linux:debian:1:apt
+    __PMM_GO_VERSION__
+    \(versionOutput)
+    __PMM_GO_OUTDATED__
+    \(outdatedJson)
+    __PMM_END__
+    """
+    let runner = RecordingRemoteRunner(result: CommandResult(stdout: payload, stderr: "", status: 0))
+    let response = try await RemoteSSHClient(runner: runner).inventory(on: RemoteHost(destination: "atlas"))
+    let goPackages = response.inventory.packages.filter { $0.manager == .goInstall }
+    #expect(goPackages.count == 1)
+    #expect(goPackages.first?.displayName == "hey")
+    #expect(goPackages.first?.installedVersion == "0.1.5")
+    #expect(goPackages.first?.latestVersion == "0.1.6")
+    #expect(goPackages.first?.isOutdated == true)
+    #expect(goPackages.first?.homepage == "https://pkg.go.dev/github.com/rakyll/hey")
 }
 
 private final class RecordingRemoteRunner: CommandRunning, @unchecked Sendable {

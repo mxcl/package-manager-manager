@@ -63,6 +63,7 @@ pkg⋅mgr² currently inventories:
 - Python applications installed with `pipx`
 - `uvx` cached environments
 - `cargo install` binaries
+- `go install` binaries
 - `rustup` and installed Rust toolchains
 
 It also pulls package summaries, categories, URLs, and latest-version metadata
@@ -84,6 +85,7 @@ Supported update paths:
 - `uv tool upgrade`
 - `uv python install`
 - `pipx upgrade`
+- `go install package@latest`
 - `cargo install --force`
 
 Supported uninstall paths:
@@ -97,6 +99,7 @@ Supported uninstall paths:
 - `uv python uninstall`
 - `pipx uninstall`
 - remove uvx cached environments
+- remove Go binary from GOBIN
 - `cargo uninstall`
 
 > [!IMPORTANT]

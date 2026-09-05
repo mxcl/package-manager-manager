@@ -140,6 +140,7 @@ struct MainWindowSidebarView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 20, height: 20)
+                    .scaleEffect(section.iconScale)
             } else {
                 Image(systemName: section.systemImage)
                     .font(.system(size: 14, weight: .semibold))
@@ -1147,6 +1148,7 @@ struct PackageEcosystemMark: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: size, height: size)
+                    .scaleEffect(section.iconScale)
                     .offset(y: isBaselineAligned ? imageOffset : 0)
             } else {
                 Image(systemName: section.systemImage)
@@ -1222,7 +1224,10 @@ struct PackageEcosystemMark: View {
     }
 
     private var imageOffset: CGFloat {
-        section == .homebrew ? 3 : 4.5
+        if section == .go {
+            return 3
+        }
+        return section == .homebrew ? 3 : 4.5
     }
 }
 

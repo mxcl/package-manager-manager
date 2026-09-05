@@ -246,3 +246,24 @@ import Testing
     #expect(db.metadata(for: .homebrew, name: "git")?.summary == "Bundled metadata")
     #expect(PackageDatabase.bundled(at: nil) == nil)
 }
+
+@Test func catalogPackagesProducesGoInstallPackagesFromDatabase() throws {
+    let db = PackageDatabase(
+        gos: [
+            "github.com/rakyll/hey": PackageMetadata(
+                summary: "HTTP load generator",
+                category: "developer-tools",
+                homepage: "https://pkg.go.dev/github.com/rakyll/hey",
+                version: "0.1.5"
+            )
+        ]
+    )
+
+    let goPackages = db.catalogPackages.filter { $0.manager == .goInstall }
+    #expect(goPackages.count == 1)
+    let pkg = try #require(goPackages.first)
+    #expect(pkg.identifier == "go:github.com/rakyll/hey")
+    #expect(pkg.displayName == "hey")
+    #expect(pkg.summary == "HTTP load generator")
+    #expect(db.metadata(for: .goInstall, name: "github.com/rakyll/hey")?.version == "0.1.5")
+}

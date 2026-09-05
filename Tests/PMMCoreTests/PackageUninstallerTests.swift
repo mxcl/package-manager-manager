@@ -7,6 +7,7 @@ private final class RecordingRunner: CommandRunning, @unchecked Sendable {
     var options: [CommandRunOptions] = []
     var streamedOutput = ""
     var result = CommandResult(stdout: "", stderr: "", status: 0)
+    var responses: [String: CommandResult] = [:]
 
     func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
         try run(executable, arguments, options: CommandRunOptions(), onOutput: nil)
@@ -18,12 +19,13 @@ private final class RecordingRunner: CommandRunning, @unchecked Sendable {
         options: CommandRunOptions,
         onOutput: (@Sendable (String) -> Void)? = nil
     ) throws -> CommandResult {
-        commands.append(([executable] + arguments).joined(separator: " "))
+        let command = ([executable] + arguments).joined(separator: " ")
+        commands.append(command)
         self.options.append(options)
         if !streamedOutput.isEmpty {
             onOutput?(streamedOutput)
         }
-        return result
+        return responses[command] ?? result
     }
 }
 
@@ -70,6 +72,135 @@ private final class ProgressRecorder: @unchecked Sendable {
         "/fake/uv python uninstall 3.13.12 --color always",
     ])
     #expect(runner.options.map(\.terminal) == [true, true, true, true, true, true, true, true])
+}
+
+@Test func packageUninstallerRemovesGoBinary() throws {
+    let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let goBin = temp.appendingPathComponent("go/bin", isDirectory: true)
+    try FileManager.default.createDirectory(at: goBin, withIntermediateDirectories: true)
+    let binaryFile = goBin.appendingPathComponent("hey")
+    FileManager.default.createFile(atPath: binaryFile.path, contents: Data())
+    defer { try? FileManager.default.removeItem(at: temp) }
+
+    let runner = RecordingRunner()
+    runner.responses["/fake/go version -m \(binaryFile.path)"] = CommandResult(
+        stdout: "/fake/go/bin/hey: go1.27.1\n\tpath\tgithub.com/rakyll/hey\n",
+        stderr: "",
+        status: 0
+    )
+    let uninstaller = PackageUninstaller(
+        runner: runner,
+        homeDirectory: temp,
+        toolPaths: ["go": "/fake/go"],
+        environment: [:]
+    )
+    let pkg = ManagedPackage(
+        manager: .goInstall,
+        identifier: "go:github.com/rakyll/hey",
+        displayName: "hey",
+        installedVersion: "0.1.5",
+        latestVersion: nil,
+        binaryPath: binaryFile.path
+    )
+    #expect(FileManager.default.fileExists(atPath: binaryFile.path) == true)
+    try uninstaller.uninstall(pkg)
+    #expect(FileManager.default.fileExists(atPath: binaryFile.path) == false)
+
+    // Rejection: binary outside Go bin directory
+    let outsideFile = temp.appendingPathComponent("evil")
+    FileManager.default.createFile(atPath: outsideFile.path, contents: Data())
+    let outsidePkg = ManagedPackage(
+        manager: .goInstall,
+        identifier: "go:github.com/rakyll/hey",
+        displayName: "evil",
+        installedVersion: "0.1.5",
+        latestVersion: nil,
+        binaryPath: outsideFile.path
+    )
+    #expect(throws: PackageUninstallError.self) {
+        try uninstaller.uninstall(outsidePkg)
+    }
+    #expect(FileManager.default.fileExists(atPath: outsideFile.path) == true)
+
+    // Rejection: binary does not match Go package
+    let wrongFile = goBin.appendingPathComponent("other")
+    FileManager.default.createFile(atPath: wrongFile.path, contents: Data())
+    runner.responses["/fake/go version -m \(wrongFile.path)"] = CommandResult(
+        stdout: "\(wrongFile.path): go1.27.1\n\tpath\tsomeone.else/tool\n",
+        stderr: "",
+        status: 0
+    )
+    let wrongPkg = ManagedPackage(
+        manager: .goInstall,
+        identifier: "go:github.com/rakyll/hey",
+        displayName: "other",
+        installedVersion: "0.1.5",
+        latestVersion: nil,
+        binaryPath: wrongFile.path
+    )
+    #expect(throws: PackageUninstallError.self) {
+        try uninstaller.uninstall(wrongPkg)
+    }
+    #expect(FileManager.default.fileExists(atPath: wrongFile.path) == true)
+
+    // Rejection: substring / prefix match (example.com/tool-other vs example.com/tool)
+    let prefixFile = goBin.appendingPathComponent("tool")
+    FileManager.default.createFile(atPath: prefixFile.path, contents: Data())
+    runner.responses["/fake/go version -m \(prefixFile.path)"] = CommandResult(
+        stdout: "\(prefixFile.path): go1.27.1\n\tpath\texample.com/tool-other\n",
+        stderr: "",
+        status: 0
+    )
+    let prefixPkg = ManagedPackage(
+        manager: .goInstall,
+        identifier: "go:example.com/tool",
+        displayName: "tool",
+        installedVersion: "1.0.0",
+        latestVersion: nil,
+        binaryPath: prefixFile.path
+    )
+    #expect(throws: PackageUninstallError.self) {
+        try uninstaller.uninstall(prefixPkg)
+    }
+    #expect(FileManager.default.fileExists(atPath: prefixFile.path) == true)
+
+    // Rejection: target is a directory
+    let dirTarget = goBin.appendingPathComponent("dir_binary", isDirectory: true)
+    try FileManager.default.createDirectory(at: dirTarget, withIntermediateDirectories: true)
+    let dirPkg = ManagedPackage(
+        manager: .goInstall,
+        identifier: "go:example.com/dir_binary",
+        displayName: "dir_binary",
+        installedVersion: "1.0.0",
+        latestVersion: nil,
+        binaryPath: dirTarget.path
+    )
+    #expect(throws: PackageUninstallError.self) {
+        try uninstaller.uninstall(dirPkg)
+    }
+    #expect(FileManager.default.fileExists(atPath: dirTarget.path) == true)
+
+    // Rejection: Go binary is unavailable
+    let fileForMissingGo = goBin.appendingPathComponent("still_there")
+    FileManager.default.createFile(atPath: fileForMissingGo.path, contents: Data())
+    let uninstallerWithoutGo = PackageUninstaller(
+        runner: runner,
+        homeDirectory: temp,
+        toolPaths: ["go": ""],
+        environment: [:]
+    )
+    let missingGoPkg = ManagedPackage(
+        manager: .goInstall,
+        identifier: "go:example.com/still_there",
+        displayName: "still_there",
+        installedVersion: "1.0.0",
+        latestVersion: nil,
+        binaryPath: fileForMissingGo.path
+    )
+    #expect(throws: PackageUninstallError.missingExecutable("go")) {
+        try uninstallerWithoutGo.uninstall(missingGoPkg)
+    }
+    #expect(FileManager.default.fileExists(atPath: fileForMissingGo.path) == true)
 }
 
 @Test func packageUninstallerReportsCommandAndOutputProgress() throws {

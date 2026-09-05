@@ -176,6 +176,7 @@ public struct RemoteSSHClient: Sendable {
         packages += linuxCargo(sections["CARGO"])
         packages += linuxUV(sections: sections)
         packages += linuxPipx(sections: sections)
+        packages += linuxGo(version: sections["GO_VERSION"], outdated: sections["GO_OUTDATED"])
 
         let failures = lines(sections["ERRORS"]).map { RemoteControlFailure(message: $0) }
         return RemoteControlResponse(
@@ -440,6 +441,12 @@ public struct RemoteSSHClient: Sendable {
         return PackageScanner.parsePipxList(output, outdated: outdated)
     }
 
+    private static func linuxGo(version: String?, outdated: String?) -> [ManagedPackage] {
+        guard let version, !version.isEmpty else { return [] }
+        let latest = outdated.map(PackageScanner.parseGoListJSON) ?? [:]
+        return PackageScanner.parseGoVersionList(version, latestVersions: latest)
+    }
+
     private static func linuxSections(_ output: String) -> [String: String] {
         var sections: [String: [String]] = [:]
         var current: String?
@@ -588,6 +595,30 @@ public struct RemoteSSHClient: Sendable {
       printf '__PMM_PIPX_LIST__\n'; pipx list --json 2>/dev/null || true
       printf '__PMM_PIPX_OUTDATED__\n'; pipx list --outdated --json 2>/dev/null || pipx list --outdated 2>/dev/null || true
     fi
+    if command -v go >/dev/null 2>&1; then
+      gobin=$(go env GOBIN 2>/dev/null || true)
+      if [ -z "$gobin" ]; then
+        gopath=$(go env GOPATH 2>/dev/null || true)
+        if [ -n "$gopath" ]; then
+          gobin="${gopath%%:*}/bin"
+        else
+          gobin="$HOME/go/bin"
+        fi
+      fi
+      if [ -d "$gobin" ]; then
+        go_ver=$(find -L "$gobin" -maxdepth 1 -type f ! -name '.*' -exec go version -m {} + 2>/dev/null || true)
+        if [ -n "$go_ver" ]; then
+          printf '__PMM_GO_VERSION__\n'
+          printf '%s\n' "$go_ver"
+          printf '__PMM_GO_OUTDATED__\n'
+          if command -v awk >/dev/null 2>&1; then
+            for mod in $(printf '%s\n' "$go_ver" | awk '$1=="mod"{print $2}' | sort -u); do
+              go list -m -json "$mod@latest" 2>/dev/null || true
+            done
+          fi
+        fi
+      fi
+    fi
     printf '__PMM_END__\n'
     """#
 
@@ -624,6 +655,35 @@ public struct RemoteSSHClient: Sendable {
             command = "if [ -w \"$(bun pm bin -g 2>/dev/null || echo ~/.bun/bin)\" ]; then bun \(arguments); else sudo -n \"$(command -v bun)\" \(arguments); fi"
         case ("update", .pipx): command = "pipx upgrade \(token)"
         case ("uninstall", .pipx): command = "pipx uninstall \(token)"
+        case ("update", .goInstall):
+            command = "go install \(shellQuote(package.packageToken + "@latest"))"
+        case ("uninstall", .goInstall):
+            let bin = shellQuote(package.binaryPath ?? package.installLocation ?? "")
+            let expectedPath = package.identifier.hasPrefix("go:") ? String(package.identifier.dropFirst(3)) : package.packageToken
+            let token = shellQuote(expectedPath)
+            command = """
+            if command -v go >/dev/null 2>&1; then
+              gobin=$(go env GOBIN 2>/dev/null || true)
+              if [ -z "$gobin" ]; then
+                gopath=$(go env GOPATH 2>/dev/null || true)
+                [ -n "$gopath" ] && gobin="${gopath%%:*}/bin" || gobin="$HOME/go/bin"
+              fi
+              target_dir=$(cd "$(dirname \(bin))" 2>/dev/null && pwd || true)
+              expected_dir=$(cd "$gobin" 2>/dev/null && pwd || true)
+              if [ -n "$target_dir" ] && [ "$target_dir" = "$expected_dir" ] && [ -f \(bin) ] && [ ! -d \(bin) ]; then
+                bin_path=$(go version -m \(bin) 2>/dev/null | awk '$1=="path"{print $2; exit}')
+                if [ "$bin_path" = \(token) ]; then
+                  rm -f \(bin)
+                else
+                  echo "Binary at \(bin) has Go path '$bin_path', does not match package \(token)" >&2; exit 1
+                fi
+              else
+                echo "Binary \(bin) not found or is a directory in Go bin directory $gobin" >&2; exit 1
+              fi
+            else
+              echo "go command not found" >&2; exit 1
+            fi
+            """
         case ("update", .uv) where package.summary == "uv-managed Python":
             command = "uv python install \(shellQuote(package.latestVersion ?? package.packageToken)) --color always"
         case ("uninstall", .uv) where package.summary == "uv-managed Python":

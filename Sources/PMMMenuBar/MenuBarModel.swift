@@ -92,6 +92,8 @@ func menuBarEcosystemIcon(for package: ManagedPackage) -> MenuBarEcosystemIcon {
         return .asset(name: "EcosystemRust", fallbackSystemName: "hammer")
     case .skills:
         return .system(name: "wand.and.stars")
+    case .goInstall:
+        return .asset(name: "EcosystemGo", fallbackSystemName: "chevron.left.forwardslash.chevron.right")
     case .macApp:
         return switch package.appProvenance ?? .unknown {
         case .homebrew: .paired(assetName: "EcosystemHomebrew", fallbackSystemName: "mug", systemName: "macwindow")
@@ -112,8 +114,8 @@ func menuBarEcosystemIcon(for package: ManagedPackage) -> MenuBarEcosystemIcon {
 
 func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: PackageHostSnapshot) -> ManagedPackage? {
     guard snapshot.runningAction == nil else { return nil }
-    let installedPackage = snapshot.inventory?.packages.first { $0.id == id }
-    let catalogPackage = snapshot.catalogPackages.first { $0.id == id }
+    let installedPackage = snapshot.inventory?.packages.first { $0.id == id || $0.identifier == id }
+    let catalogPackage = snapshot.catalogPackages.first { $0.id == id || $0.identifier == id }
     switch kind {
     case .install:
         let package: ManagedPackage
@@ -132,6 +134,23 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
                 latestVersion: nil,
                 summary: "Python application installed with pipx",
                 category: "developer-tools"
+            )
+        } else if id.hasPrefix("go:") {
+            let trimmed = id.trimmingPrefix("go:")
+            let token = String(trimmed.split(separator: ":").first ?? trimmed)
+            guard !token.isEmpty else { return nil }
+            let binaryName = URL(fileURLWithPath: token).lastPathComponent
+            package = ManagedPackage(
+                manager: .goInstall,
+                identifier: "go:\(token)",
+                catalogIdentifier: "go:\(token)",
+                displayName: binaryName.isEmpty ? token : binaryName,
+                installedVersion: nil,
+                latestVersion: nil,
+                summary: token,
+                category: "developer-tools",
+                homepage: "https://pkg.go.dev/\(token)",
+                docs: "https://pkg.go.dev/\(token)"
             )
         } else {
             return nil

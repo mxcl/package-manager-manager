@@ -69,6 +69,7 @@ struct DiscoverFeedPackage: Decodable, Identifiable, Sendable {
         case "homebrew": "Homebrew"
         case "npm", "pnpm", "bun": "JavaScript"
         case "uv", "pipx": "Python"
+        case "go", "go-install": "Go"
         case .some(let manager): manager.capitalized
         case nil: nil
         }

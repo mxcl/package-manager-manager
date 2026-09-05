@@ -9,6 +9,7 @@ public struct PackageDatabase: Sendable {
     private let crates: [String: PackageMetadata]
     private let npms: [String: PackageMetadata]
     private let pipxs: [String: PackageMetadata]
+    private let gos: [String: PackageMetadata]
     private let apps: [String: MacAppCatalogEntry]
 
     public init(
@@ -18,6 +19,7 @@ public struct PackageDatabase: Sendable {
         crates: [String: PackageMetadata] = [:],
         npms: [String: PackageMetadata] = [:],
         pipxs: [String: PackageMetadata] = [:],
+        gos: [String: PackageMetadata] = [:],
         apps: [String: MacAppCatalogEntry] = [:]
     ) {
         self.formulas = formulas
@@ -26,6 +28,7 @@ public struct PackageDatabase: Sendable {
         self.crates = crates
         self.npms = npms
         self.pipxs = pipxs
+        self.gos = gos
         self.apps = apps
     }
 
@@ -64,6 +67,7 @@ public struct PackageDatabase: Sendable {
             crates: decodeMetadataMap(db?["crates"]),
             npms: decodeMetadataMap(db?["npms"]),
             pipxs: decodeMetadataMap(db?["pipxs"]),
+            gos: decodeMetadataMap(db?["gos"] ?? db?["go"]),
             apps: decodeAppMap(db?["apps"])
         )
     }
@@ -80,7 +84,8 @@ public struct PackageDatabase: Sendable {
             managedPackages(for: .npm, identifierPrefix: "npm", metadata: npms) +
             managedPackages(for: .pnpm, identifierPrefix: "pnpm", metadata: npms, includePulseMetadata: false) +
             managedPackages(for: .bun, identifierPrefix: "bun", metadata: npms, includePulseMetadata: false) +
-            managedPackages(for: .pipx, identifierPrefix: "pipx", metadata: pipxs)
+            managedPackages(for: .pipx, identifierPrefix: "pipx", metadata: pipxs) +
+            managedPackages(for: .goInstall, identifierPrefix: "go", metadata: gos)
         )
         return Dictionary(grouping: packages, by: \.id).compactMap { $0.value.first }
             .sorted {
@@ -97,6 +102,8 @@ public struct PackageDatabase: Sendable {
             return crates[name]
         case .apk, .apt, .dnf, .zypper, .macApp, .rustup, .mise, .skills:
             return nil
+        case .goInstall:
+            return gos[name]
         case .homebrew:
             return formulas[name] ?? casks[name]
         case .npm, .npx, .pnpm, .bun:
@@ -171,10 +178,17 @@ public struct PackageDatabase: Sendable {
         includePulseMetadata: Bool = true
     ) -> [ManagedPackage] {
         metadata.map { name, metadata in
-            ManagedPackage(
+            let defaultDisplayName: String = {
+                if manager == .goInstall {
+                    let last = URL(fileURLWithPath: name).lastPathComponent
+                    return last.isEmpty ? name : last
+                }
+                return name
+            }()
+            return ManagedPackage(
                 manager: manager,
                 identifier: "\(identifierPrefix):\(name)",
-                displayName: metadata.displayName ?? name,
+                displayName: metadata.displayName ?? defaultDisplayName,
                 installedVersion: nil,
                 latestVersion: metadata.version,
                 summary: metadata.summary,

@@ -12,6 +12,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
     case apps
     case javascript
     case python
+    case go
     case skills
     case category(String)
     case about
@@ -27,6 +28,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .apps: "apps"
         case .javascript: "javascript"
         case .python: "python"
+        case .go: "go"
         case .skills: "skills"
         case .category(let identifier): "category:\(identifier)"
         case .about: "about"
@@ -34,7 +36,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
     }
 
     static let librarySections: [MainWindowSection] = [.home, .installed, .outdated]
-    static let managerSections: [MainWindowSection] = [.rust, .homebrew, .apps, .javascript, .python, .skills]
+    static let managerSections: [MainWindowSection] = [.rust, .homebrew, .apps, .javascript, .python, .go, .skills]
         .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
     static let categoryShortcutSections: [MainWindowSection] = [.newUpdated]
 
@@ -63,6 +65,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .apps: "Apps"
         case .javascript: "JavaScript"
         case .python: "Python"
+        case .go: "Go"
         case .skills: "Skills"
         case .category(let identifier): Self.categoryTitle(identifier)
         case .about: "About"
@@ -80,6 +83,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .apps: "macwindow"
         case .javascript: "curlybraces"
         case .python: "arrow.forward.to.line"
+        case .go: "chevron.left.forwardslash.chevron.right"
         case .skills: "wand.and.stars"
         case .category(let identifier): Self.categorySystemImage(identifier)
         case .about: "info.circle"
@@ -92,8 +96,13 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .homebrew: "EcosystemHomebrew"
         case .javascript: "EcosystemJavaScript"
         case .python: "EcosystemPython"
+        case .go: "EcosystemGo"
         default: nil
         }
+    }
+
+    var iconScale: CGFloat {
+        self == .go ? 1.35 : 1.0
     }
 
     var packageManagers: Set<PackageManagerKind> {
@@ -103,6 +112,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .apps: [.homebrew, .macApp]
         case .javascript: [.npm, .npx, .pnpm, .bun, .mise]
         case .python: [.uv, .uvx, .pipx, .mise]
+        case .go: [.goInstall, .mise]
         case .skills: [.skills]
         default: []
         }
@@ -232,6 +242,12 @@ struct MainWindowPackageURLRequest: Equatable {
         } else if identifier.hasPrefix("bun:") {
             manager = .bun
             name = String(identifier.trimmingPrefix("bun:"))
+        } else if identifier.hasPrefix("go:") {
+            manager = .goInstall
+            name = String(identifier.trimmingPrefix("go:"))
+        } else if identifier.hasPrefix("go-install:") {
+            manager = .goInstall
+            name = String(identifier.trimmingPrefix("go-install:"))
         } else if identifier.hasPrefix("mise:") {
             manager = .mise
             name = String(identifier.trimmingPrefix("mise:"))
@@ -277,6 +293,9 @@ struct MainWindowPackageURLRequest: Equatable {
         case "rustup":
             manager = .rustup
             identifier = "rustup:\(name.replacingOccurrences(of: "/", with: ":"))"
+        case "go", "go-install":
+            manager = .goInstall
+            identifier = "go:\(name)"
         case "npm":
             manager = .npm
             identifier = "npm:\(name)"
@@ -322,6 +341,7 @@ struct MainWindowPackageURLRequest: Equatable {
         case .mise: .installed
         case .skills: .skills
         case .uv, .uvx, .pipx: .python
+        case .goInstall: .go
         }
     }
 
@@ -402,6 +422,8 @@ func mainWindowRegistryURLString(for package: ManagedPackage) -> String? {
         return "https://www.npmjs.com/package/\(package.packageToken)"
     case .cargoInstall:
         return "https://crates.io/crates/\(package.packageToken)"
+    case .goInstall:
+        return "https://pkg.go.dev/\(package.packageToken)"
     case .uv, .uvx, .pipx:
         guard package.manager == .pipx || package.identifier.hasPrefix("uv:tool:") || package.manager == .uvx else { return nil }
         let distributionName = (package.catalogIdentifier?.split(separator: ":").last).map(String.init) ?? package.packageToken
@@ -1498,6 +1520,36 @@ final class MainWindowModel: NSObject, ObservableObject {
                 category: "developer-tools"
             )
         }
+        if request.manager == .goInstall {
+            let binaryName = URL(fileURLWithPath: request.name).lastPathComponent
+            let repo: String? = {
+                if request.name.hasPrefix("github.com/") {
+                    let parts = request.name.split(separator: "/")
+                    if parts.count >= 3 {
+                        return "https://github.com/\(parts[1])/\(parts[2])"
+                    }
+                } else if request.name.hasPrefix("golang.org/x/") {
+                    let parts = request.name.split(separator: "/")
+                    if parts.count >= 3 {
+                        return "https://github.com/golang/\(parts[2])"
+                    }
+                }
+                return nil
+            }()
+            return ManagedPackage(
+                manager: .goInstall,
+                identifier: request.identifier,
+                catalogIdentifier: "go:\(request.name)",
+                displayName: binaryName.isEmpty ? request.name : binaryName,
+                installedVersion: nil,
+                latestVersion: nil,
+                summary: request.name,
+                category: "developer-tools",
+                homepage: "https://pkg.go.dev/\(request.name)",
+                docs: "https://pkg.go.dev/\(request.name)",
+                repo: repo
+            )
+        }
         return nil
     }
 
@@ -1760,6 +1812,7 @@ struct PackageIndex: Sendable {
             .apps: (catalogApps + unmatchedApps).sorted(by: Self.alphabetical),
             .javascript: packages.filter { mainWindowManagerSection(for: $0) == .javascript }.sorted(by: Self.alphabetical),
             .python: packages.filter { mainWindowManagerSection(for: $0) == .python }.sorted(by: Self.alphabetical),
+            .go: packages.filter { mainWindowManagerSection(for: $0) == .go }.sorted(by: Self.alphabetical),
             .skills: packages.filter { $0.manager == .skills }.sorted(by: Self.alphabetical),
         ]
 
@@ -1858,6 +1911,7 @@ func mainWindowSetupSection(_ manager: PackageManagerKind) -> MainWindowSection?
     case .npm, .npx, .pnpm, .bun: .javascript
     case .skills: .skills
     case .uv, .uvx, .pipx: .python
+    case .goInstall: .go
     case .macApp, .mise: nil
     }
 }
@@ -1874,11 +1928,13 @@ func mainWindowManagerSection(for package: ManagedPackage) -> MainWindowSection 
     case .npm, .npx, .pnpm, .bun: return .javascript
     case .skills: return .skills
     case .uv, .uvx, .pipx: return .python
+    case .goInstall: return .go
     case .mise:
         switch package.packageToken.lowercased() {
         case "node", "bun", "deno": return .javascript
         case "python": return .python
         case "rust": return .rust
+        case "go", "golang": return .go
         default: return .languageRuntime
         }
     }

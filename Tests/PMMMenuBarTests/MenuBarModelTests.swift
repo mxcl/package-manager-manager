@@ -202,6 +202,32 @@ private final class LockedStrings: @unchecked Sendable {
     #expect(menuBarCommandPackage(id: "pipx:cowsay", kind: .install, snapshot: installedSnapshot) == nil)
 }
 
+@Test func menuBarInstallSynthesizesUninstalledGoPackageWhenNotInCatalog() {
+    let snapshot = PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: []
+    )
+
+    let package = menuBarCommandPackage(id: "go:github.com/rakyll/hey", kind: .install, snapshot: snapshot)
+    #expect(package?.manager == .goInstall)
+    #expect(package?.identifier == "go:github.com/rakyll/hey")
+    #expect(package?.displayName == "hey")
+    #expect(package?.packageToken == "github.com/rakyll/hey")
+    #expect(package?.installedVersion == nil)
+
+    let packages = menuBarCommandInstallPackages(ids: ["go:github.com/rakyll/hey"], snapshot: snapshot)
+    #expect(packages.count == 1)
+    #expect(packages.first?.identifier == "go:github.com/rakyll/hey")
+
+    // If already installed, install command rejects it
+    let installedGo = ManagedPackage(manager: .goInstall, identifier: "go:github.com/rakyll/hey", installedVersion: "0.1.5", latestVersion: nil)
+    let installedSnapshot = PackageHostSnapshot(
+        inventory: PackageInventory(packages: [installedGo]),
+        catalogPackages: []
+    )
+    #expect(menuBarCommandPackage(id: "go:github.com/rakyll/hey", kind: .install, snapshot: installedSnapshot) == nil)
+}
+
 @Test func helperInstallIsHeldRatherThanDroppedWhileTheHostIsBusy() {
     let id = CargoHelper.binstall.promptKey
 

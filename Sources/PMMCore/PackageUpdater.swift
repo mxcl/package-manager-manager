@@ -41,6 +41,8 @@ public struct PackageUpdater: Sendable {
             }
         case .pipx:
             try run("pipx", ["upgrade", package.packageToken], onProgress: onProgress)
+        case .goInstall:
+            try run("go", ["install", "\(package.packageToken)@latest"], onProgress: onProgress)
         case .uvx:
             throw PackageUpdateError.unsupportedManager(package.manager)
         }
@@ -49,7 +51,7 @@ public struct PackageUpdater: Sendable {
 
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
-        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv: package.isOutdated
+        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .goInstall: package.isOutdated
         case .macApp, .rustup, .mise, .skills, .uvx: false
         }
     }

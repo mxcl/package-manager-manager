@@ -4,15 +4,22 @@ public struct PackageUninstaller: Sendable {
     private let runner: CommandRunning
     private let homeDirectory: URL
     private let toolPaths: [String: String]
+    private let environment: [String: String]?
 
     public init(
         runner: CommandRunning = SystemCommandRunner(),
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
-        toolPaths: [String: String] = [:]
+        toolPaths: [String: String] = [:],
+        environment: [String: String]? = nil
     ) {
         self.runner = runner
         self.homeDirectory = homeDirectory
         self.toolPaths = toolPaths
+        self.environment = environment
+    }
+
+    private var effectiveEnvironment: [String: String] {
+        environment ?? ProcessInfo.processInfo.environment
     }
 
     public func uninstall(_ package: ManagedPackage, onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) throws {
@@ -44,6 +51,8 @@ public struct PackageUninstaller: Sendable {
             try run("uv", arguments, onProgress: onProgress)
         case .pipx:
             try run("pipx", ["uninstall", package.packageToken], onProgress: onProgress)
+        case .goInstall:
+            try removeGoPackage(package)
         case .uvx:
             try removeInstallLocation(package)
         }
@@ -51,7 +60,7 @@ public struct PackageUninstaller: Sendable {
 
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
-        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .uvx:
+        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .uvx, .goInstall:
             package.installedVersion != nil
         case .skills:
             package.installedVersion != nil && package.identifier.hasPrefix("skills:global:")
@@ -111,6 +120,88 @@ public struct PackageUninstaller: Sendable {
     private func removeInstallLocation(_ package: ManagedPackage) throws {
         guard let path = package.installLocation else { throw PackageUninstallError.missingInstallLocation(package.displayName) }
         try FileManager.default.removeItem(atPath: path)
+    }
+
+    private func effectiveGoBinDirectory() -> String {
+        let env = effectiveEnvironment
+        let envBin = env["GOBIN"]
+        if let envBin, !envBin.isEmpty { return envBin }
+        if let envGopath = env["GOPATH"], !envGopath.isEmpty {
+            let firstPath = envGopath.split(separator: ":").first.map(String.init) ?? envGopath
+            return (firstPath as NSString).appendingPathComponent("bin")
+        }
+        if let go = toolPaths["go"] ?? firstExecutable(named: "go"), !go.isEmpty,
+           let result = try? runner.run(go, ["env", "GOBIN", "GOPATH"], options: CommandRunOptions(environment: env)), result.status == 0 {
+            let lines = result.stdout.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            if lines.count >= 1, !lines[0].isEmpty {
+                return lines[0]
+            }
+            if lines.count >= 2, !lines[1].isEmpty {
+                let firstPath = lines[1].split(separator: ":").first.map(String.init) ?? lines[1]
+                return (firstPath as NSString).appendingPathComponent("bin")
+            }
+        }
+        return homeDirectory.appendingPathComponent("go/bin").path
+    }
+
+    static func parseGoPackagePath(from output: String) -> String? {
+        for line in output.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("path\t") || trimmed.hasPrefix("path ") {
+                let parts = trimmed.split(whereSeparator: \.isWhitespace)
+                if parts.count >= 2, parts[0] == "path" {
+                    return String(parts[1])
+                }
+            }
+        }
+        return nil
+    }
+
+    private func removeGoPackage(_ package: ManagedPackage) throws {
+        guard let path = package.binaryPath ?? package.installLocation else {
+            throw PackageUninstallError.missingInstallLocation(package.displayName)
+        }
+        guard let go = toolPaths["go"] ?? firstExecutable(named: "go"), !go.isEmpty else {
+            throw PackageUninstallError.missingExecutable("go")
+        }
+        let binDir = effectiveGoBinDirectory()
+        let standardizedBinDir = URL(fileURLWithPath: binDir).standardizedFileURL.path
+        let standardizedPath = URL(fileURLWithPath: path).standardizedFileURL.path
+        let parentDir = URL(fileURLWithPath: standardizedPath).deletingLastPathComponent().path
+        guard parentDir == standardizedBinDir else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Binary path \(path) is not inside Go bin directory \(binDir)")
+        }
+
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: standardizedPath, isDirectory: &isDir), !isDir.boolValue else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Binary does not exist or is a directory at \(path)")
+        }
+
+        let expectedPath = package.identifier.hasPrefix("go:") ? String(package.identifier.dropFirst(3)) : package.packageToken
+        let options = CommandRunOptions(environment: effectiveEnvironment)
+        let result = try runner.run(go, ["version", "-m", standardizedPath], options: options)
+        guard result.status == 0,
+              let actualPath = Self.parseGoPackagePath(from: result.stdout),
+              actualPath == expectedPath else {
+            throw PackageUninstallError.failed("uninstall \(package.displayName)", "Binary does not match Go package \(expectedPath)")
+        }
+
+        try FileManager.default.removeItem(atPath: standardizedPath)
+
+        for name in package.executableNames {
+            let siblingPath = (binDir as NSString).appendingPathComponent(name)
+            let standardizedSibling = URL(fileURLWithPath: siblingPath).standardizedFileURL.path
+            if standardizedSibling != standardizedPath {
+                var isSiblingDir: ObjCBool = false
+                if FileManager.default.fileExists(atPath: standardizedSibling, isDirectory: &isSiblingDir), !isSiblingDir.boolValue {
+                    if let res = try? runner.run(go, ["version", "-m", standardizedSibling], options: options),
+                       res.status == 0,
+                       Self.parseGoPackagePath(from: res.stdout) == expectedPath {
+                        try? FileManager.default.removeItem(atPath: standardizedSibling)
+                    }
+                }
+            }
+        }
     }
 }
 
