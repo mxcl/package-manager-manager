@@ -42,6 +42,8 @@ public struct PackageUninstaller: Sendable {
                 ? ["python", "uninstall", package.installedVersion ?? package.packageToken, "--color", "always"]
                 : ["tool", "uninstall", package.packageToken, "--color", "always"]
             try run("uv", arguments, onProgress: onProgress)
+        case .pipx:
+            try run("pipx", ["uninstall", package.packageToken], onProgress: onProgress)
         case .uvx:
             try removeInstallLocation(package)
         }
@@ -49,7 +51,7 @@ public struct PackageUninstaller: Sendable {
 
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
-        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .uv, .uvx:
+        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .uvx:
             package.installedVersion != nil
         case .skills:
             package.installedVersion != nil && package.identifier.hasPrefix("skills:global:")

@@ -175,6 +175,7 @@ public struct RemoteSSHClient: Sendable {
         packages += linuxBun(sections: sections)
         packages += linuxCargo(sections["CARGO"])
         packages += linuxUV(sections: sections)
+        packages += linuxPipx(sections: sections)
 
         let failures = lines(sections["ERRORS"]).map { RemoteControlFailure(message: $0) }
         return RemoteControlResponse(
@@ -433,6 +434,12 @@ public struct RemoteSSHClient: Sendable {
         }
     }
 
+    private static func linuxPipx(sections: [String: String]) -> [ManagedPackage] {
+        guard let output = sections["PIPX_LIST"], !output.isEmpty else { return [] }
+        let outdated = sections["PIPX_OUTDATED"].map(PackageScanner.parsePipxOutdated) ?? [:]
+        return PackageScanner.parsePipxList(output, outdated: outdated)
+    }
+
     private static func linuxSections(_ output: String) -> [String: String] {
         var sections: [String: [String]] = [:]
         var current: String?
@@ -577,6 +584,10 @@ public struct RemoteSSHClient: Sendable {
       printf '__PMM_UV_PYTHON_DIR__\n'; uv python dir --color never 2>/dev/null || true
       printf '__PMM_UV_PYTHONS__\n'; uv python list --only-installed --output-format json --offline --color never 2>/dev/null || true
     fi
+    if command -v pipx >/dev/null 2>&1; then
+      printf '__PMM_PIPX_LIST__\n'; pipx list --json 2>/dev/null || true
+      printf '__PMM_PIPX_OUTDATED__\n'; pipx list --outdated --json 2>/dev/null || pipx list --outdated 2>/dev/null || true
+    fi
     printf '__PMM_END__\n'
     """#
 
@@ -611,6 +622,8 @@ public struct RemoteSSHClient: Sendable {
         case ("uninstall", .bun):
             let arguments = "remove -g \(token)"
             command = "if [ -w \"$(bun pm bin -g 2>/dev/null || echo ~/.bun/bin)\" ]; then bun \(arguments); else sudo -n \"$(command -v bun)\" \(arguments); fi"
+        case ("update", .pipx): command = "pipx upgrade \(token)"
+        case ("uninstall", .pipx): command = "pipx uninstall \(token)"
         case ("update", .uv) where package.summary == "uv-managed Python":
             command = "uv python install \(shellQuote(package.latestVersion ?? package.packageToken)) --color always"
         case ("uninstall", .uv) where package.summary == "uv-managed Python":

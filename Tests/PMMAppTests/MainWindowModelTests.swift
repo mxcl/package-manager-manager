@@ -593,6 +593,18 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(bunURL.identifier == "bun:@scope/tool")
     #expect(bunURL.section == .javascript)
 
+    let pipxPkg = try #require(MainWindowPackageURLRequest(identifier: "pipx:cowsay"))
+    #expect(pipxPkg.manager == .pipx)
+    #expect(pipxPkg.name == "cowsay")
+    #expect(pipxPkg.identifier == "pipx:cowsay")
+    #expect(pipxPkg.section == .python)
+
+    let pipxURL = try #require(MainWindowPackageURLRequest(url: URL(string: "pkgmgrmgr://pipx/cowsay")!))
+    #expect(pipxURL.manager == .pipx)
+    #expect(pipxURL.name == "cowsay")
+    #expect(pipxURL.identifier == "pipx:cowsay")
+    #expect(pipxURL.section == .python)
+
     let python = try #require(MainWindowPackageURLRequest(identifier: "brew:python@3.13"))
     #expect(python.manager == .homebrew)
     #expect(python.name == "python@3.13")
@@ -1190,6 +1202,57 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
+@Test func pythonSectionIncludesPipxInPackageManagersAndShowsLoading() {
+    #expect(MainWindowSection.python.packageManagers.contains(.pipx))
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        isRefreshing: true,
+        loadingManagers: [.pipx]
+    ))
+    #expect(model.isLoadingCount(for: .python))
+}
+
+@MainActor
+@Test func uninstalledPipxPackageSynthesizesCandidateAndInstallsViaURLAndDiscover() throws {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: [],
+        isRefreshing: false
+    ))
+
+    let discovered = DiscoverFeedPackage(
+        id: "pipx:cowsay",
+        displayName: "cowsay",
+        agentSummary: "Python application installed with pipx",
+        manager: "pipx",
+        category: "developer-tools",
+        homepage: nil,
+        installURL: URL(string: "pkgmgrmgr://install?package=pipx%3Acowsay")
+    )
+
+    #expect(model.openDiscoverPackage(discovered, installing: true))
+    #expect(model.selectedPackage?.manager == .pipx)
+    #expect(model.selectedPackage?.identifier == "pipx:cowsay")
+    let expectedID = try #require(model.selectedPackage?.id)
+    #expect(model.pendingInstallPackConfirmation == MainWindowInstallPackConfirmation(
+        packageIDs: [expectedID],
+        packageCount: 1
+    ))
+    model.cancelPendingInstallPack()
+
+    #expect(model.openPackageURL(URL(string: "pkgmgrmgr://install?package=pipx%3Acowsay")!))
+    #expect(model.pendingInstallPackConfirmation == MainWindowInstallPackConfirmation(
+        packageIDs: [expectedID],
+        packageCount: 1
+    ))
+
+    #expect(model.openPackageURL(URL(string: "pkgmgrmgr://pipx/cowsay")!))
+    #expect(model.selectedPackage?.identifier == "pipx:cowsay")
+}
+
+@MainActor
 @Test func dashboardInstalledThisWeekCountsOnlyCurrentInstalledPackages() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let week = Calendar.current.dateInterval(of: .weekOfYear, for: Date())!
@@ -1463,6 +1526,8 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .npm, identifier: "npm:@scope/tool", installedVersion: nil, latestVersion: nil)) == "https://www.npmjs.com/package/@scope/tool")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .bun, identifier: "bun:@scope/tool", installedVersion: nil, latestVersion: nil)) == "https://www.npmjs.com/package/@scope/tool")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .cargoInstall, identifier: "cargo:ripgrep", installedVersion: nil, latestVersion: nil)) == "https://crates.io/crates/ripgrep")
+    #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .pipx, identifier: "pipx:cowsay", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/cowsay/")
+    #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .pipx, identifier: "pipx:cowsay-x", catalogIdentifier: "pipx:cowsay", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/cowsay/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .uv, identifier: "uv:tool:ruff", installedVersion: nil, latestVersion: nil)) == "https://pypi.org/project/ruff/")
     #expect(mainWindowRegistryURLString(for: ManagedPackage(manager: .uv, identifier: "uv:cpython:3.13", installedVersion: nil, latestVersion: nil)) == nil)
 }

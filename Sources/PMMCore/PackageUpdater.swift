@@ -39,6 +39,8 @@ public struct PackageUpdater: Sendable {
             } else {
                 try run("uv", ["tool", "upgrade", package.packageToken, "--color", "always"], onProgress: onProgress)
             }
+        case .pipx:
+            try run("pipx", ["upgrade", package.packageToken], onProgress: onProgress)
         case .uvx:
             throw PackageUpdateError.unsupportedManager(package.manager)
         }
@@ -47,7 +49,7 @@ public struct PackageUpdater: Sendable {
 
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
-        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .uv: package.isOutdated
+        case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv: package.isOutdated
         case .macApp, .rustup, .mise, .skills, .uvx: false
         }
     }

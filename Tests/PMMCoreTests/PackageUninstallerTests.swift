@@ -43,12 +43,11 @@ private final class ProgressRecorder: @unchecked Sendable {
         return events
     }
 }
-
 @Test func packageUninstallerRunsManagerCommands() throws {
     let runner = RecordingRunner()
     let uninstaller = PackageUninstaller(
         runner: runner,
-        toolPaths: ["cargo": "/fake/cargo", "brew": "/fake/brew", "npm": "/fake/npm", "pnpm": "/fake/pnpm", "bun": "/fake/bun", "uv": "/fake/uv"]
+        toolPaths: ["cargo": "/fake/cargo", "brew": "/fake/brew", "npm": "/fake/npm", "pnpm": "/fake/pnpm", "bun": "/fake/bun", "pipx": "/fake/pipx", "uv": "/fake/uv"]
     )
 
     try uninstaller.uninstall(package(.cargoInstall, "cargo:ripgrep", displayName: "Ripgrep"))
@@ -56,6 +55,7 @@ private final class ProgressRecorder: @unchecked Sendable {
     try uninstaller.uninstall(package(.npm, "npm:@scope/tool", displayName: "Scoped Tool"))
     try uninstaller.uninstall(package(.pnpm, "pnpm:@scope/tool", displayName: "Scoped Tool"))
     try uninstaller.uninstall(package(.bun, "bun:@scope/tool", displayName: "Scoped Tool"))
+    try uninstaller.uninstall(package(.pipx, "pipx:cowsay", displayName: "cowsay"))
     try uninstaller.uninstall(package(.uv, "uv:tool:ruff", displayName: "Ruff", summary: "uv-installed tool", category: "language-runtime"))
     try uninstaller.uninstall(package(.uv, "uv:cpython:3.13", displayName: "uv Managed Python 3.13", installedVersion: "3.13.12", summary: "uv-managed Python", category: "language-runtime"))
 
@@ -65,10 +65,11 @@ private final class ProgressRecorder: @unchecked Sendable {
         "/fake/npm uninstall -g @scope/tool",
         "/fake/pnpm remove -g @scope/tool",
         "/fake/bun remove -g @scope/tool",
+        "/fake/pipx uninstall cowsay",
         "/fake/uv tool uninstall ruff --color always",
         "/fake/uv python uninstall 3.13.12 --color always",
     ])
-    #expect(runner.options.map(\.terminal) == [true, true, true, true, true, true, true])
+    #expect(runner.options.map(\.terminal) == [true, true, true, true, true, true, true, true])
 }
 
 @Test func packageUninstallerReportsCommandAndOutputProgress() throws {

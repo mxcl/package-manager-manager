@@ -102,7 +102,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
         case .homebrew: [.homebrew]
         case .apps: [.homebrew, .macApp]
         case .javascript: [.npm, .npx, .pnpm, .bun, .mise]
-        case .python: [.uv, .uvx, .mise]
+        case .python: [.uv, .uvx, .pipx, .mise]
         case .skills: [.skills]
         default: []
         }
@@ -241,6 +241,9 @@ struct MainWindowPackageURLRequest: Equatable {
         } else if identifier.hasPrefix("skills:global:") {
             manager = .skills
             name = String(identifier.trimmingPrefix("skills:global:"))
+        } else if identifier.hasPrefix("pipx:") {
+            manager = .pipx
+            name = String(identifier.trimmingPrefix("pipx:"))
         } else if identifier.hasPrefix("uv:") {
             manager = .uv
             name = String(identifier.trimmingPrefix("uv:")).replacingOccurrences(of: ":", with: "/")
@@ -289,6 +292,9 @@ struct MainWindowPackageURLRequest: Equatable {
         case "npx":
             manager = .npx
             identifier = "npx:\(name)"
+        case "pipx":
+            manager = .pipx
+            identifier = "pipx:\(name)"
         case "skills":
             manager = .skills
             identifier = "skills:global:\(name)"
@@ -315,7 +321,7 @@ struct MainWindowPackageURLRequest: Equatable {
         case .npm, .npx, .pnpm, .bun: .javascript
         case .mise: .installed
         case .skills: .skills
-        case .uv, .uvx: .python
+        case .uv, .uvx, .pipx: .python
         }
     }
 
@@ -396,9 +402,10 @@ func mainWindowRegistryURLString(for package: ManagedPackage) -> String? {
         return "https://www.npmjs.com/package/\(package.packageToken)"
     case .cargoInstall:
         return "https://crates.io/crates/\(package.packageToken)"
-    case .uv, .uvx:
-        guard package.identifier.hasPrefix("uv:tool:") || package.manager == .uvx else { return nil }
-        return "https://pypi.org/project/\(package.packageToken)/"
+    case .uv, .uvx, .pipx:
+        guard package.manager == .pipx || package.identifier.hasPrefix("uv:tool:") || package.manager == .uvx else { return nil }
+        let distributionName = (package.catalogIdentifier?.split(separator: ":").last).map(String.init) ?? package.packageToken
+        return "https://pypi.org/project/\(distributionName)/"
     case .apk, .apt, .dnf, .zypper, .macApp, .rustup, .mise:
         return nil
     case .skills:
@@ -895,7 +902,11 @@ final class MainWindowModel: NSObject, ObservableObject {
         cancelDiscoverPackageScroll()
         guard showsUpdateAllOutdatedPackages, extendingSelection || selectingRange else {
             packageSelectionAnchorID = package.id
-            selectPackages([package.id])
+            selectedPackageIDs = [package.id]
+            let resolved = displayedPackages.first(where: { $0.id == package.id }) ?? package
+            selectedPackage = resolved
+            selectedLinkTab = nil
+            loadDossier(for: resolved)
             return
         }
 
@@ -1471,8 +1482,23 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     private func package(matching request: MainWindowPackageURLRequest) -> ManagedPackage? {
-        (packageIndex.packagesBySection[request.section] ?? []).first(where: request.matches)
-            ?? packageIndex.packagesBySection.values.lazy.flatMap { $0 }.first(where: request.matches)
+        if let match = (packageIndex.packagesBySection[request.section] ?? []).first(where: request.matches)
+            ?? packageIndex.packagesBySection.values.lazy.flatMap({ $0 }).first(where: request.matches) {
+            return match
+        }
+        if request.manager == .pipx {
+            return ManagedPackage(
+                manager: .pipx,
+                identifier: request.identifier,
+                catalogIdentifier: "pipx:\(request.name)",
+                displayName: request.name,
+                installedVersion: nil,
+                latestVersion: nil,
+                summary: "Python application installed with pipx",
+                category: "developer-tools"
+            )
+        }
+        return nil
     }
 
     private func section(for package: ManagedPackage, preferred: MainWindowSection) -> MainWindowSection {
@@ -1831,7 +1857,7 @@ func mainWindowSetupSection(_ manager: PackageManagerKind) -> MainWindowSection?
     case .homebrew: .homebrew
     case .npm, .npx, .pnpm, .bun: .javascript
     case .skills: .skills
-    case .uv, .uvx: .python
+    case .uv, .uvx, .pipx: .python
     case .macApp, .mise: nil
     }
 }
@@ -1847,7 +1873,7 @@ func mainWindowManagerSection(for package: ManagedPackage) -> MainWindowSection 
     case .homebrew: return .homebrew
     case .npm, .npx, .pnpm, .bun: return .javascript
     case .skills: return .skills
-    case .uv, .uvx: return .python
+    case .uv, .uvx, .pipx: return .python
     case .mise:
         switch package.packageToken.lowercased() {
         case "node", "bun", "deno": return .javascript

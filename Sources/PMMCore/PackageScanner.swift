@@ -517,6 +517,134 @@ public struct PackageScanner: @unchecked Sendable {
         }
     }
 
+    public func scanPipx(database: PackageDatabase) throws -> [ManagedPackage] {
+        try scanPipx(database: database, mode: .fresh)
+    }
+
+    private func scanPipx(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
+        guard let pipx = executable(named: "pipx") else { return [] }
+        let outdated = mode.isFresh ? pipxOutdated(pipx) : [:]
+        let result = try runner.run(pipx, ["list", "--json"])
+        guard result.status == 0 else { return [] }
+        return Self.parsePipxList(result.stdout, outdated: outdated, database: database)
+    }
+
+    static func parsePipxList(_ stdout: String, outdated: [String: String] = [:], database: PackageDatabase? = nil) -> [ManagedPackage] {
+        guard let data = stdout.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let venvs = json["venvs"] as? [String: Any] else { return [] }
+
+        return venvs.compactMap { envName, rawVenv in
+            guard let venv = rawVenv as? [String: Any],
+                  let metadata = venv["metadata"] as? [String: Any],
+                  let mainPackage = metadata["main_package"] as? [String: Any],
+                  let packageName = mainPackage["package"] as? String else { return nil }
+
+            let version = mainPackage["package_version"] as? String
+            let appPaths = (mainPackage["app_paths"] as? [[String: Any]])?.compactMap { $0["__Path__"] as? String } ?? []
+            let binaryPath = appPaths.first
+            let installLocation = binaryPath.flatMap { path -> String? in
+                let url = URL(fileURLWithPath: path)
+                return url.deletingLastPathComponent().deletingLastPathComponent().path
+            }
+
+            let rawSuffix = mainPackage["suffix"] as? String
+            let suffix = rawSuffix?.isEmpty == false ? rawSuffix : nil
+            let suffixedPackageName = suffix.map { packageName + $0 }
+            let normalizedEnvName = envName.replacingOccurrences(of: "-", with: "_")
+            let denormalizedEnvName = envName.replacingOccurrences(of: "_", with: "-")
+            let apps = (mainPackage["apps"] as? [String]) ?? []
+
+            var candidateKeys = [envName]
+            if let suffixedPackageName {
+                candidateKeys.append(suffixedPackageName)
+                candidateKeys.append(suffixedPackageName.replacingOccurrences(of: "-", with: "_"))
+                candidateKeys.append(suffixedPackageName.replacingOccurrences(of: "_", with: "-"))
+            }
+            candidateKeys.append(normalizedEnvName)
+            candidateKeys.append(denormalizedEnvName)
+            candidateKeys.append(contentsOf: apps)
+            if suffix == nil {
+                candidateKeys.append(packageName)
+                candidateKeys.append(packageName.replacingOccurrences(of: "-", with: "_"))
+                candidateKeys.append(packageName.replacingOccurrences(of: "_", with: "-"))
+            } else {
+                candidateKeys.append(packageName)
+            }
+
+            let latestVersion = candidateKeys.compactMap { outdated[$0] }.first
+
+            let curation = database?.metadata(for: .pipx, name: envName)
+                ?? suffixedPackageName.flatMap { database?.metadata(for: .pipx, name: $0) }
+                ?? database?.metadata(for: .pipx, name: packageName)
+
+            return ManagedPackage(
+                manager: .pipx,
+                identifier: "pipx:\(envName)",
+                catalogIdentifier: envName == packageName ? nil : "pipx:\(packageName)",
+                displayName: envName,
+                installedVersion: version,
+                latestVersion: latestVersion,
+                summary: curation?.summary ?? "Python application installed with pipx",
+                category: curation?.category ?? "developer-tools",
+                homepage: curation?.homepage,
+                docs: nil,
+                repo: nil,
+                lastUpdatedAt: curation?.lastUpdatedAt,
+                pulseKind: curation?.pulseKind,
+                installLocation: installLocation,
+                binaryPath: binaryPath
+            )
+        }.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+    }
+
+    static func parsePipxOutdated(_ stdout: String) -> [String: String] {
+        var outdated: [String: String] = [:]
+
+        if let data = stdout.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let dataObj = json["data"] as? [String: Any],
+           let packages = dataObj["packages"] as? [[String: Any]] {
+            for pkg in packages {
+                let name = (pkg["package"] as? String) ?? (pkg["name"] as? String) ?? (pkg["venv"] as? String)
+                if let name,
+                   let latest = (pkg["latest_version"] as? String) ?? (pkg["latest"] as? String) {
+                    outdated[name] = latest
+                }
+            }
+            if !outdated.isEmpty { return outdated }
+        }
+
+        let lines = stdout.components(separatedBy: .newlines)
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.contains(" -> ") else { continue }
+            let parts = trimmed.components(separatedBy: ":")
+            guard parts.count >= 2 else { continue }
+            let name = parts[0].trimmingCharacters(in: .whitespaces)
+            let versionPart = parts[1].trimmingCharacters(in: .whitespaces)
+            let arrowParts = versionPart.components(separatedBy: "->")
+            if arrowParts.count == 2 {
+                let latest = arrowParts[1].trimmingCharacters(in: .whitespaces)
+                if !name.isEmpty, !latest.isEmpty {
+                    outdated[name] = latest
+                }
+            }
+        }
+
+        return outdated
+    }
+
+    private func pipxOutdated(_ pipx: String) -> [String: String] {
+        if let jsonStdout = try? runner.run(pipx, ["list", "--outdated", "--json"]).stdout,
+           !jsonStdout.isEmpty {
+            let parsed = Self.parsePipxOutdated(jsonStdout)
+            if !parsed.isEmpty { return parsed }
+        }
+        guard let textStdout = try? runner.run(pipx, ["list", "--outdated"]).stdout else { return [:] }
+        return Self.parsePipxOutdated(textStdout)
+    }
+
     private func parseCargoInstallList(
         _ output: String,
         latestVersions: [String: String] = [:]
@@ -1201,6 +1329,7 @@ public struct PackageScanner: @unchecked Sendable {
                         } else {
                             packages = cached
                         }
+                    case .pipx: packages = try scanPipx(database: database, mode: mode)
                     case .skills: packages = try scanSkills(database: database)
                     case .pnpm: packages = try scanPNPM(database: database, mode: mode)
                     case .uv: packages = try scanUV(database: database, mode: mode)
