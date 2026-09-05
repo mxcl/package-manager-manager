@@ -2,8 +2,8 @@
   "posts": [
     {
       "slug": "pnpm-bun-pipx-go",
-      "title": "pnpm, Bun, pipx, and Go Join the Inventory",
-      "subtitle": "Four more tools, with local installs and remote updates",
+      "title": "pnpm, Bun, pipx, Go, and pkgx Join the Inventory",
+      "subtitle": "Five more tools, with local installs and remote updates",
       "category": "blog",
       "systemImage": "shippingbox",
       "publishedAt": "Sep 5, 2026",

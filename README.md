@@ -63,7 +63,7 @@ pkg⋅mgr² currently inventories:
 - `uvx` cached environments
 - `cargo install` binaries
 - `go install` binaries
-- packages run and managed with `pkgx`
+- `pkgx` packages, including multiple installed versions
 - `rustup` and installed Rust toolchains
 
 It also pulls package summaries, categories, URLs, and latest-version metadata
@@ -75,7 +75,12 @@ project’s `node_modules`. pipx support covers applications in its managed
 environments. Go support reads embedded build metadata from binaries in `GOBIN`
 or the first `GOPATH` entry’s `bin` directory (usually `~/go/bin`).
 
-See [what’s new in pnpm, Bun, pipx, and Go support](https://mxcl.dev/package-manager-manager/blog/pnpm-bun-pipx-go/).
+pkgx support reads `PKGX_DIR` (usually `~/.pkgx`) and keeps track of all installed
+versions, like mise tools and uv-managed Pythons. Updating installs the newer
+version alongside older ones. Uninstall removes the displayed version and keeps
+any remaining versions in the inventory.
+
+See [what’s new in pnpm, Bun, pipx, Go, and pkgx support](https://mxcl.dev/package-manager-manager/blog/pnpm-bun-pipx-go/).
 
 ## Installing
 
@@ -114,7 +119,7 @@ Supported uninstall paths:
 - `pipx uninstall`
 - remove uvx cached environments
 - remove Go binaries after checking their location and embedded package path
-- remove package from `~/.pkgx`
+- remove the displayed pkgx version from `PKGX_DIR`, after checking its resolved path
 - `cargo uninstall`
 
 > [!IMPORTANT]

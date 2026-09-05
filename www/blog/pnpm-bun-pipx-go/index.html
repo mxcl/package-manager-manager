@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>pnpm, Bun, pipx, and Go Join the Inventory | Package Manager Manager Blog</title>
-  <meta name="description" content="Package Manager Manager now supports pnpm, Bun, pipx, and go install. Inspect, install, update, and remove more of your tools from one Mac app.">
+  <title>pnpm, Bun, pipx, Go, and pkgx Join the Inventory | Package Manager Manager Blog</title>
+  <meta name="description" content="Package Manager Manager now supports pnpm, Bun, pipx, go install, and pkgx, including multiple installed pkgx versions. Manage your tools from one Mac app.">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Package Manager Manager">
-  <meta property="og:title" content="pnpm, Bun, pipx, and Go Join the Inventory">
-  <meta property="og:description" content="Four more tools in your package inventory, with local installs and remote updates.">
+  <meta property="og:title" content="pnpm, Bun, pipx, Go, and pkgx Join the Inventory">
+  <meta property="og:description" content="Five more tools in your package inventory, with local installs, remote updates, and multiple pkgx versions.">
   <meta property="og:url" content="https://mxcl.dev/package-manager-manager/blog/pnpm-bun-pipx-go/">
   <meta property="article:published_time" content="2026-09-05">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="pnpm, Bun, pipx, and Go Join the Inventory">
-  <meta name="twitter:description" content="Four more tools in your package inventory, with local installs and remote updates.">
+  <meta name="twitter:title" content="pnpm, Bun, pipx, Go, and pkgx Join the Inventory">
+  <meta name="twitter:description" content="Five more tools in your package inventory, with local installs, remote updates, and multiple pkgx versions.">
   <link rel="canonical" href="https://mxcl.dev/package-manager-manager/blog/pnpm-bun-pipx-go/">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    "headline": "pnpm, Bun, pipx, and Go Join the Inventory",
-    "description": "Package Manager Manager now supports pnpm, Bun, pipx, and go install, with local installs and remote updates.",
+    "headline": "pnpm, Bun, pipx, Go, and pkgx Join the Inventory",
+    "description": "Package Manager Manager now supports pnpm, Bun, pipx, go install, and pkgx, with local installs, remote updates, and multiple pkgx versions.",
     "datePublished": "2026-09-05",
     "dateModified": "2026-09-05",
     "author": {
@@ -60,8 +60,8 @@
         <header class="article-hero">
           <div class="article-hero-copy">
             <p class="eyebrow">New package managers · <time datetime="2026-09-05">September 5, 2026</time></p>
-            <h1>pnpm, Bun, pipx, and Go join the inventory.</h1>
-            <p class="lede">Four more ways to install a tool. One place to find it again.</p>
+            <h1>pnpm, Bun, pipx, Go, and pkgx join the inventory.</h1>
+            <p class="lede">Find and manage tools from five more package managers, including every installed pkgx version.</p>
           </div>
           <figure class="article-hero-image">
             <img src="hero.png" alt="A cardboard package explorer reading a map with a group of tool-carrying companions" width="1200" height="675" decoding="async" fetchpriority="high">
@@ -70,10 +70,10 @@
 
         <section class="article-body" aria-label="New package manager support">
           <p>
-            You install one CLI with pnpm, another with Bun, a Python app with pipx, and a Go command straight from its source package. Each choice makes sense at the time. A month later, you have four places to check for updates.
+            You install one CLI with pnpm, another with Bun, a Python app with pipx, and a Go command straight from its source package. Then you use pkgx to run a tool without adding it to your PATH. A month later, you have five places to check for updates.
           </p>
           <p>
-            We’ve added all four to Package Manager Manager. You can see their installed tools alongside your Homebrew, npm, uv, and Cargo packages, check for newer versions, and update or remove them from the same window. Local installs are supported too.
+            We’ve added all five to Package Manager Manager. You can see their installed tools alongside your Homebrew, npm, uv, and Cargo packages, check for newer versions, and update or remove them from the same window. You can install tools locally too.
           </p>
         </section>
 
@@ -113,10 +113,23 @@
           </p>
         </section>
 
+        <section class="article-body" aria-labelledby="pkgx">
+          <h2 id="pkgx">pkgx, with every installed version</h2>
+          <p>
+            PMM reads your pkgx packages from <code>PKGX_DIR</code>, usually <code>~/.pkgx</code>. You can inspect their installed versions and paths, and check for newer versions available for the host’s operating system and architecture.
+          </p>
+          <p>
+            As with mise tools and uv-managed Pythons, you can keep several versions installed at once. Updating a pkgx package installs the newer version alongside the older ones. Uninstall removes the displayed version; PMM keeps any remaining versions in the inventory and points subsequent actions at a surviving installation.
+          </p>
+          <p>
+            Local installs use <code>pkgx +project true</code>. Updates request the target version explicitly with <code>pkgx +project@version true</code>, because an unversioned request can reuse an older cached copy. Before removal, PMM checks the resolved path inside your pkgx directory and refuses symlinked package paths.
+          </p>
+        </section>
+
         <section class="article-body" aria-labelledby="remote">
           <h2 id="remote">On your other machines, too</h2>
           <p>
-            <a href="../remote-hosts/">Remote Hosts</a> includes these four managers in agentless Linux inventory, with update and uninstall actions over SSH. Remote Macs need a compatible PMM build in <code>/Applications</code>. Each host keeps its own Installed and Outdated lists.
+            <a href="../remote-hosts/">Remote Hosts</a> includes these five managers in agentless Linux inventory, with update and uninstall actions over SSH. Remote Macs need a compatible PMM build in <code>/Applications</code>. Each host keeps its own Installed and Outdated lists.
           </p>
           <p>
             New installs remain local-only. The corresponding manager must already be available, and update checks need access to its registry or module source. Missing version metadata does not hide an installed package.
@@ -126,12 +139,13 @@
         <section class="article-body" aria-labelledby="thanks">
           <h2 id="thanks">Thanks, sabrimete</h2>
           <p>
-            <a href="https://github.com/sabrimete">sabrimete</a> contributed all four integrations:
+            <a href="https://github.com/sabrimete">sabrimete</a> contributed all five integrations:
             <a href="https://github.com/mxcl/package-manager-manager/pull/10">pnpm</a>,
             <a href="https://github.com/mxcl/package-manager-manager/pull/12">Bun</a>,
-            <a href="https://github.com/mxcl/package-manager-manager/pull/13">pipx</a>, and
-            <a href="https://github.com/mxcl/package-manager-manager/pull/14">Go</a>.
-            The review covered scoped JavaScript packages, suffixed pipx environments, Go module metadata, and safe binary removal. The merged code passes all 369 tests.
+            <a href="https://github.com/mxcl/package-manager-manager/pull/13">pipx</a>,
+            <a href="https://github.com/mxcl/package-manager-manager/pull/14">Go</a>, and
+            <a href="https://github.com/mxcl/package-manager-manager/pull/15">pkgx</a>.
+            We checked scoped JavaScript packages, suffixed pipx environments, Go module metadata, and pkgx updates that preserve older versions. All 382 tests passed before the pkgx merge, alongside an isolated check with the real pkgx binary.
           </p>
           <p>
             <a href="https://github.com/mxcl/pmm/releases/latest">Get the latest release</a> and refresh your inventory. If your tools still don’t show up, <a href="https://github.com/mxcl/package-manager-manager/issues/new">open an issue</a>. To add another manager, start with the <a href="https://github.com/mxcl/package-manager-manager#adding-new-package-managers">contributor checklist</a>.
