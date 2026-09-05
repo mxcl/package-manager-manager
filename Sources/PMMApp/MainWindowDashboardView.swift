@@ -105,7 +105,7 @@ private struct DashboardDiscoverFeedView: View {
                     }
 
                     DashboardBlogAndPackageSection(
-                        posts: Array(posts.prefix(4)),
+                        posts: Array(posts.prefix(3)),
                         package: spotlightPackage,
                         isLoading: supportingContentIsLoading,
                         isPackageInstalled: isPackageInstalled,
@@ -676,7 +676,7 @@ private struct DashboardBlogAndPackageSection: View {
     private var blogContent: some View {
         if isLoading {
             LazyVGrid(columns: dashboardBlogColumns, spacing: 12) {
-                ForEach(0..<4, id: \.self) { _ in
+                ForEach(0..<3, id: \.self) { _ in
                     ProgressView()
                         .controlSize(.small)
                         .frame(maxWidth: .infinity, minHeight: 250)
