@@ -2274,12 +2274,12 @@ private final class MainWindowRemoteRunner: CommandRunning, @unchecked Sendable 
     }
 }
 
-private func nativeTestPackage() -> ManagedPackage {
+private func nativeTestPackage(receipted: Bool = true, provenance: MacAppProvenance = .direct) -> ManagedPackage {
     let receipt = NativeCaskInstallation(token: "example", version: "1.0", appPath: "/Applications/Example.app",
         bundleIdentifier: "com.example.native", teamIdentifier: "TEAM", shortVersion: "1.0", bundleVersion: "1")
     return ManagedPackage(manager: .macApp, identifier: "mac-app:com.example.native", catalogIdentifier: "brew:cask:example",
         installedVersion: "1.0", latestVersion: "2.0", installLocation: receipt.appPath, bundleIdentifier: receipt.bundleIdentifier,
-        appProvenance: .direct, nativeCaskInstallation: receipt)
+        appProvenance: provenance, nativeCaskInstallation: receipted ? receipt : nil)
 }
 
 @MainActor
@@ -2318,8 +2318,8 @@ private func nativeTestPackage() -> ManagedPackage {
 }
 
 @MainActor
-@Test func nativeRemoteUpdateAllHonorsBothMacSettings() async throws {
-    let native = nativeTestPackage()
+@Test(arguments: [false, true]) func nativeRemoteUpdateAllHonorsBothMacSettings(receipted: Bool) async throws {
+    let native = nativeTestPackage(receipted: receipted)
     let npm = package(.npm, "eslint", installedVersion: "1", latestVersion: "2")
     for remoteEnabled: Bool? in [nil, false, true] {
         let response = RemoteControlResponse(inventory: PackageInventory(packages: [native, npm]), nativeCaskManagementEnabled: remoteEnabled)
@@ -2343,4 +2343,30 @@ private func nativeTestPackage() -> ManagedPackage {
         #expect(model.canUpdate(native) == (remoteEnabled == true))
         #expect(model.canUninstall(native) == (remoteEnabled == true))
     }
+}
+
+@MainActor
+@Test func recognizedAppsNeedOnlyTheSettingToBeManaged() async throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("automatic-native-\(UUID().uuidString).json")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let preferences = PackagePreferencesStore(url: url)
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, usesPackageHostNotifications: false,
+        preferencesStore: preferences, nativeRecipeLoader: { _ in throw NativeCaskError("Unsupported recipe") })
+    let direct = nativeTestPackage(receipted: false)
+    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [direct]), homebrewAvailable: false))
+    await model.reloadNativePreferences()
+    #expect(!model.canUpdate(direct))
+    #expect(!model.canUninstall(direct))
+    try await preferences.setNativeCaskManagementEnabled(true)
+    await model.reloadNativePreferences()
+    #expect(model.canUpdate(direct))
+    #expect(model.canUninstall(direct))
+    for provenance: MacAppProvenance in [.appStore, .setapp, .homebrew, .unknown] {
+        let excluded = nativeTestPackage(receipted: false, provenance: provenance)
+        #expect(!model.canUpdate(excluded))
+        #expect(!model.canUninstall(excluded))
+    }
+    await model.loadNativeCaskRecipe(for: direct)
+    #expect(!model.canUpdate(direct))
+    #expect(!model.canUninstall(direct))
 }

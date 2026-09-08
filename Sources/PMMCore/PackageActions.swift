@@ -3,16 +3,21 @@ import Foundation
 /// Shared execution entry point for the menu bar host and SSH helper.
 public enum PackageActions {
     public static func canUpdate(_ package: ManagedPackage, nativeEnabled: Bool) -> Bool {
-        package.nativeCaskInstallation != nil ? nativeEnabled && package.isOutdated : PackageUpdater.supports(package)
+        usesNativeManagement(package) ? nativeEnabled && package.isOutdated : PackageUpdater.supports(package)
     }
 
     public static func canUninstall(_ package: ManagedPackage, nativeEnabled: Bool) -> Bool {
-        package.nativeCaskInstallation != nil ? nativeEnabled && package.installedVersion != nil : PackageUninstaller.supports(package)
+        usesNativeManagement(package) ? nativeEnabled && package.installedVersion != nil : PackageUninstaller.supports(package)
+    }
+
+    public static func usesNativeManagement(_ package: ManagedPackage) -> Bool {
+        package.nativeCaskInstallation != nil || canAdopt(package)
     }
 
     public static func canAdopt(_ package: ManagedPackage) -> Bool {
         package.manager == .macApp && package.appProvenance == .direct && package.nativeCaskInstallation == nil
-            && package.installedVersion != nil && token(for: package) != nil
+            && package.installedVersion != nil && package.installLocation != nil && package.bundleIdentifier != nil
+            && token(for: package) != nil
     }
 
     private static func token(for package: ManagedPackage) -> String? { NativeCaskManager.token(for: package) }
@@ -21,7 +26,7 @@ public enum PackageActions {
                                onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) async throws {
         let enabled = try await nativeCaskWork { PackagePreferencesStore().load().nativeCaskManagementEnabled }
         let native = NativeCaskManager()
-        if package.nativeCaskInstallation != nil || kind == .adopt {
+        if usesNativeManagement(package) || kind == .adopt {
             try await native.perform(kind, package: package, onProgress: onProgress)
             return
         }

@@ -413,12 +413,12 @@ private final class LockedStrings: @unchecked Sendable {
     #expect(survivingGum?.binaryPath == "/Users/test/.pkgx/charm.sh/gum/v1.0.0/bin/gum")
 }
 
-@Test func nativeHostSingleAndBulkActionsRespectPreference() {
+@Test(arguments: [false, true]) func nativeHostSingleAndBulkActionsRespectPreference(receipted: Bool) {
     let receipt = NativeCaskInstallation(token: "example", version: "1", appPath: "/Applications/Example.app",
         bundleIdentifier: "com.example.app", teamIdentifier: "TEAM", shortVersion: "1", bundleVersion: "1")
     let native = ManagedPackage(manager: .macApp, identifier: "mac-app:com.example.app", catalogIdentifier: "brew:cask:example",
         installedVersion: "1", latestVersion: "2", installLocation: receipt.appPath, bundleIdentifier: receipt.bundleIdentifier,
-        appProvenance: .direct, nativeCaskInstallation: receipt)
+        appProvenance: .direct, nativeCaskInstallation: receipted ? receipt : nil)
     let brew = ManagedPackage(manager: .homebrew, identifier: "brew:cask:another", installedVersion: "1", latestVersion: "2")
     for enabled in [false, true] {
         let snapshot = PackageHostSnapshot(inventory: PackageInventory(packages: [native, brew]), nativeCaskManagementEnabled: enabled)

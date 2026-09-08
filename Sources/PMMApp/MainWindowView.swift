@@ -467,7 +467,7 @@ struct MainWindowDossierView: View {
                 if let package = model.selectedPackage {
                     VStack(alignment: .leading, spacing: 20) {
                         DossierHeader(package: package)
-                        if package.nativeCaskInstallation != nil {
+                        if model.isManagedByPMM(package) {
                             Label("Managed by PMM", systemImage: "shippingbox")
                                 .font(.callout).foregroundStyle(.secondary)
                         }
@@ -476,10 +476,6 @@ struct MainWindowDossierView: View {
                         }
                         if let message = model.nativeCaskMessage(package) {
                             Text(message).font(.callout).foregroundStyle(.secondary)
-                        }
-                        if model.canAdopt(package) {
-                            Button("Manage with PMM…") { model.pendingNativeAdoption = package }
-                                .disabled(isPackageActionRunning)
                         }
                         if model.canInstall(package) && !model.isLoadingNativeRecipe(package) {
                             Button {
@@ -514,7 +510,7 @@ struct MainWindowDossierView: View {
                             .buttonStyle(.borderedProminent)
                             .controlSize(.large)
                             .tint(.red)
-                            .disabled(isPackageActionRunning)
+                            .disabled(isPackageActionRunning || (PackageActions.canAdopt(package) && model.isLoadingNativeRecipe(package)))
                         }
                         if model.isReadOnlySystemPackage(package) {
                             Label("Read-only: passwordless sudo is unavailable on this host.", systemImage: "lock")
@@ -547,15 +543,6 @@ struct MainWindowDossierView: View {
         .background((colorScheme == .dark ? Color.black.opacity(0.08) : Color.white.opacity(0.1)))
         .task(id: "\(model.selectedPackage?.id ?? ""):\(model.nativeCaskManagementEnabled):\(model.nativeRecipeRefreshID)") {
             if let package = model.selectedPackage { await model.loadNativeCaskRecipe(for: package) }
-        }
-        .confirmationDialog("Manage this app with PMM?", isPresented: Binding(
-            get: { model.pendingNativeAdoption != nil },
-            set: { if !$0 { model.pendingNativeAdoption = nil } }
-        ), titleVisibility: .visible) {
-            Button("Manage with PMM") { model.confirmNativeAdoption() }
-            Button("Cancel", role: .cancel) { model.pendingNativeAdoption = nil }
-        } message: {
-            Text("PMM will update and remove \(model.pendingNativeAdoption?.displayName ?? "this app") at \(model.pendingNativeAdoption?.installLocation ?? ""). It will preserve application data.")
         }
     }
 

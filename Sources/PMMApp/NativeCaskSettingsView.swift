@@ -15,7 +15,7 @@ struct NativeCaskSettingsView: View {
             } else {
                 Toggle("Manage apps without Homebrew", isOn: Binding(get: { enabled }, set: save))
                     .disabled(isSaving)
-                Text("Install, update, and remove supported apps directly with PMM. Existing Homebrew installs stay managed by Homebrew. Turning this off keeps PMM apps visible as read-only.")
+                Text("Install apps and manage recognized direct-download apps automatically with PMM. Existing Homebrew installs stay managed by Homebrew. Turning this off keeps PMM apps visible as read-only.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 if isSaving { ProgressView("Saving…") }

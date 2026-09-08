@@ -100,10 +100,11 @@ SHA-256 checksum. It checks the app’s signature and Gatekeeper assessment, and
 omits optional CLI shortcuts. Casks requiring installers, scripts, dependencies,
 or additional uninstall actions still need Homebrew.
 
-Use **Manage with PMM…** to adopt a compatible direct-download app. Updates keep
-its location; uninstall moves the app to Trash and preserves its data. Turning
-the setting off keeps managed apps visible as read-only. Remote updates and
-removals require the setting on both Macs; install and adopt on each Mac locally.
+Enabling the setting also allows updates and removal of recognized, compatible
+direct-download apps without a separate adoption step. Updates keep their
+location; uninstall moves the app to Trash and preserves its data. Turning the
+setting off keeps managed apps visible as read-only. Remote updates and
+removals require the setting on both Macs; new installs remain local to each Mac.
 
 ## Updating and Removing
 

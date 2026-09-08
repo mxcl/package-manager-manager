@@ -141,7 +141,7 @@ public struct NativeCaskManager: Sendable {
         }
         guard let token = Self.token(for: package) else { throw NativeCaskError("This app has no associated cask.") }
         onProgress?(.started(command: "PMM \(kind.rawValue) \(token)"))
-        if kind == .uninstall {
+        if kind == .uninstall, package.nativeCaskInstallation != nil {
             try await nativeCaskWork { try uninstall(package) }
             onProgress?(.output("Moved app to Trash. Application data was preserved.\n"))
             return
@@ -156,16 +156,24 @@ public struct NativeCaskManager: Sendable {
         try await nativeCaskWork {
             for id in recipe.quitBundleIdentifiers { try requireClosed(id) }
         }
+        let adopted = try await nativeCaskWork { () throws -> NativeCaskInstallation? in
+            guard kind == .adopt || ((kind == .update || kind == .uninstall) && PackageActions.canAdopt(package)) else { return nil }
+            return try adopt(package, recipe: recipe, inventory: inventory, database: database)
+        }
         if kind == .adopt {
-            try await nativeCaskWork { try adopt(package, recipe: recipe, inventory: inventory, database: database) }
             onProgress?(.output("This app is now managed by PMM.\n"))
             return
         }
+        if kind == .uninstall {
+            try await nativeCaskWork { try uninstall(package, installation: adopted) }
+            onProgress?(.output("Moved app to Trash. Application data was preserved.\n"))
+            return
+        }
         let previous = try await nativeCaskWork { () throws -> NativeCaskInstallation? in
-            if kind == .update { return try owned(package) }
+            if kind == .update { return try owned(package, installation: adopted) }
             guard kind == .install, package.installedVersion == nil,
                   !inventory.packages.contains(where: { Self.token(for: $0) == token }) else {
-                throw NativeCaskError("This app is already installed. Adopt it explicitly to manage it with PMM.")
+                throw NativeCaskError("This app is already installed. Use Update to manage it with PMM.")
             }
             return nil
         }
@@ -242,8 +250,10 @@ public struct NativeCaskManager: Sendable {
         return a.count > b.count
     }
 
+    func managementEnabled() -> Bool { preferences.load().nativeCaskManagementEnabled }
+
     private func requireEnabled() throws {
-        guard preferences.load().nativeCaskManagementEnabled else { throw NativeCaskError("Enable “Manage apps without Homebrew” in Settings first.") }
+        guard managementEnabled() else { throw NativeCaskError("Enable “Manage apps without Homebrew” in Settings first.") }
     }
 
     @discardableResult
@@ -329,8 +339,8 @@ public struct NativeCaskManager: Sendable {
         }
     }
 
-    private func owned(_ package: ManagedPackage) throws -> NativeCaskInstallation {
-        guard let expected = package.nativeCaskInstallation,
+    private func owned(_ package: ManagedPackage, installation: NativeCaskInstallation? = nil) throws -> NativeCaskInstallation {
+        guard let expected = installation ?? package.nativeCaskInstallation,
               let receipt = try store.load()[expected.token], receipt == expected,
               package.installLocation == receipt.appPath, package.bundleIdentifier == receipt.bundleIdentifier else {
             throw NativeCaskError("This app is not owned by PMM, or its installation changed. Refresh and try again.")
@@ -344,13 +354,14 @@ public struct NativeCaskManager: Sendable {
         return receipt
     }
 
-    func adopt(_ package: ManagedPackage, recipe: NativeCaskRecipe, inventory: PackageInventory, database: PackageDatabase) throws {
+    @discardableResult
+    func adopt(_ package: ManagedPackage, recipe: NativeCaskRecipe, inventory: PackageInventory, database: PackageDatabase) throws -> NativeCaskInstallation {
         try requireEnabled()
         guard package.manager == .macApp, package.appProvenance == .direct, package.nativeCaskInstallation == nil,
               let path = package.installLocation, let id = package.bundleIdentifier,
               database.app(for: id)?.cask == recipe.token,
               inventory.packages.filter({ Self.token(for: $0) == recipe.token }).count == 1,
-              inventory.packages.contains(where: { $0.id == package.id && $0.appProvenance == .direct && $0.nativeCaskInstallation == nil }) else {
+              inventory.packages.contains(where: { $0.id == package.id && $0.installLocation == path && $0.bundleIdentifier == id && $0.appProvenance == .direct && $0.nativeCaskInstallation == nil }) else {
             throw NativeCaskError("This app cannot be unambiguously adopted. Refresh and check its installation source.")
         }
         let app = try checkedPath(path)
@@ -361,9 +372,11 @@ public struct NativeCaskManager: Sendable {
         try requireClosed(id)
         var receipts = try store.load()
         guard receipts[recipe.token] == nil else { throw NativeCaskError("PMM already manages an installation of this cask.") }
-        receipts[recipe.token] = NativeCaskInstallation(token: recipe.token, version: identity.short, appPath: app.path,
+        let receipt = NativeCaskInstallation(token: recipe.token, version: identity.short, appPath: app.path,
             bundleIdentifier: id, teamIdentifier: identity.team, shortVersion: identity.short, bundleVersion: identity.build, quitBundleIdentifiers: recipe.quitBundleIdentifiers)
+        receipts[recipe.token] = receipt
         try store.save(receipts)
+        return receipt
     }
 
     func installArchive(_ archive: URL, work: URL, recipe: NativeCaskRecipe, previous: NativeCaskInstallation?,
@@ -481,8 +494,8 @@ public struct NativeCaskManager: Sendable {
         try requireClosed(identity.id)
     }
 
-    func uninstall(_ package: ManagedPackage) throws {
-        let receipt = try owned(package)
+    func uninstall(_ package: ManagedPackage, installation: NativeCaskInstallation? = nil) throws {
+        let receipt = try owned(package, installation: installation)
         try requireEnabled()
         var receipts = try store.load()
         try FileManager.default.trashItem(at: URL(fileURLWithPath: receipt.appPath), resultingItemURL: nil)

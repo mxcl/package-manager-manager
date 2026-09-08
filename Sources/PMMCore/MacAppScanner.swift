@@ -15,6 +15,7 @@ struct MacAppScanner: @unchecked Sendable {
     var nativeManager: NativeCaskManager? = nil
 
     func scan(database: PackageDatabase, mode: PackageScanMode) async throws -> [ManagedPackage] {
+        let nativeEnabled = try await nativeCaskWork { (nativeManager ?? NativeCaskManager()).managementEnabled() }
         let discovered = try await discover(database: database)
         var cache = MacAppVersionCache.load(from: cacheURL)
 
@@ -39,7 +40,8 @@ struct MacAppScanner: @unchecked Sendable {
                             package,
                             database: database,
                             cached: cachedRecords[package.id],
-                            ignoresCache: mode.ignoresCache
+                            ignoresCache: mode.ignoresCache,
+                            nativeEnabled: nativeEnabled
                         )
                     }
                 }
@@ -176,30 +178,35 @@ struct MacAppScanner: @unchecked Sendable {
         _ package: ManagedPackage,
         database: PackageDatabase,
         cached: MacAppVersionCacheRecord?,
-        ignoresCache: Bool
+        ignoresCache: Bool,
+        nativeEnabled: Bool
     ) async -> MacAppCheckResult {
         let catalog = package.bundleIdentifier.flatMap(database.app)
-        if !ignoresCache, let cached, (package.nativeCaskInstallation == nil || cached.source == .homebrewCask), now().timeIntervalSince(cached.checkedAt) < Self.cacheLifetime {
+        let automaticManagement = nativeEnabled && PackageActions.canAdopt(package)
+        if !automaticManagement, !ignoresCache, let cached, (package.nativeCaskInstallation == nil || cached.source == .homebrewCask), now().timeIntervalSince(cached.checkedAt) < Self.cacheLifetime {
             return MacAppCheckResult(package: package.applying(cached, catalog: catalog), record: cached)
         }
 
         do {
-            let record = try await freshVersion(for: package, catalog: catalog)
+            let record = try await freshVersion(for: package, catalog: catalog, nativeEnabled: nativeEnabled)
             return MacAppCheckResult(
                 package: package.applying(record ?? cached, catalog: catalog),
                 record: record ?? cached
             )
         } catch {
+            if automaticManagement { return MacAppCheckResult(package: package, record: nil) }
             return MacAppCheckResult(package: package.applying(cached, catalog: catalog), record: cached)
         }
     }
 
     private func freshVersion(
         for package: ManagedPackage,
-        catalog: MacAppCatalogEntry?
+        catalog: MacAppCatalogEntry?,
+        nativeEnabled: Bool
     ) async throws -> MacAppVersionCacheRecord? {
-        if let native = package.nativeCaskInstallation {
-            let recipe = try await (nativeManager ?? NativeCaskManager(session: session)).recipe(for: native.token)
+        if package.nativeCaskInstallation != nil || (nativeEnabled && PackageActions.canAdopt(package)),
+           let token = NativeCaskManager.token(for: package) {
+            let recipe = try await (nativeManager ?? NativeCaskManager(session: session)).recipe(for: token)
             return MacAppVersionCacheRecord(displayVersion: recipe.version, comparisonVersion: recipe.version,
                 source: .homebrewCask, advisoryURL: package.advisoryURL, checkedAt: now())
         }
@@ -350,7 +357,7 @@ private extension ManagedPackage {
     func applying(_ record: MacAppVersionCacheRecord?, catalog: MacAppCatalogEntry?) -> ManagedPackage {
         guard let record else { return self }
         let installedComparison = record.source == .sparkle ? bundleVersion : installedVersion
-        let isNewer = nativeCaskInstallation != nil
+        let isNewer = record.source == .homebrewCask && PackageActions.usesNativeManagement(self)
             ? NativeCaskManager.isNewer(record.comparisonVersion, than: installedComparison ?? "")
             : numericVersionComparison(installedComparison, record.comparisonVersion) == .orderedAscending
         let latest = isNewer

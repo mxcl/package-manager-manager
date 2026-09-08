@@ -147,7 +147,7 @@ private struct CaskFixture {
     }
 }
 
-@Test func nativeAdoptionRequiresExplicitUnambiguousDirectApp() async throws {
+@Test func nativeAdoptionRequiresUnambiguousDirectApp() async throws {
     let fixture = try CaskFixture()
     defer { fixture.clean() }
     try await fixture.preferences.setNativeCaskManagementEnabled(true)
@@ -229,5 +229,59 @@ private struct CaskFixture {
         let fd = try first.lock()
         defer { close(fd) }
         #expect(throws: NativeCaskError.self) { try NativeCaskStore(directory: fixture.state).lock() }
+    }
+}
+
+private final class AutomaticCaskProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let json = """
+        {"token":"example","tap":"homebrew/cask","version":"1.0","url":"https://example.com/app.zip",
+         "sha256":"\(String(repeating: "0", count: 64))","artifacts":[{"app":["Example.app"]}]}
+        """
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(json.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+
+@Test(arguments: [PackageHostActionKind.update, .uninstall])
+func nativeActionsAutomaticallyAdoptRecognizedApps(kind: PackageHostActionKind) async throws {
+    let fixture = try CaskFixture()
+    defer { fixture.clean() }
+    let app = try await nativeCaskWork { try fixture.app(version: "1.0", in: fixture.apps) }
+    let package = ManagedPackage(manager: .macApp, identifier: "mac-app:com.example.native-test", catalogIdentifier: "brew:cask:example",
+        installedVersion: "1.0", latestVersion: "2.0", installLocation: app.path, bundleIdentifier: "com.example.native-test", appProvenance: .direct)
+    let database = PackageDatabase(apps: ["com.example.native-test": MacAppCatalogEntry(bundleIdentifier: "com.example.native-test", cask: "example", version: "99.0")])
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [AutomaticCaskProtocol.self]
+    let session = URLSession(configuration: config)
+    defer { session.invalidateAndCancel() }
+    let manager = NativeCaskManager(runner: fixture.runner, session: session, directory: fixture.state, preferences: fixture.preferences,
+        applicationDirectories: [fixture.apps], homebrewExecutable: { nil }, isAppRunning: { _ in false },
+        loadDatabase: { database }, scanApps: { _ in PackageInventory(packages: [package]) })
+    await #expect(throws: NativeCaskError.self) { try await manager.perform(kind, package: package) }
+    #expect(try NativeCaskStore(directory: fixture.state).load().isEmpty)
+    try await fixture.preferences.setNativeCaskManagementEnabled(true)
+    let scanner = MacAppScanner(runner: fixture.runner, fileManager: .default, applicationDirectories: [fixture.apps],
+        brew: nil, mdls: "/usr/bin/mdls", session: session, cacheURL: fixture.state.appendingPathComponent("versions.json"),
+        now: { Date() }, storefrontCountry: "US", nativeManager: manager)
+    let discovered = try await scanner.scan(database: database, mode: .fresh)
+    #expect(discovered.count == 1)
+    #expect(discovered.first?.nativeCaskInstallation == nil)
+    #expect(discovered.first?.versionSource == .homebrewCask)
+    #expect(discovered.first?.isOutdated == false) // Uses the compatible recipe, not catalog version 99.
+    try await manager.perform(kind, package: package)
+    if kind == .uninstall {
+        #expect(!FileManager.default.fileExists(atPath: app.path))
+        #expect(try NativeCaskStore(directory: fixture.state).load().isEmpty)
+    } else {
+        let receipt = try #require(NativeCaskStore(directory: fixture.state).load()["example"])
+        #expect(receipt.appPath == app.path)
+        #expect(receipt.bundleIdentifier == package.bundleIdentifier)
+        // The API says it is already current; ownership is established without replacing it.
+        #expect(receipt.version == "1.0")
     }
 }

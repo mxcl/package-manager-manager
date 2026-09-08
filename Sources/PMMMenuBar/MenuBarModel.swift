@@ -271,7 +271,7 @@ func menuBarSnapshot(
             packages.append(package.withInstalledVersion(package.latestVersion))
         }
     case .update:
-        if package.nativeCaskInstallation != nil { return snapshot }
+        if PackageActions.usesNativeManagement(package) { return snapshot }
         guard let latestVersion = package.latestVersion,
               let index = packages.firstIndex(where: { $0.id == package.id }) else { return snapshot }
         if package.manager == .pkgx {

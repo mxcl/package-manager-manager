@@ -566,7 +566,6 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var homebrewAvailable: Bool?
     @Published private(set) var nativeCaskRecipes: [String: Result<NativeCaskRecipe, NativeCaskError>] = [:]
     @Published private(set) var nativeRecipeRefreshID = UUID()
-    @Published var pendingNativeAdoption: ManagedPackage?
     @Published var showsHostManagement = false
     @Published private(set) var packages: [ManagedPackage] = []
     @Published private(set) var selectedPackage: ManagedPackage?
@@ -1189,7 +1188,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     func updateAllOutdatedPackages() {
         guard canUpdateAllOutdatedPackages else { return }
         if let host = selectedRemoteHost {
-            if hasMultipleSelectedPackages || selectedRemoteState?.inventory?.packages.contains(where: { $0.nativeCaskInstallation != nil }) == true {
+            if hasMultipleSelectedPackages || selectedRemoteState?.inventory?.packages.contains(where: { PackageActions.usesNativeManagement($0) }) == true {
                 runRemoteAction(.updateSelected(packagesToUpdate), package: nil, host: host)
                 return
             }
@@ -1204,7 +1203,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     func confirmRemoteUninstall() {
         guard let confirmation = pendingRemoteUninstall else { return }
         pendingRemoteUninstall = nil
-        guard confirmation.package.nativeCaskInstallation == nil || nativeActionsEnabled else { return }
+        guard !PackageActions.usesNativeManagement(confirmation.package) || nativeActionsEnabled else { return }
         runRemoteAction(.uninstall, package: confirmation.package, host: confirmation.host)
     }
 
@@ -1267,7 +1266,7 @@ final class MainWindowModel: NSObject, ObservableObject {
                     var nativeCapability = remoteHostStates[host.id]?.nativeCaskManagementEnabled
                     for package in packages {
                         try Task.checkCancellation()
-                        guard package.nativeCaskInstallation == nil || nativeCaskManagementEnabled else { continue }
+                        guard !PackageActions.usesNativeManagement(package) || nativeCaskManagementEnabled else { continue }
                         do {
                             let result = try await remoteClient.update(package, on: host, onProgress: progress)
                             inventory = result.inventory
@@ -1417,16 +1416,12 @@ final class MainWindowModel: NSObject, ObservableObject {
         return nil
     }
 
-    func canAdopt(_ package: ManagedPackage) -> Bool {
-        guard !isRemoteSelection, nativeCaskManagementEnabled, PackageActions.canAdopt(package),
-              let token = NativeCaskManager.token(for: package), case .success = nativeCaskRecipes[token] else { return false }
-        return packages.filter { NativeCaskManager.token(for: $0) == token }.count == 1
-    }
-
-    func confirmNativeAdoption() {
-        guard let package = pendingNativeAdoption, canAdopt(package), !isPackageActionRunning else { return }
-        pendingNativeAdoption = nil
-        if usesPackageHostNotifications { PackageHostNotifications.postAdoptRequested(packageID: package.id) }
+    func isManagedByPMM(_ package: ManagedPackage) -> Bool {
+        if package.nativeCaskInstallation != nil { return true }
+        guard nativeActionsEnabled, PackageActions.canAdopt(package) else { return false }
+        if isRemoteSelection { return true }
+        guard let token = NativeCaskManager.token(for: package), case .success = nativeCaskRecipes[token] else { return false }
+        return true
     }
 
     private var nativeActionsEnabled: Bool {
@@ -1446,7 +1441,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func canUpdate(_ package: ManagedPackage) -> Bool {
-        if package.nativeCaskInstallation != nil, !isRemoteSelection,
+        if PackageActions.usesNativeManagement(package), !isRemoteSelection,
            let token = NativeCaskManager.token(for: package), case .failure = nativeCaskRecipes[token] { return false }
         guard PackageActions.canUpdate(package, nativeEnabled: nativeActionsEnabled) else { return false }
         guard package.manager.isLinuxSystem else { return true }
@@ -1455,6 +1450,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func canUninstall(_ package: ManagedPackage) -> Bool {
+        if PackageActions.canAdopt(package), !isRemoteSelection,
+           let token = NativeCaskManager.token(for: package), case .failure = nativeCaskRecipes[token] { return false }
         guard PackageActions.canUninstall(package, nativeEnabled: nativeActionsEnabled) else { return false }
         guard package.manager.isLinuxSystem else { return true }
         return selectedRemoteState?.systemPackageManager == package.manager
