@@ -565,6 +565,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var nativePreferencesAreLoading = true
     @Published private(set) var homebrewAvailable: Bool?
     @Published private(set) var nativeCaskRecipes: [String: Result<NativeCaskRecipe, NativeCaskError>] = [:]
+    @Published private(set) var nativeRecipeRefreshID = UUID()
     @Published var pendingNativeAdoption: ManagedPackage?
     @Published var showsHostManagement = false
     @Published private(set) var packages: [ManagedPackage] = []
@@ -617,6 +618,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     private var newUpdatedSelectionDisplayCount: Int?
     private let userDefaults: UserDefaults
     private let preferencesStore: PackagePreferencesStore
+    private let nativeRecipeLoader: @Sendable (String) async throws -> NativeCaskRecipe
+    private var nativePreferencesGeneration = 0
     /// Injectable so tests can drive detection's timing; shells out in production.
     private let detectCargoSetup: @Sendable (PackagePreferences) -> CargoSetupState
     private let store: PackageHostStore
@@ -648,10 +651,12 @@ final class MainWindowModel: NSObject, ObservableObject {
         remoteClient: RemoteSSHClient = RemoteSSHClient(),
         usesPackageHostNotifications: Bool = true,
         preferencesStore: PackagePreferencesStore = PackagePreferencesStore(),
+        nativeRecipeLoader: @escaping @Sendable (String) async throws -> NativeCaskRecipe = { try await NativeCaskManager().recipe(for: $0) },
         detectCargoSetup: @escaping @Sendable (PackagePreferences) -> CargoSetupState
             = { CargoSetupState.detect(preferences: $0) }
     ) {
         self.preferencesStore = preferencesStore
+        self.nativeRecipeLoader = nativeRecipeLoader
         self.detectCargoSetup = detectCargoSetup
         self.userDefaults = userDefaults
         newUpdatedLastClickedAt = userDefaults.object(forKey: Self.newUpdatedLastClickedAtDefaultsKey) as? Date
@@ -665,7 +670,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         super.init()
         if usesPackageHostNotifications {
             notificationCenter.addObserver(self, selector: #selector(nativePreferencesChanged(_:)), name: PackageHostNotifications.preferencesChanged, object: nil)
-            reloadNativePreferences()
+            Task { [weak self] in await self?.reloadNativePreferences() }
         } else { nativePreferencesAreLoading = false }
 #if DEBUG
         let isTerminalDemo = ProcessInfo.processInfo.environment["PMM_TERMINAL_DEMO"] == "1"
@@ -842,6 +847,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func reload() {
+        nativeCaskRecipes = [:]
+        nativeRecipeRefreshID = UUID()
         if usesPackageHostNotifications { PackageHostNotifications.postRefreshRequested() }
         reloadRemoteHosts(ignoringAppCache: true)
     }
@@ -1182,7 +1189,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     func updateAllOutdatedPackages() {
         guard canUpdateAllOutdatedPackages else { return }
         if let host = selectedRemoteHost {
-            if hasMultipleSelectedPackages {
+            if hasMultipleSelectedPackages || selectedRemoteState?.inventory?.packages.contains(where: { $0.nativeCaskInstallation != nil }) == true {
                 runRemoteAction(.updateSelected(packagesToUpdate), package: nil, host: host)
                 return
             }
@@ -1197,6 +1204,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     func confirmRemoteUninstall() {
         guard let confirmation = pendingRemoteUninstall else { return }
         pendingRemoteUninstall = nil
+        guard confirmation.package.nativeCaskInstallation == nil || nativeActionsEnabled else { return }
         runRemoteAction(.uninstall, package: confirmation.package, host: confirmation.host)
     }
 
@@ -1256,11 +1264,14 @@ final class MainWindowModel: NSObject, ObservableObject {
                 case .updateSelected(let packages):
                     var inventory = remoteHostStates[host.id]?.inventory ?? PackageInventory(packages: [])
                     var failures: [RemoteControlFailure] = []
+                    var nativeCapability = remoteHostStates[host.id]?.nativeCaskManagementEnabled
                     for package in packages {
                         try Task.checkCancellation()
+                        guard package.nativeCaskInstallation == nil || nativeCaskManagementEnabled else { continue }
                         do {
                             let result = try await remoteClient.update(package, on: host, onProgress: progress)
                             inventory = result.inventory
+                            nativeCapability = result.nativeCaskManagementEnabled
                             failures += result.failures
                         } catch is CancellationError {
                             throw CancellationError()
@@ -1268,7 +1279,7 @@ final class MainWindowModel: NSObject, ObservableObject {
                             failures.append(RemoteControlFailure(packageID: package.id, message: "\(package.displayName): \(error.localizedDescription)"))
                         }
                     }
-                    response = RemoteControlResponse(inventory: inventory, failures: failures)
+                    response = RemoteControlResponse(inventory: inventory, failures: failures, nativeCaskManagementEnabled: nativeCapability)
                 }
                 let previousState = remoteHostStates[host.id]
                 remoteHostStates[host.id] = RemoteHostState(
@@ -1360,22 +1371,30 @@ final class MainWindowModel: NSObject, ObservableObject {
         pendingInstallPackConfirmation = nil
     }
 
-    @objc private func nativePreferencesChanged(_ notification: Notification) { reloadNativePreferences() }
+    @objc private func nativePreferencesChanged(_ notification: Notification) {
+        Task { [weak self] in await self?.reloadNativePreferences() }
+    }
 
-    func reloadNativePreferences() {
-        Task { [weak self, preferencesStore] in
-            let value = await Task.detached { preferencesStore.load().nativeCaskManagementEnabled }.value
-            guard let self else { return }
-            nativeCaskManagementEnabled = value
-            nativePreferencesAreLoading = false
-        }
+    func reloadNativePreferences() async {
+        nativePreferencesGeneration += 1
+        let generation = nativePreferencesGeneration
+        let value = await Task.detached { [preferencesStore] in preferencesStore.load().nativeCaskManagementEnabled }.value
+        guard generation == nativePreferencesGeneration else { return }
+        nativeCaskManagementEnabled = value
+        nativePreferencesAreLoading = false
     }
 
     func loadNativeCaskRecipe(for package: ManagedPackage) async {
         guard nativeCaskManagementEnabled, !isRemoteSelection, let token = NativeCaskManager.token(for: package),
               nativeCaskRecipes[token] == nil else { return }
-        do { nativeCaskRecipes[token] = .success(try await NativeCaskManager().recipe(for: token)) }
-        catch { nativeCaskRecipes[token] = .failure(NativeCaskError(error.localizedDescription)) }
+        do {
+            let recipe = try await nativeRecipeLoader(token)
+            guard !Task.isCancelled else { return }
+            nativeCaskRecipes[token] = .success(recipe)
+        } catch {
+            guard !Task.isCancelled else { return }
+            nativeCaskRecipes[token] = .failure(NativeCaskError(error.localizedDescription))
+        }
     }
 
     func isLoadingNativeRecipe(_ package: ManagedPackage) -> Bool {
@@ -1427,6 +1446,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func canUpdate(_ package: ManagedPackage) -> Bool {
+        if package.nativeCaskInstallation != nil, !isRemoteSelection,
+           let token = NativeCaskManager.token(for: package), case .failure = nativeCaskRecipes[token] { return false }
         guard PackageActions.canUpdate(package, nativeEnabled: nativeActionsEnabled) else { return false }
         guard package.manager.isLinuxSystem else { return true }
         return selectedRemoteState?.systemPackageManager == package.manager
@@ -1967,7 +1988,8 @@ struct PackageIndex: Sendable {
             displayName: catalogPackage.displayName,
             installedVersion: installedPackage.installedVersion,
             installedVersions: installedPackage.installedVersions,
-            latestVersion: catalogPackage.latestVersion ?? installedPackage.latestVersion,
+            latestVersion: installedPackage.nativeCaskInstallation != nil
+                ? installedPackage.latestVersion : catalogPackage.latestVersion ?? installedPackage.latestVersion,
             summary: catalogPackage.summary ?? installedPackage.summary,
             category: catalogPackage.category ?? installedPackage.category,
             homepage: catalogPackage.homepage ?? installedPackage.homepage,

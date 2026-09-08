@@ -12,6 +12,7 @@ struct MacAppScanner: @unchecked Sendable {
     let cacheURL: URL
     let now: @Sendable () -> Date
     let storefrontCountry: String
+    var nativeManager: NativeCaskManager? = nil
 
     func scan(database: PackageDatabase, mode: PackageScanMode) async throws -> [ManagedPackage] {
         let discovered = try await discover(database: database)
@@ -19,7 +20,9 @@ struct MacAppScanner: @unchecked Sendable {
 
         if mode == .local {
             return discovered.map { package in
-                cache.records[package.id].map { package.applying($0, catalog: database.app(for: package.bundleIdentifier ?? "")) }
+                cache.records[package.id].flatMap { record in
+                    package.nativeCaskInstallation != nil && record.source != .homebrewCask ? nil : record
+                }.map { package.applying($0, catalog: database.app(for: package.bundleIdentifier ?? "")) }
                     ?? package
             }
         }
@@ -70,7 +73,8 @@ struct MacAppScanner: @unchecked Sendable {
 
     private func discoverSynchronously(database: PackageDatabase) throws -> [ManagedPackage] {
         let homebrewPaths = installedHomebrewAppPaths()
-        let nativeManager = NativeCaskManager(runner: runner, session: session)
+        let nativeManager = nativeManager ?? NativeCaskManager(runner: runner, session: session,
+            directory: cacheURL.deletingLastPathComponent(), applicationDirectories: applicationDirectories)
         let nativeReceipts = try nativeManager.installations()
         var seenPaths = Set<String>()
         var packages = [ManagedPackage]()
@@ -175,7 +179,7 @@ struct MacAppScanner: @unchecked Sendable {
         ignoresCache: Bool
     ) async -> MacAppCheckResult {
         let catalog = package.bundleIdentifier.flatMap(database.app)
-        if !ignoresCache, let cached, now().timeIntervalSince(cached.checkedAt) < Self.cacheLifetime {
+        if !ignoresCache, let cached, (package.nativeCaskInstallation == nil || cached.source == .homebrewCask), now().timeIntervalSince(cached.checkedAt) < Self.cacheLifetime {
             return MacAppCheckResult(package: package.applying(cached, catalog: catalog), record: cached)
         }
 
@@ -195,7 +199,7 @@ struct MacAppScanner: @unchecked Sendable {
         catalog: MacAppCatalogEntry?
     ) async throws -> MacAppVersionCacheRecord? {
         if let native = package.nativeCaskInstallation {
-            let recipe = try await NativeCaskManager(session: session).recipe(for: native.token)
+            let recipe = try await (nativeManager ?? NativeCaskManager(session: session)).recipe(for: native.token)
             return MacAppVersionCacheRecord(displayVersion: recipe.version, comparisonVersion: recipe.version,
                 source: .homebrewCask, advisoryURL: package.advisoryURL, checkedAt: now())
         }

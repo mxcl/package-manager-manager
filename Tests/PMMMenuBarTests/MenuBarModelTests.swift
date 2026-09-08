@@ -412,3 +412,21 @@ private final class LockedStrings: @unchecked Sendable {
     #expect(survivingGum?.installLocation == "/Users/test/.pkgx/charm.sh/gum/v1.0.0")
     #expect(survivingGum?.binaryPath == "/Users/test/.pkgx/charm.sh/gum/v1.0.0/bin/gum")
 }
+
+@Test func nativeHostSingleAndBulkActionsRespectPreference() {
+    let receipt = NativeCaskInstallation(token: "example", version: "1", appPath: "/Applications/Example.app",
+        bundleIdentifier: "com.example.app", teamIdentifier: "TEAM", shortVersion: "1", bundleVersion: "1")
+    let native = ManagedPackage(manager: .macApp, identifier: "mac-app:com.example.app", catalogIdentifier: "brew:cask:example",
+        installedVersion: "1", latestVersion: "2", installLocation: receipt.appPath, bundleIdentifier: receipt.bundleIdentifier,
+        appProvenance: .direct, nativeCaskInstallation: receipt)
+    let brew = ManagedPackage(manager: .homebrew, identifier: "brew:cask:another", installedVersion: "1", latestVersion: "2")
+    for enabled in [false, true] {
+        let snapshot = PackageHostSnapshot(inventory: PackageInventory(packages: [native, brew]), nativeCaskManagementEnabled: enabled)
+        #expect((menuBarCommandPackage(id: native.id, kind: .update, snapshot: snapshot) != nil) == enabled)
+        #expect((menuBarCommandPackage(id: native.id, kind: .uninstall, snapshot: snapshot) != nil) == enabled)
+        #expect(menuBarCommandUpdateAllPackages(snapshot: snapshot).count == (enabled ? 2 : 1))
+        #expect(menuBarCommandPackage(id: brew.id, kind: .update, snapshot: snapshot) == brew)
+        let state = MenuBarMenuState(inventory: PackageInventory(packages: [native]), nativeCaskManagementEnabled: enabled)
+        #expect(state.statusSymbolName == (enabled ? "shippingbox.fill" : "shippingbox"))
+    }
+}

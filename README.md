@@ -88,6 +88,23 @@ On your local Mac, install packages through Homebrew, npm, pnpm, Bun, pipx, Go,
 or pkgx from a package’s detail pane. The corresponding package manager must already
 be available. Remote hosts support updates and removals, but not new installs.
 
+## Apps without Homebrew
+
+Enable **Settings… → Manage apps without Homebrew** to install supported casks
+directly with pkg⋅mgr². This setting defaults to off. New apps go into
+`/Applications` when writable, otherwise `~/Applications`. Existing Homebrew
+installs stay with Homebrew.
+
+The native installer supports one-app DMG and ZIP downloads with a version and
+SHA-256 checksum. It checks the app’s signature and Gatekeeper assessment, and
+omits optional CLI shortcuts. Casks requiring installers, scripts, dependencies,
+or additional uninstall actions still need Homebrew.
+
+Use **Manage with PMM…** to adopt a compatible direct-download app. Updates keep
+its location; uninstall moves the app to Trash and preserves its data. Turning
+the setting off keeps managed apps visible as read-only. Remote updates and
+removals require the setting on both Macs; install and adopt on each Mac locally.
+
 ## Updating and Removing
 
 The detail pane offers update and uninstall actions when pkg⋅mgr² knows the native

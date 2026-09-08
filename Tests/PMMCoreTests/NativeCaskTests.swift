@@ -20,7 +20,14 @@ private func caskJSON(_ changes: [String: Any] = [:]) throws -> Data {
     #expect(intel.sha256 == String(repeating: "b", count: 64))
     let arm = try NativeCaskRecipe.decode(data, token: "example", osMajor: 26, osVersion: "26.0", arm64: true)
     #expect(arm.url.lastPathComponent == "app.zip")
+    let armOnly = try caskJSON(["depends_on": ["arch": [["type": "arm", "bits": 64]]], "url_specs": ["verified": "example.com/"]])
+    #expect(try NativeCaskRecipe.decode(armOnly, token: "example", osMajor: 26, osVersion: "26.0", arm64: true).token == "example")
+    #expect(throws: NativeCaskError.self) {
+        try NativeCaskRecipe.decode(armOnly, token: "example", osMajor: 26, osVersion: "26.0", arm64: false)
+    }
     for change: [String: Any] in [
+        ["depends_on": "invalid"], ["variations": ["tahoe": "invalid"]],
+        ["depends_on": ["maximum_macos": ["<=": ["25"]]]],
         ["sha256": "no_check"], ["version": "latest"], ["disabled": true], ["url": "http://example.com/app.zip"],
         ["depends_on": ["formula": ["node"]]], ["depends_on": ["macos": [">=": ["27"]]]],
         ["depends_on": ["arch": ["x86_64"]]], ["artifacts": [["pkg": ["Example.pkg"]]]],

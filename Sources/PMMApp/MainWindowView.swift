@@ -503,7 +503,7 @@ struct MainWindowDossierView: View {
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(.large)
                                 .tint(SystemColor.orange)
-                                .disabled(isPackageActionRunning)
+                                .disabled(isPackageActionRunning || model.isLoadingNativeRecipe(package))
                             }
                         }
                         if model.canUninstall(package) {
@@ -545,7 +545,7 @@ struct MainWindowDossierView: View {
         .ignoresSafeArea(.container, edges: .top)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background((colorScheme == .dark ? Color.black.opacity(0.08) : Color.white.opacity(0.1)))
-        .task(id: "\(model.selectedPackage?.id ?? ""):\(model.nativeCaskManagementEnabled)") {
+        .task(id: "\(model.selectedPackage?.id ?? ""):\(model.nativeCaskManagementEnabled):\(model.nativeRecipeRefreshID)") {
             if let package = model.selectedPackage { await model.loadNativeCaskRecipe(for: package) }
         }
         .confirmationDialog("Manage this app with PMM?", isPresented: Binding(

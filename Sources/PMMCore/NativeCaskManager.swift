@@ -11,6 +11,19 @@ public struct NativeCaskInstallation: Codable, Equatable, Sendable {
     public let teamIdentifier: String
     public let shortVersion: String
     public let bundleVersion: String
+    public let quitBundleIdentifiers: [String]?
+
+    public init(token: String, version: String, appPath: String, bundleIdentifier: String, teamIdentifier: String,
+                shortVersion: String, bundleVersion: String, quitBundleIdentifiers: [String]? = nil) {
+        self.token = token
+        self.version = version
+        self.appPath = appPath
+        self.bundleIdentifier = bundleIdentifier
+        self.teamIdentifier = teamIdentifier
+        self.shortVersion = shortVersion
+        self.bundleVersion = bundleVersion
+        self.quitBundleIdentifiers = quitBundleIdentifiers
+    }
 }
 
 /// Real shared state, unlike the inventory snapshot. The lock covers both helper and SSH actions.
@@ -68,7 +81,11 @@ public struct NativeCaskManager: Sendable {
     private let store: NativeCaskStore
     private let preferences: PackagePreferencesStore
     private let applicationDirectories: [URL]
+    private let homebrewExecutable: @Sendable () -> String?
+    private let isAppRunning: @Sendable (String) -> Bool
     private let apiURL: URL
+    private let loadDatabase: @Sendable () async -> PackageDatabase
+    private let scanApps: @Sendable (PackageDatabase) async throws -> PackageInventory
     private static let downloadSession: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 60
@@ -79,13 +96,21 @@ public struct NativeCaskManager: Sendable {
     public init(runner: CommandRunning = SystemCommandRunner(), session: URLSession? = nil,
                 directory: URL = PackageHostStore.defaultDirectory(), preferences: PackagePreferencesStore = PackagePreferencesStore(),
                 applicationDirectories: [URL] = [URL(fileURLWithPath: "/Applications"), FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications")],
-                apiURL: URL = URL(string: "https://formulae.brew.sh/api/cask/")!) {
+                apiURL: URL = URL(string: "https://formulae.brew.sh/api/cask/")!,
+                homebrewExecutable: @escaping @Sendable () -> String? = { firstExecutable(named: "brew") },
+                isAppRunning: @escaping @Sendable (String) -> Bool = { !NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty },
+                loadDatabase: @escaping @Sendable () async -> PackageDatabase = { await PackageDatabase.load() },
+                scanApps: @escaping @Sendable (PackageDatabase) async throws -> PackageInventory = { try await NativeCaskManager.scanApps(database: $0) }) {
         self.runner = runner
         self.session = session ?? Self.downloadSession
         self.store = NativeCaskStore(directory: directory)
         self.preferences = preferences
         self.applicationDirectories = applicationDirectories
+        self.homebrewExecutable = homebrewExecutable
+        self.isAppRunning = isAppRunning
         self.apiURL = apiURL
+        self.loadDatabase = loadDatabase
+        self.scanApps = scanApps
     }
 
     public static func token(for package: ManagedPackage) -> String? {
@@ -106,10 +131,12 @@ public struct NativeCaskManager: Sendable {
 
     public func perform(_ kind: PackageHostActionKind, package: ManagedPackage,
                         onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) async throws {
+        try Task.checkCancellation()
         let fd = try await nativeCaskWork { try store.lock() }
         defer { flock(fd, LOCK_UN); close(fd) }
         try await nativeCaskWork {
             try recover()
+            try reconcileMissingInstallations()
             try requireEnabled()
         }
         guard let token = Self.token(for: package) else { throw NativeCaskError("This app has no associated cask.") }
@@ -121,10 +148,14 @@ public struct NativeCaskManager: Sendable {
         }
         onProgress?(.output("Checking cask compatibility…\n"))
         let recipe = try await recipe(for: token)
+        try Task.checkCancellation()
         // Re-scan ownership at the execution boundary; notification payloads are not authority.
-        let database = await PackageDatabase.load()
-        let inventory = await PackageScanner().inventory(database: database, mode: .local)
-        try Self.checkConflicts(recipe, packages: inventory.packages, replacing: package)
+        let database = await loadDatabase()
+        let inventory = try await scanApps(database)
+        try Self.checkConflicts(recipe, packages: inventory.packages)
+        try await nativeCaskWork {
+            for id in recipe.quitBundleIdentifiers { try requireClosed(id) }
+        }
         if kind == .adopt {
             try await nativeCaskWork { try adopt(package, recipe: recipe, inventory: inventory, database: database) }
             onProgress?(.output("This app is now managed by PMM.\n"))
@@ -151,7 +182,12 @@ public struct NativeCaskManager: Sendable {
             onProgress?(.output("Downloading \(recipe.url.lastPathComponent)…\n"))
             let (download, response) = try await session.download(from: recipe.url)
             guard let response = response as? HTTPURLResponse, response.statusCode == 200, response.url?.scheme == "https" else {
+                try? await nativeCaskWork { try FileManager.default.removeItem(at: download) }
                 throw NativeCaskError("The app download failed.")
+            }
+            if Task.isCancelled {
+                try? await nativeCaskWork { try FileManager.default.removeItem(at: download) }
+                throw CancellationError()
             }
             let archive = work.appendingPathComponent("download")
             try await nativeCaskWork {
@@ -169,7 +205,27 @@ public struct NativeCaskManager: Sendable {
         }
     }
 
-    static func checkConflicts(_ recipe: NativeCaskRecipe, packages: [ManagedPackage], replacing: ManagedPackage) throws {
+    public static func scanApps(database: PackageDatabase) async throws -> PackageInventory {
+        // A failed brew inventory cannot be treated as proof that a direct app is unowned.
+        try await nativeCaskWork {
+            if let brew = firstExecutable(named: "brew") {
+                let result = try SystemCommandRunner().run(brew, ["info", "--json=v2", "--installed"],
+                    options: CommandRunOptions(environment: ["HOMEBREW_NO_AUTO_UPDATE": "1"]))
+                guard result.status == 0, let data = result.stdout.data(using: .utf8),
+                      let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], json["casks"] is [[String: Any]] else {
+                    throw NativeCaskError("Could not verify Homebrew ownership. Fix its inventory error before using native app management.")
+                }
+            }
+        }
+        var packages: [ManagedPackage] = []
+        for await result in PackageScanner().results(for: [.homebrew, .macApp], database: database, mode: .local) {
+            if !result.errors.isEmpty { throw NativeCaskError(result.errors.joined(separator: "\n")) }
+            packages += result.packages
+        }
+        return PackageInventory(packages: packages)
+    }
+
+    static func checkConflicts(_ recipe: NativeCaskRecipe, packages: [ManagedPackage]) throws {
         if packages.contains(where: { package in
             guard let token = token(for: package) else { return false }
             return recipe.conflicts.contains(token)
@@ -248,8 +304,27 @@ public struct NativeCaskManager: Sendable {
         }
     }
 
+    private func requireHomebrewDoesNotOwn(token: String, app: URL) throws {
+        guard let brew = homebrewExecutable() else { return }
+        let result = try runner.run(brew, ["info", "--json=v2", "--installed"],
+            options: CommandRunOptions(environment: ["HOMEBREW_NO_AUTO_UPDATE": "1"]))
+        guard result.status == 0, let data = result.stdout.data(using: .utf8),
+              let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let casks = json["casks"] as? [[String: Any]] else {
+            throw NativeCaskError("Could not verify Homebrew ownership. Nothing was modified.")
+        }
+        for cask in casks {
+            let ownsPath = (cask["artifacts"] as? [[String: Any]] ?? []).contains { artifact in
+                guard let values = artifact["app"] as? [Any], let name = values.first as? String else { return false }
+                let path = artifact["target"] as? String ?? "/Applications/" + name
+                return URL(fileURLWithPath: path).resolvingSymlinksInPath().path == app.path
+            }
+            if cask["token"] as? String == token || ownsPath { throw NativeCaskError("Homebrew owns this app. Manage it through Homebrew.") }
+        }
+    }
+
     private func requireClosed(_ id: String) throws {
-        guard NSRunningApplication.runningApplications(withBundleIdentifier: id).isEmpty else {
+        guard !isAppRunning(id) else {
             throw NativeCaskError("Quit this app before updating or removing it.")
         }
     }
@@ -261,13 +336,15 @@ public struct NativeCaskManager: Sendable {
             throw NativeCaskError("This app is not owned by PMM, or its installation changed. Refresh and try again.")
         }
         let app = try checkedPath(receipt.appPath)
+        try requireHomebrewDoesNotOwn(token: receipt.token, app: app)
         let identity = try inspect(app)
         guard identity.id == receipt.bundleIdentifier, identity.team == receipt.teamIdentifier else { throw NativeCaskError("The installed app’s identity changed. Nothing was modified.") }
         try requireClosed(identity.id)
+        for id in receipt.quitBundleIdentifiers ?? [] { try requireClosed(id) }
         return receipt
     }
 
-    private func adopt(_ package: ManagedPackage, recipe: NativeCaskRecipe, inventory: PackageInventory, database: PackageDatabase) throws {
+    func adopt(_ package: ManagedPackage, recipe: NativeCaskRecipe, inventory: PackageInventory, database: PackageDatabase) throws {
         try requireEnabled()
         guard package.manager == .macApp, package.appProvenance == .direct, package.nativeCaskInstallation == nil,
               let path = package.installLocation, let id = package.bundleIdentifier,
@@ -277,6 +354,7 @@ public struct NativeCaskManager: Sendable {
             throw NativeCaskError("This app cannot be unambiguously adopted. Refresh and check its installation source.")
         }
         let app = try checkedPath(path)
+        try requireHomebrewDoesNotOwn(token: recipe.token, app: app)
         guard app.lastPathComponent == recipe.targetName else { throw NativeCaskError("The app name does not match this cask.") }
         let identity = try inspect(app)
         guard identity.id == id else { throw NativeCaskError("The app identity does not match this cask.") }
@@ -284,11 +362,11 @@ public struct NativeCaskManager: Sendable {
         var receipts = try store.load()
         guard receipts[recipe.token] == nil else { throw NativeCaskError("PMM already manages an installation of this cask.") }
         receipts[recipe.token] = NativeCaskInstallation(token: recipe.token, version: identity.short, appPath: app.path,
-            bundleIdentifier: id, teamIdentifier: identity.team, shortVersion: identity.short, bundleVersion: identity.build)
+            bundleIdentifier: id, teamIdentifier: identity.team, shortVersion: identity.short, bundleVersion: identity.build, quitBundleIdentifiers: recipe.quitBundleIdentifiers)
         try store.save(receipts)
     }
 
-    private func installArchive(_ archive: URL, work: URL, recipe: NativeCaskRecipe, previous: NativeCaskInstallation?,
+    func installArchive(_ archive: URL, work: URL, recipe: NativeCaskRecipe, previous: NativeCaskInstallation?,
                                 onProgress: (@Sendable (PackageCommandProgress) -> Void)?) throws {
         let handle = try FileHandle(forReadingFrom: archive)
         let header = try handle.read(upToCount: 4)
@@ -312,7 +390,10 @@ public struct NativeCaskManager: Sendable {
         let parent: URL
         if let previous { parent = try checkedPath(previous.appPath).deletingLastPathComponent() }
         else {
-            parent = applicationDirectories.first(where: { FileManager.default.isWritableFile(atPath: $0.path) }) ?? applicationDirectories.last!
+            guard let selected = applicationDirectories.first(where: { FileManager.default.isWritableFile(atPath: $0.path) }) ?? applicationDirectories.last else {
+                throw NativeCaskError("No Applications folder is available.")
+            }
+            parent = selected
             try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
         }
         let destination = previous.map { URL(fileURLWithPath: $0.appPath) } ?? parent.appendingPathComponent(recipe.targetName)
@@ -328,14 +409,16 @@ public struct NativeCaskManager: Sendable {
         try command("/usr/bin/xattr", ["-w", "com.apple.quarantine", "0081;\(String(Int(Date().timeIntervalSince1970), radix: 16));PMM;", staged.path])
         let identity = try inspect(staged)
         try requireClosed(identity.id)
+        for id in recipe.quitBundleIdentifiers { try requireClosed(id) }
         if let previous {
             guard identity.id == previous.bundleIdentifier, identity.team == previous.teamIdentifier else { throw NativeCaskError("The update’s developer or bundle identity does not match the installed app.") }
             let existing = try inspect(destination)
             guard existing.id == previous.bundleIdentifier, existing.team == previous.teamIdentifier else { throw NativeCaskError("The installed app changed while the update downloaded.") }
             guard !Self.isNewer(existing.short, than: identity.short) else { throw NativeCaskError("The installed app is newer than this download.") }
         }
+        try requireHomebrewDoesNotOwn(token: recipe.token, app: destination)
         let receipt = NativeCaskInstallation(token: recipe.token, version: recipe.version, appPath: destination.path,
-            bundleIdentifier: identity.id, teamIdentifier: identity.team, shortVersion: identity.short, bundleVersion: identity.build)
+            bundleIdentifier: identity.id, teamIdentifier: identity.team, shortVersion: identity.short, bundleVersion: identity.build, quitBundleIdentifiers: recipe.quitBundleIdentifiers)
         try requireEnabled()
         var receipts = try store.load()
         guard receipts[recipe.token] == previous else { throw NativeCaskError("Cask ownership changed. Refresh and try again.") }
@@ -369,10 +452,19 @@ public struct NativeCaskManager: Sendable {
         let previous = staging.appendingPathComponent("previous.app")
         if try store.load()[transaction.receipt.token] != transaction.receipt {
             if FileManager.default.fileExists(atPath: previous.path) {
-                if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
+                let oldIdentity = try inspect(previous)
+                guard oldIdentity.id == transaction.previous?.bundleIdentifier,
+                      oldIdentity.team == transaction.previous?.teamIdentifier else {
+                    throw NativeCaskError("The recovery backup’s identity changed. No files were removed.")
+                }
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try verifyRecoveryDestination(destination, receipt: transaction.receipt)
+                    try FileManager.default.removeItem(at: destination)
+                }
                 try FileManager.default.moveItem(at: previous, to: destination)
             } else if transaction.previous == nil && !FileManager.default.fileExists(atPath: staging.appendingPathComponent("new.app").path),
                       FileManager.default.fileExists(atPath: destination.path) {
+                try verifyRecoveryDestination(destination, receipt: transaction.receipt)
                 try FileManager.default.removeItem(at: destination)
             }
         }
@@ -380,7 +472,16 @@ public struct NativeCaskManager: Sendable {
         try FileManager.default.removeItem(at: store.journalURL)
     }
 
-    private func uninstall(_ package: ManagedPackage) throws {
+    private func verifyRecoveryDestination(_ destination: URL, receipt: NativeCaskInstallation) throws {
+        let identity = try inspect(destination)
+        guard identity.id == receipt.bundleIdentifier, identity.team == receipt.teamIdentifier,
+              identity.short == receipt.shortVersion, identity.build == receipt.bundleVersion else {
+            throw NativeCaskError("The app changed during recovery. No files were removed.")
+        }
+        try requireClosed(identity.id)
+    }
+
+    func uninstall(_ package: ManagedPackage) throws {
         let receipt = try owned(package)
         try requireEnabled()
         var receipts = try store.load()
@@ -394,11 +495,18 @@ public struct NativeCaskManager: Sendable {
         guard let fd = try? store.lock() else { return try store.load() }
         defer { flock(fd, LOCK_UN); close(fd) }
         try recover()
+        try reconcileMissingInstallations()
         return try store.load()
     }
 
+    private func reconcileMissingInstallations() throws {
+        let receipts = try store.load()
+        let remaining = receipts.filter { FileManager.default.fileExists(atPath: $0.value.appPath) }
+        if receipts != remaining { try store.save(remaining) }
+    }
+
     func matches(_ receipt: NativeCaskInstallation, app: URL) -> Bool {
-        guard receipt.appPath == app.path, let identity = try? inspect(app) else { return false }
+        guard receipt.appPath == app.standardizedFileURL.path, let identity = try? inspect(app.standardizedFileURL) else { return false }
         return identity.id == receipt.bundleIdentifier && identity.team == receipt.teamIdentifier
     }
 }

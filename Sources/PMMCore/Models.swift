@@ -375,7 +375,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
             displayName: metadata.displayName ?? displayName,
             installedVersion: installedVersion,
             installedVersions: installedVersions,
-            latestVersion: latestVersion ?? metadata.version,
+            latestVersion: nativeCaskInstallation != nil ? latestVersion : latestVersion ?? metadata.version,
             summary: metadata.summary ?? summary,
             category: metadata.category ?? category,
             homepage: metadata.homepage ?? homepage,

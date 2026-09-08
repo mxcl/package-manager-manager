@@ -2273,3 +2273,74 @@ private final class MainWindowRemoteRunner: CommandRunning, @unchecked Sendable 
         )
     }
 }
+
+private func nativeTestPackage() -> ManagedPackage {
+    let receipt = NativeCaskInstallation(token: "example", version: "1.0", appPath: "/Applications/Example.app",
+        bundleIdentifier: "com.example.native", teamIdentifier: "TEAM", shortVersion: "1.0", bundleVersion: "1")
+    return ManagedPackage(manager: .macApp, identifier: "mac-app:com.example.native", catalogIdentifier: "brew:cask:example",
+        installedVersion: "1.0", latestVersion: "2.0", installLocation: receipt.appPath, bundleIdentifier: receipt.bundleIdentifier,
+        appProvenance: .direct, nativeCaskInstallation: receipt)
+}
+
+@MainActor
+@Test func nativeModelDefaultsOffKeepsInventoryAndPreservesHomebrewActions() async throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("native-model-\(UUID().uuidString).json")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let preferences = PackagePreferencesStore(url: url)
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, usesPackageHostNotifications: false,
+        preferencesStore: preferences, nativeRecipeLoader: { _ in throw NativeCaskError("Unsupported recipe") })
+    let native = nativeTestPackage()
+    let brew = ManagedPackage(manager: .homebrew, identifier: "brew:cask:another", installedVersion: "1", latestVersion: "2")
+    let catalog = ManagedPackage(manager: .homebrew, identifier: "brew:cask:new-app", installedVersion: nil, latestVersion: "2")
+    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [native, brew]), catalogPackages: [catalog], homebrewAvailable: false))
+    await model.reloadNativePreferences()
+    #expect(!model.canUpdate(native))
+    #expect(!model.canUninstall(native))
+    #expect(!model.canInstall(catalog))
+    #expect(model.canUpdate(brew))
+    #expect(model.canUninstall(brew))
+    #expect(model.packages.contains(native))
+    try await preferences.setNativeCaskManagementEnabled(true)
+    await model.reloadNativePreferences()
+    #expect(model.canUpdate(native))
+    #expect(model.canUninstall(native))
+    #expect(model.canInstall(catalog))
+    #expect(model.isLoadingNativeRecipe(catalog))
+    await model.loadNativeCaskRecipe(for: catalog)
+    #expect(!model.isLoadingNativeRecipe(catalog))
+    #expect(!model.canInstall(catalog))
+    #expect(model.nativeCaskMessage(catalog) == "Unsupported recipe")
+    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [native, brew]), catalogPackages: [catalog], homebrewAvailable: true))
+    #expect(model.canInstall(catalog)) // Homebrew remains the fallback for unsupported recipes.
+    let merged = PackageIndex(packages: [native], catalogPackages: [ManagedPackage(manager: .homebrew, identifier: "brew:cask:example", installedVersion: nil, latestVersion: "99")], newUpdatedLastClickedAt: nil)
+    #expect(merged.packagesBySection[.apps]?.first?.nativeCaskInstallation == native.nativeCaskInstallation)
+    #expect(merged.packagesBySection[.apps]?.first?.latestVersion == "2.0")
+}
+
+@MainActor
+@Test func nativeRemoteUpdateAllHonorsBothMacSettings() async throws {
+    let native = nativeTestPackage()
+    let npm = package(.npm, "eslint", installedVersion: "1", latestVersion: "2")
+    for remoteEnabled: Bool? in [nil, false, true] {
+        let response = RemoteControlResponse(inventory: PackageInventory(packages: [native, npm]), nativeCaskManagementEnabled: remoteEnabled)
+        let runner = MainWindowRemoteRunner(response: response)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("native-remote-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let preferences = PackagePreferencesStore(url: url)
+        let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
+            remoteClient: RemoteSSHClient(runner: runner), usesPackageHostNotifications: false, preferencesStore: preferences)
+        let host = try model.saveRemoteHost(name: "Remote", destination: "example-host")
+        await waitForModel { model.remoteHostStates[host.id]?.inventory != nil }
+        model.selectRemoteHost(host.id, section: .outdated)
+        await model.reloadNativePreferences()
+        #expect(!model.canUpdate(native))
+        model.updateAllOutdatedPackages()
+        await waitForModel { !model.isRunningAction(on: host.id) && runner.invocationCount == 2 }
+        #expect(runner.lastArguments?.joined(separator: " ").contains("update-all") == false)
+        #expect(runner.lastArguments?.joined(separator: " ").contains("eslint") == true)
+        try await preferences.setNativeCaskManagementEnabled(true)
+        await model.reloadNativePreferences()
+        #expect(model.canUpdate(native) == (remoteEnabled == true))
+        #expect(model.canUninstall(native) == (remoteEnabled == true))
+    }
+}

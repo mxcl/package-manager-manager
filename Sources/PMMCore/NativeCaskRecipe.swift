@@ -16,6 +16,7 @@ public struct NativeCaskRecipe: Equatable, Sendable {
     public let app: String
     public let targetName: String
     public let conflicts: [String]
+    public let quitBundleIdentifiers: [String]
 
     public static func validToken(_ token: String) -> Bool {
         !token.isEmpty && token.first != "-" && token.utf8.allSatisfy {
@@ -24,17 +25,31 @@ public struct NativeCaskRecipe: Equatable, Sendable {
     }
 
     public static func decode(_ data: Data, token: String, osMajor: Int = ProcessInfo.processInfo.operatingSystemVersion.majorVersion,
-                              osVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
+                              osVersion: String = NativeCaskRecipe.currentOSVersion,
                               arm64: Bool = NativeCaskRecipe.isAppleSilicon) throws -> NativeCaskRecipe {
         guard validToken(token), var raw = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               raw["token"] as? String == token, raw["tap"] as? String == "homebrew/cask" else {
             throw NativeCaskError("Only official Homebrew casks are supported by the native installer.")
+        }
+        for key in ["variations", "url_specs", "depends_on", "conflicts_with"] {
+            if let value = raw[key], !(value is NSNull), !(value is [String: Any]) {
+                throw NativeCaskError("Malformed cask \(key) metadata.")
+            }
+        }
+        if let variations = raw["variations"], !(variations is NSNull), !(variations is [String: [String: Any]]) {
+            throw NativeCaskError("Malformed cask variations.")
         }
         let osNames = [26: "tahoe", 27: "golden_gate"]
         guard let osName = osNames[osMajor] else { throw NativeCaskError("Native cask installation is not supported on this macOS version yet.") }
         if let variations = raw["variations"] as? [String: [String: Any]],
            let variation = variations[(arm64 ? "arm64_" : "") + osName] {
             raw.merge(variation) { _, value in value }
+        }
+        // Variations may override requirements; validate their shape after selecting this Mac.
+        for key in ["url_specs", "depends_on", "conflicts_with"] {
+            if let value = raw[key], !(value is NSNull), !(value is [String: Any]) {
+                throw NativeCaskError("Malformed cask \(key) metadata.")
+            }
         }
         guard raw["disabled"] as? Bool != true else { throw NativeCaskError("This cask has been disabled by Homebrew.") }
         guard let version = raw["version"] as? String, !version.isEmpty, version != "latest",
@@ -44,38 +59,46 @@ public struct NativeCaskRecipe: Equatable, Sendable {
               url.scheme == "https", url.host != nil, url.user == nil, url.password == nil else {
             throw NativeCaskError("Native installation requires a versioned HTTPS download with a SHA-256 checksum.")
         }
-        guard (raw["url_specs"] as? [String: Any] ?? [:]).isEmpty,
-              raw["container"] == nil || raw["container"] is NSNull else {
+        let urlSpecs = raw["url_specs"] as? [String: Any] ?? [:]
+        let container = raw["container"] as? [String: String]
+        let supportedContainer = raw["container"] == nil || raw["container"] is NSNull
+            || (container?.count == 1 && ["zip", "dmg"].contains(container?["type"] ?? ""))
+        guard Set(urlSpecs.keys).isSubset(of: ["verified"]), supportedContainer else {
             throw NativeCaskError("This cask needs a custom downloader or archive format. Use Homebrew.")
         }
         let dependencies = raw["depends_on"] as? [String: Any] ?? [:]
-        guard Set(dependencies.keys).isSubset(of: ["macos", "arch"]) else {
+        guard Set(dependencies.keys).isSubset(of: ["macos", "maximum_macos", "arch"]) else {
             throw NativeCaskError("This cask requires dependencies. Use Homebrew.")
         }
-        if let arch = dependencies["arch"] as? [String], !arch.contains(arm64 ? "arm64" : "x86_64") {
-            throw NativeCaskError("This cask does not support this Mac’s architecture.")
-        } else if dependencies["arch"] != nil && !(dependencies["arch"] is [String]) {
-            throw NativeCaskError("This cask has unsupported architecture requirements.")
-        }
-        if let requirements = dependencies["macos"] as? [String: [String]] {
-            let current = osVersion.first?.isNumber == true ? osVersion : "\(ProcessInfo.processInfo.operatingSystemVersion.majorVersion).\(ProcessInfo.processInfo.operatingSystemVersion.minorVersion).\(ProcessInfo.processInfo.operatingSystemVersion.patchVersion)"
-            for (op, versions) in requirements {
-                let matches = versions.contains { required in
-                    guard let order = numericVersionComparison(current, required) else { return false }
-                    switch op {
-                    case ">=": return order != .orderedAscending
-                    case ">": return order == .orderedDescending
-                    case "<=": return order != .orderedDescending
-                    case "<": return order == .orderedAscending
-                    case "==", "=": return order == .orderedSame
-                    default: return false
-                    }
-                }
-                guard matches else { throw NativeCaskError("This cask does not support this version of macOS.") }
+        if let value = dependencies["arch"] {
+            // Homebrew's API encodes architectures as {type: "arm"|"intel", bits: 64}.
+            guard let architectures = value as? [[String: Any]],
+                  architectures.contains(where: { $0["type"] as? String == (arm64 ? "arm" : "intel") && $0["bits"] as? Int == 64 }) else {
+                throw NativeCaskError("This cask does not support this Mac’s architecture.")
             }
-        } else if dependencies["macos"] != nil { throw NativeCaskError("This cask has unsupported macOS requirements.") }
+        }
+        for key in ["macos", "maximum_macos"] {
+            if let requirements = dependencies[key] as? [String: [String]] {
+                let current = osVersion
+                for (op, versions) in requirements {
+                    let matches = versions.contains { required in
+                        guard let order = numericVersionComparison(current, required) else { return false }
+                        switch op {
+                        case ">=": return order != .orderedAscending
+                        case ">": return order == .orderedDescending
+                        case "<=": return order != .orderedDescending
+                        case "<": return order == .orderedAscending
+                        case "==", "=": return order == .orderedSame
+                        default: return false
+                        }
+                    }
+                    guard matches else { throw NativeCaskError("This cask does not support this version of macOS.") }
+                }
+            } else if dependencies[key] != nil { throw NativeCaskError("This cask has unsupported macOS requirements.") }
+        }
         guard let artifacts = raw["artifacts"] as? [[String: Any]] else { throw NativeCaskError("Missing cask artifacts.") }
         var apps: [(String, String)] = []
+        var quitIDs: [String] = []
         for artifact in artifacts {
             guard Set(artifact.keys).isSubset(of: ["app", "target", "binary", "command_wrapper", "zap", "uninstall"]) else {
                 throw NativeCaskError("This cask requires an installer or script. Use Homebrew.")
@@ -84,6 +107,11 @@ public struct NativeCaskRecipe: Equatable, Sendable {
                 guard let instructions = uninstall as? [[String: Any]],
                       instructions.allSatisfy({ Set($0.keys).isSubset(of: ["quit"]) }) else {
                     throw NativeCaskError("This cask requires additional uninstall actions. Use Homebrew.")
+                }
+                for instruction in instructions {
+                    if let id = instruction["quit"] as? String { quitIDs.append(id) }
+                    else if let ids = instruction["quit"] as? [String] { quitIDs += ids }
+                    else { throw NativeCaskError("Unsupported quit instruction.") }
                 }
             }
             if let value = artifact["app"] {
@@ -108,12 +136,17 @@ public struct NativeCaskRecipe: Equatable, Sendable {
         guard Set(conflicts.keys).isSubset(of: ["cask"]),
               conflicts.isEmpty || conflicts["cask"] is [String] else { throw NativeCaskError("Unsupported cask conflicts.") }
         return NativeCaskRecipe(token: token, version: version, url: url, sha256: sha, app: apps[0].0,
-                                targetName: apps[0].1, conflicts: conflicts["cask"] as? [String] ?? [])
+                                targetName: apps[0].1, conflicts: conflicts["cask"] as? [String] ?? [], quitBundleIdentifiers: quitIDs)
     }
 
     static func safeRelativePath(_ path: String) -> Bool {
         !path.isEmpty && !path.hasPrefix("/") && !path.contains("\0") && !path.contains("\\")
             && path.split(separator: "/", omittingEmptySubsequences: false).allSatisfy { !$0.isEmpty && $0 != ".." && $0 != "." }
+    }
+
+    public static var currentOSVersion: String {
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        return "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
     }
 
     public static var isAppleSilicon: Bool {
