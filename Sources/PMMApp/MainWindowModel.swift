@@ -500,6 +500,7 @@ struct RemoteHostState: Equatable, Sendable {
     var hostDescription: String?
     var systemPackageManager: PackageManagerKind?
     var canManageSystemPackages: Bool?
+    var nativeCaskManagementEnabled: Bool?
     var isLoading = false
     var error: String?
 }
@@ -560,6 +561,11 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var remoteHosts: [RemoteHost]
     @Published private(set) var remoteHostStates: [UUID: RemoteHostState] = [:]
     @Published private(set) var pendingRemoteUninstall: RemoteUninstallConfirmation?
+    @Published private(set) var nativeCaskManagementEnabled = false
+    @Published private(set) var nativePreferencesAreLoading = true
+    @Published private(set) var homebrewAvailable: Bool?
+    @Published private(set) var nativeCaskRecipes: [String: Result<NativeCaskRecipe, NativeCaskError>] = [:]
+    @Published var pendingNativeAdoption: ManagedPackage?
     @Published var showsHostManagement = false
     @Published private(set) var packages: [ManagedPackage] = []
     @Published private(set) var selectedPackage: ManagedPackage?
@@ -657,6 +663,10 @@ final class MainWindowModel: NSObject, ObservableObject {
         self.remoteClient = remoteClient
         self.usesPackageHostNotifications = usesPackageHostNotifications
         super.init()
+        if usesPackageHostNotifications {
+            notificationCenter.addObserver(self, selector: #selector(nativePreferencesChanged(_:)), name: PackageHostNotifications.preferencesChanged, object: nil)
+            reloadNativePreferences()
+        } else { nativePreferencesAreLoading = false }
 #if DEBUG
         let isTerminalDemo = ProcessInfo.processInfo.environment["PMM_TERMINAL_DEMO"] == "1"
         if isTerminalDemo {
@@ -890,7 +900,8 @@ final class MainWindowModel: NSObject, ObservableObject {
                     inventory: response.inventory,
                     hostDescription: response.hostDescription,
                     systemPackageManager: response.systemPackageManager,
-                    canManageSystemPackages: response.canManageSystemPackages
+                    canManageSystemPackages: response.canManageSystemPackages,
+                    nativeCaskManagementEnabled: response.nativeCaskManagementEnabled
                 )
             } catch is CancellationError {
             } catch {
@@ -1265,6 +1276,7 @@ final class MainWindowModel: NSObject, ObservableObject {
                     hostDescription: response.hostDescription ?? previousState?.hostDescription,
                     systemPackageManager: response.systemPackageManager ?? previousState?.systemPackageManager,
                     canManageSystemPackages: response.canManageSystemPackages ?? previousState?.canManageSystemPackages,
+                    nativeCaskManagementEnabled: response.nativeCaskManagementEnabled,
                     error: response.failures.isEmpty ? nil : response.failures.map(\.message).joined(separator: "\n")
                 )
                 if !response.failures.isEmpty {
@@ -1348,22 +1360,81 @@ final class MainWindowModel: NSObject, ObservableObject {
         pendingInstallPackConfirmation = nil
     }
 
+    @objc private func nativePreferencesChanged(_ notification: Notification) { reloadNativePreferences() }
+
+    func reloadNativePreferences() {
+        Task { [weak self, preferencesStore] in
+            let value = await Task.detached { preferencesStore.load().nativeCaskManagementEnabled }.value
+            guard let self else { return }
+            nativeCaskManagementEnabled = value
+            nativePreferencesAreLoading = false
+        }
+    }
+
+    func loadNativeCaskRecipe(for package: ManagedPackage) async {
+        guard nativeCaskManagementEnabled, !isRemoteSelection, let token = NativeCaskManager.token(for: package),
+              nativeCaskRecipes[token] == nil else { return }
+        do { nativeCaskRecipes[token] = .success(try await NativeCaskManager().recipe(for: token)) }
+        catch { nativeCaskRecipes[token] = .failure(NativeCaskError(error.localizedDescription)) }
+    }
+
+    func isLoadingNativeRecipe(_ package: ManagedPackage) -> Bool {
+        guard !isRemoteSelection, let token = NativeCaskManager.token(for: package) else { return false }
+        return nativePreferencesAreLoading || (nativeCaskManagementEnabled && nativeCaskRecipes[token] == nil)
+    }
+
+    func nativeCaskMessage(_ package: ManagedPackage) -> String? {
+        guard NativeCaskManager.token(for: package) != nil else { return nil }
+        if package.nativeCaskInstallation != nil && !nativeActionsEnabled {
+            return isRemoteSelection ? "Read-only: enable native app management on both Macs." : "Read-only: enable “Manage apps without Homebrew” in Settings."
+        }
+        if nativeCaskManagementEnabled, let token = NativeCaskManager.token(for: package),
+           case .failure(let error) = nativeCaskRecipes[token] {
+            return error.message
+        }
+        if !nativeCaskManagementEnabled && homebrewAvailable == false && package.installedVersion == nil {
+            return "Enable “Manage apps without Homebrew” in Settings to install supported apps."
+        }
+        return nil
+    }
+
+    func canAdopt(_ package: ManagedPackage) -> Bool {
+        guard !isRemoteSelection, nativeCaskManagementEnabled, PackageActions.canAdopt(package),
+              let token = NativeCaskManager.token(for: package), case .success = nativeCaskRecipes[token] else { return false }
+        return packages.filter { NativeCaskManager.token(for: $0) == token }.count == 1
+    }
+
+    func confirmNativeAdoption() {
+        guard let package = pendingNativeAdoption, canAdopt(package), !isPackageActionRunning else { return }
+        pendingNativeAdoption = nil
+        if usesPackageHostNotifications { PackageHostNotifications.postAdoptRequested(packageID: package.id) }
+    }
+
+    private var nativeActionsEnabled: Bool {
+        nativeCaskManagementEnabled && (!isRemoteSelection || selectedRemoteState?.nativeCaskManagementEnabled == true)
+    }
+
     func canInstall(_ package: ManagedPackage) -> Bool {
         let identifier = package.catalogIdentifier ?? package.identifier
+        if NativeCaskManager.token(for: package) != nil {
+            if !nativeCaskManagementEnabled && homebrewAvailable == false { return false }
+            if nativeCaskManagementEnabled, let token = NativeCaskManager.token(for: package),
+               case .failure = nativeCaskRecipes[token], homebrewAvailable != true { return false }
+        }
         return !isRemoteSelection && PackageInstaller.supports(package) && !packages.contains {
             $0.identifier == identifier || $0.catalogIdentifier == identifier || $0.identifier == package.identifier
         }
     }
 
     func canUpdate(_ package: ManagedPackage) -> Bool {
-        guard PackageUpdater.supports(package) else { return false }
+        guard PackageActions.canUpdate(package, nativeEnabled: nativeActionsEnabled) else { return false }
         guard package.manager.isLinuxSystem else { return true }
         return selectedRemoteState?.systemPackageManager == package.manager
             && selectedRemoteState?.canManageSystemPackages == true
     }
 
     func canUninstall(_ package: ManagedPackage) -> Bool {
-        guard PackageUninstaller.supports(package) else { return false }
+        guard PackageActions.canUninstall(package, nativeEnabled: nativeActionsEnabled) else { return false }
         guard package.manager.isLinuxSystem else { return true }
         return selectedRemoteState?.systemPackageManager == package.manager
             && selectedRemoteState?.canManageSystemPackages == true
@@ -1389,7 +1460,7 @@ final class MainWindowModel: NSObject, ObservableObject {
                   manager.isLinuxSystem else { return packages }
             return packages.filter { $0.manager == manager }
         }
-        return (packageIndex.packagesBySection[.outdated] ?? []).filter(PackageUpdater.supports)
+        return (packageIndex.packagesBySection[.outdated] ?? []).filter(canUpdate)
     }
 
     private var packagesToUpdate: [ManagedPackage] {
@@ -1648,6 +1719,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func apply(snapshot: PackageHostSnapshot) {
+        homebrewAvailable = snapshot.homebrewAvailable
         guard let inventory = snapshot.inventory else {
             hasInventory = false
             installedPackageFirstSeenAtByID = nil
@@ -1736,7 +1808,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         // the one snapshot worth re-detecting on. First load and section changes are covered by the
         // list view's task.
         if wasInstallingHelper, installingHelper == nil { refreshSetupOffers() }
-        installingPackageName = snapshot.runningAction?.kind == .install ? snapshot.runningAction?.displayName : nil
+        installingPackageName = [PackageHostActionKind.install, .adopt].contains(snapshot.runningAction?.kind ?? .update) ? snapshot.runningAction?.displayName : nil
         uninstallingPackageName = snapshot.runningAction?.kind == .uninstall ? snapshot.runningAction?.displayName : nil
         updatingPackageName = snapshot.runningAction?.kind == .update ? snapshot.runningAction?.displayName : nil
         if let runningAction = snapshot.runningAction {
@@ -1911,7 +1983,8 @@ struct PackageIndex: Sendable {
             appProvenance: installedPackage.appProvenance,
             versionSource: installedPackage.versionSource,
             advisoryURL: installedPackage.advisoryURL,
-            versionCheckedAt: installedPackage.versionCheckedAt
+            versionCheckedAt: installedPackage.versionCheckedAt,
+            nativeCaskInstallation: installedPackage.nativeCaskInstallation
         )
     }
 

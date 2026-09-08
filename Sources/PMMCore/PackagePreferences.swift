@@ -2,13 +2,20 @@ import Foundation
 
 /// Choices the user has made that outlive a single launch.
 ///
-/// Deliberately generic: it records that a prompt was dismissed, not what the prompt was about, so
-/// no single package manager reaches into app-wide state. Managers own their own key namespace.
+/// Shared by the main app and its package host.
 public struct PackagePreferences: Sendable, Equatable, Codable {
     public var dismissedPrompts: Set<String>
+    public var nativeCaskManagementEnabled: Bool
 
-    public init(dismissedPrompts: Set<String> = []) {
+    public init(dismissedPrompts: Set<String> = [], nativeCaskManagementEnabled: Bool = false) {
         self.dismissedPrompts = dismissedPrompts
+        self.nativeCaskManagementEnabled = nativeCaskManagementEnabled
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        dismissedPrompts = try values.decodeIfPresent(Set<String>.self, forKey: .dismissedPrompts) ?? []
+        nativeCaskManagementEnabled = try values.decodeIfPresent(Bool.self, forKey: .nativeCaskManagementEnabled) ?? false
     }
 
     public func hasDismissed(_ prompt: String) -> Bool {
@@ -31,7 +38,7 @@ public struct PackagePreferences: Sendable, Equatable, Codable {
     /// so the API that could only lie does not exist. Un-dismissing needs a real design — a
     /// tombstone or a last-writer-wins timestamp — not a `Set.remove`.
     public func merging(_ other: PackagePreferences) -> PackagePreferences {
-        PackagePreferences(dismissedPrompts: dismissedPrompts.union(other.dismissedPrompts))
+        PackagePreferences(dismissedPrompts: dismissedPrompts.union(other.dismissedPrompts), nativeCaskManagementEnabled: other.nativeCaskManagementEnabled)
     }
 }
 
@@ -76,6 +83,22 @@ public struct PackagePreferencesStore: Sendable {
             )
             guard let data = try? JSONEncoder().encode(preferences.merging(load())) else { return }
             try? data.write(to: url, options: .atomic)
+        }
+    }
+
+    /// Only this operation writes the toggle; a stale dismissal must never change it.
+    public func setNativeCaskManagementEnabled(_ enabled: Bool) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            Self.queue.async {
+                do {
+                    var preferences = load()
+                    preferences.nativeCaskManagementEnabled = enabled
+                    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    try JSONEncoder().encode(preferences).write(to: url, options: .atomic)
+                    PackageHostNotifications.postPreferencesChanged()
+                    continuation.resume()
+                } catch { continuation.resume(throwing: error) }
+            }
         }
     }
 

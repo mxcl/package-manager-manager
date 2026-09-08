@@ -4,6 +4,7 @@ public enum PackageHostActionKind: String, Codable, Sendable {
     case install
     case update
     case uninstall
+    case adopt
 }
 
 public struct PackageHostRunningAction: Codable, Equatable, Sendable {
@@ -53,6 +54,8 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
     public var lastBrewUpdateAt: Date?
     public var installedPackageFirstSeenAtByID: [String: Date]?
     public var appUpdate: AppUpdateHostState?
+    public var nativeCaskManagementEnabled: Bool?
+    public var homebrewAvailable: Bool?
 
     public init(
         inventory: PackageInventory? = nil,
@@ -63,7 +66,9 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         errorMessage: String? = nil,
         lastBrewUpdateAt: Date? = nil,
         installedPackageFirstSeenAtByID: [String: Date]? = nil,
-        appUpdate: AppUpdateHostState? = nil
+        appUpdate: AppUpdateHostState? = nil,
+        nativeCaskManagementEnabled: Bool? = nil,
+        homebrewAvailable: Bool? = nil
     ) {
         self.inventory = inventory
         self.catalogPackages = catalogPackages
@@ -74,6 +79,8 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         self.lastBrewUpdateAt = lastBrewUpdateAt
         self.installedPackageFirstSeenAtByID = installedPackageFirstSeenAtByID
         self.appUpdate = appUpdate
+        self.nativeCaskManagementEnabled = nativeCaskManagementEnabled
+        self.homebrewAvailable = homebrewAvailable
     }
 
     public mutating func updateInstalledPackageFirstSeenAtByID() {
@@ -130,6 +137,13 @@ public enum PackageHostNotifications {
     public static let snapshotChanged = Notification.Name("dev.mxcl.pmm.packageHost.snapshotChanged")
     public static let actionOutputChanged = Notification.Name("dev.mxcl.pmm.packageHost.actionOutputChanged")
     public static let refreshRequested = Notification.Name("dev.mxcl.pmm.packageHost.refreshRequested")
+    public static let preferencesChanged = Notification.Name("dev.mxcl.pmm.preferencesChanged")
+    public static let adoptRequested = Notification.Name("dev.mxcl.pmm.packageHost.adoptRequested")
+    public static func postPreferencesChanged() {
+        DistributedNotificationCenter.default().postNotificationName(preferencesChanged, object: nil, userInfo: nil, deliverImmediately: true)
+    }
+    public static func postAdoptRequested(packageID: String) { postPackageCommand(adoptRequested, packageID: packageID) }
+
     public static let installRequested = Notification.Name("dev.mxcl.pmm.packageHost.installRequested")
     public static let installManyRequested = Notification.Name("dev.mxcl.pmm.packageHost.installManyRequested")
     public static let updateRequested = Notification.Name("dev.mxcl.pmm.packageHost.updateRequested")

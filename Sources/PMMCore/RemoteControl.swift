@@ -19,6 +19,7 @@ public struct RemoteControlResponse: Codable, Equatable, Sendable {
     public let hostDescription: String?
     public let systemPackageManager: PackageManagerKind?
     public let canManageSystemPackages: Bool?
+    public let nativeCaskManagementEnabled: Bool?
 
     public init(
         protocolVersion: Int = remoteControlProtocolVersion,
@@ -26,7 +27,8 @@ public struct RemoteControlResponse: Codable, Equatable, Sendable {
         failures: [RemoteControlFailure] = [],
         hostDescription: String? = nil,
         systemPackageManager: PackageManagerKind? = nil,
-        canManageSystemPackages: Bool? = nil
+        canManageSystemPackages: Bool? = nil,
+        nativeCaskManagementEnabled: Bool? = nil
     ) {
         self.protocolVersion = protocolVersion
         self.inventory = inventory
@@ -34,6 +36,7 @@ public struct RemoteControlResponse: Codable, Equatable, Sendable {
         self.hostDescription = hostDescription
         self.systemPackageManager = systemPackageManager
         self.canManageSystemPackages = canManageSystemPackages
+        self.nativeCaskManagementEnabled = nativeCaskManagementEnabled
     }
 }
 

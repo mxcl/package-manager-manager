@@ -1,6 +1,7 @@
 import AppKit
 import AppUpdater
 import PMMCore
+import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -15,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             syncToolbarItems()
         }
     }
+    private var settingsWindow: NSWindow?
     private var window: NSWindow?
     private lazy var appUpdater = AppUpdater(
         owner: "mxcl",
@@ -132,6 +134,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         appMenu.addItem(withTitle: L10n.format("About %@", appName), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
+        let settingsItem = appMenu.addItem(withTitle: L10n.string("Settings…"), action: #selector(showSettings(_:)), keyEquivalent: ",")
+        settingsItem.target = self
         checkForUpdatesItem = appMenu.addItem(withTitle: L10n.string("Check for Updates…"), action: #selector(checkForUpdates(_:)), keyEquivalent: "")
         checkForUpdatesItem?.target = self
         let manageHostsItem = appMenu.addItem(withTitle: L10n.string("Add / Edit Hosts…"), action: #selector(showHostManagement(_:)), keyEquivalent: "")
@@ -145,6 +149,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(withTitle: L10n.format("Quit %@", appName), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         return appItem
+    }
+
+    @objc private func showSettings(_ sender: Any?) {
+        if let settingsWindow {
+            settingsWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+            return
+        }
+        let controller = NSHostingController(rootView: NativeCaskSettingsView())
+        let window = NSWindow(contentViewController: controller)
+        window.title = L10n.string("Settings")
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        settingsWindow = window
+        NSApp.activate()
     }
 
     private func makePackageMenuItem() -> NSMenuItem {

@@ -26,6 +26,7 @@ enum MenuBarMenuRow: Equatable {
 
 struct MenuBarMenuState: Equatable {
     var inventory: PackageInventory?
+    var nativeCaskManagementEnabled = false
     var isRefreshing = false
     var errorMessage: String?
 
@@ -71,7 +72,7 @@ struct MenuBarMenuState: Equatable {
     }
 
     private var actionableOutdatedPackages: [ManagedPackage] {
-        (inventory?.outdatedPackages ?? []).filter(PackageUpdater.supports)
+        (inventory?.outdatedPackages ?? []).filter { PackageActions.canUpdate($0, nativeEnabled: nativeCaskManagementEnabled) }
     }
 }
 
@@ -176,12 +177,15 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
         }
         let isInstalled = snapshot.inventory?.packages.contains { $0.identifier == package.identifier } == true
         return !isInstalled && PackageInstaller.supports(package) ? package : nil
+    case .adopt:
+        guard snapshot.nativeCaskManagementEnabled == true, let package = installedPackage else { return nil }
+        return PackageActions.canAdopt(package) ? package : nil
     case .update:
         guard let package = installedPackage else { return nil }
-        return PackageUpdater.supports(package) ? package : nil
+        return PackageActions.canUpdate(package, nativeEnabled: snapshot.nativeCaskManagementEnabled == true) ? package : nil
     case .uninstall:
         guard let package = installedPackage else { return nil }
-        return PackageUninstaller.supports(package) ? package : nil
+        return PackageActions.canUninstall(package, nativeEnabled: snapshot.nativeCaskManagementEnabled == true) ? package : nil
     }
 }
 
@@ -189,7 +193,7 @@ func menuBarCommandUpdateAllPackages(snapshot: PackageHostSnapshot, packageIDs: 
     guard snapshot.runningAction == nil else { return [] }
     let selectedIDs = Set(packageIDs)
     return (snapshot.inventory?.outdatedPackages ?? []).filter {
-        PackageUpdater.supports($0) && (selectedIDs.isEmpty || selectedIDs.contains($0.id))
+        PackageActions.canUpdate($0, nativeEnabled: snapshot.nativeCaskManagementEnabled == true) && (selectedIDs.isEmpty || selectedIDs.contains($0.id))
     }
 }
 
@@ -260,11 +264,14 @@ func menuBarSnapshot(
     var packages = inventory.packages
 
     switch kind {
+    case .adopt: return snapshot
     case .install:
+        if NativeCaskManager.token(for: package) != nil && snapshot.nativeCaskManagementEnabled == true { return snapshot }
         if !packages.contains(where: { $0.identifier == package.identifier }) {
             packages.append(package.withInstalledVersion(package.latestVersion))
         }
     case .update:
+        if package.nativeCaskInstallation != nil { return snapshot }
         guard let latestVersion = package.latestVersion,
               let index = packages.firstIndex(where: { $0.id == package.id }) else { return snapshot }
         if package.manager == .pkgx {

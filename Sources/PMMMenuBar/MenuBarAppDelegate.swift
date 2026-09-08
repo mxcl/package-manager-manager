@@ -112,6 +112,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         PostHogTelemetry.shared.captureHeartbeat()
         loadSnapshot()
         observeCommands()
+        reloadNativePreferences()
         configureStatusButton()
         rebuildMenu()
         let now = Date()
@@ -350,18 +351,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         let progressHandler = actionProgressHandler(runID: runID, kind: kind, packageID: package.id, relay: relay)
 
         actionTask = Task { [weak self] in
-            let result = await runBlocking {
-                Result {
-                    switch kind {
-                    case .install:
-                        try PackageInstaller().install(package, onProgress: progressHandler)
-                    case .update:
-                        try PackageUpdater().update(package, onProgress: progressHandler)
-                    case .uninstall:
-                        try PackageUninstaller().uninstall(package, onProgress: progressHandler)
-                    }
-                }
-            }
+            let result = await Self.performAction(kind, package: package, onProgress: progressHandler)
 
             guard let self, !Task.isCancelled else { return }
             self.finishActionProgress(relay, runID: runID, kind: kind, packageID: package.id)
@@ -376,6 +366,28 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
                 self.publishSnapshot()
                 self.finishBusyWork { self.rescanAfterAction(errorMessage: error.localizedDescription) }
             }
+        }
+    }
+
+    private nonisolated static func performAction(_ kind: PackageHostActionKind, package: ManagedPackage,
+                                                 onProgress: @escaping @Sendable (PackageCommandProgress) -> Void) async -> Result<Void, Error> {
+        do {
+            try await PackageActions.perform(kind, package: package, onProgress: onProgress)
+            return .success(())
+        } catch { return .failure(error) }
+    }
+
+    @objc private func nativePreferencesChanged(_ notification: Notification) { reloadNativePreferences() }
+
+    private func reloadNativePreferences() {
+        Task { [weak self] in
+            let values = await runBlocking {
+                (PackagePreferencesStore().load().nativeCaskManagementEnabled, PackageScanner().homebrewPrefix() != nil)
+            }
+            guard let self else { return }
+            snapshot.nativeCaskManagementEnabled = values.0
+            snapshot.homebrewAvailable = values.1
+            publishSnapshot(updateFirstSeen: false)
         }
     }
 
@@ -397,6 +409,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         }
         state = MenuBarMenuState(
             inventory: snapshot.inventory,
+            nativeCaskManagementEnabled: snapshot.nativeCaskManagementEnabled == true,
             isRefreshing: snapshot.isRefreshing,
             errorMessage: snapshot.errorMessage ?? snapshot.inventory?.errors.first
         )
@@ -417,11 +430,15 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             loadingManagers: [],
             runningAction: nil,
             errorMessage: errorMessage ?? inventory.errors.first,
-            lastBrewUpdateAt: lastBrewUpdateAt
+            lastBrewUpdateAt: lastBrewUpdateAt,
+            nativeCaskManagementEnabled: PackagePreferencesStore().load().nativeCaskManagementEnabled,
+            homebrewAvailable: scanner.homebrewPrefix() != nil
         )
     }
 
     private func observeCommands() {
+        notificationCenter.addObserver(self, selector: #selector(nativePreferencesChanged(_:)), name: PackageHostNotifications.preferencesChanged, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(adoptRequested(_:)), name: PackageHostNotifications.adoptRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(refreshRequested(_:)), name: PackageHostNotifications.refreshRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(installRequested(_:)), name: PackageHostNotifications.installRequested, object: nil)
         notificationCenter.addObserver(self, selector: #selector(installManyRequested(_:)), name: PackageHostNotifications.installManyRequested, object: nil)
@@ -575,11 +592,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
                 let relay = self.actionProgressRelay(runID: runID, kind: .update, packageID: package.id)
                 let progressHandler = self.actionProgressHandler(runID: runID, kind: .update, packageID: package.id, relay: relay)
 
-                let result = await runBlocking {
-                    Result {
-                        try PackageUpdater().update(package, onProgress: progressHandler)
-                    }
-                }
+                let result = await Self.performAction(.update, package: package, onProgress: progressHandler)
                 self.finishActionProgress(relay, runID: runID, kind: .update, packageID: package.id)
                 if case .success = result {
                     self.snapshot = menuBarSnapshot(self.snapshot, applyingSuccessfulAction: .update, package: package)
@@ -684,11 +697,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
                 let relay = self.actionProgressRelay(runID: runID, kind: .install, packageID: package.id)
                 let progressHandler = self.actionProgressHandler(runID: runID, kind: .install, packageID: package.id, relay: relay)
 
-                let result = await runBlocking {
-                    Result {
-                        try PackageInstaller().install(package, onProgress: progressHandler)
-                    }
-                }
+                let result = await Self.performAction(.install, package: package, onProgress: progressHandler)
                 self.finishActionProgress(relay, runID: runID, kind: .install, packageID: package.id)
                 if case .success = result {
                     self.snapshot = menuBarSnapshot(self.snapshot, applyingSuccessfulAction: .install, package: package)
@@ -781,6 +790,11 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func refreshRequested(_ notification: Notification) {
         refresh(ignoringAppCache: true)
+    }
+
+    @objc private func adoptRequested(_ notification: Notification) {
+        guard let packageID = PackageHostNotifications.packageID(from: notification) else { return }
+        runAction(kind: .adopt, packageID: packageID)
     }
 
     @objc private func installRequested(_ notification: Notification) {

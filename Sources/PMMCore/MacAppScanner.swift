@@ -70,6 +70,8 @@ struct MacAppScanner: @unchecked Sendable {
 
     private func discoverSynchronously(database: PackageDatabase) throws -> [ManagedPackage] {
         let homebrewPaths = installedHomebrewAppPaths()
+        let nativeManager = NativeCaskManager(runner: runner, session: session)
+        let nativeReceipts = try nativeManager.installations()
         var seenPaths = Set<String>()
         var packages = [ManagedPackage]()
 
@@ -109,12 +111,18 @@ struct MacAppScanner: @unchecked Sendable {
                 let bundleVersion = nonEmpty(info["CFBundleVersion"] as? String)
                 let feedURL = catalog?.feedURL ?? nonEmpty(info["SUFeedURL"] as? String)
 
+                let native = nativeReceipts.values.first {
+                    $0.appPath == path && provenance == .direct && nativeManager.matches($0, app: url)
+                }
+                let recordedVersion = native.flatMap {
+                    $0.shortVersion == installedVersion && $0.bundleVersion == bundleVersion ? $0.version : nil
+                }
                 packages.append(ManagedPackage(
                     manager: .macApp,
                     identifier: "mac-app:\(bundleIdentifier)",
-                    catalogIdentifier: catalog?.cask.map { "brew:cask:\($0)" },
+                    catalogIdentifier: (native?.token ?? catalog?.cask).map { "brew:cask:\($0)" },
                     displayName: displayName,
-                    installedVersion: installedVersion,
+                    installedVersion: recordedVersion ?? installedVersion,
                     latestVersion: nil,
                     summary: catalog?.summary,
                     category: catalog?.category,
@@ -123,7 +131,8 @@ struct MacAppScanner: @unchecked Sendable {
                     bundleIdentifier: bundleIdentifier,
                     bundleVersion: bundleVersion,
                     appProvenance: provenance,
-                    advisoryURL: catalog?.advisoryURL ?? feedURL
+                    advisoryURL: catalog?.advisoryURL ?? feedURL,
+                    nativeCaskInstallation: native
                 ))
             }
         }
@@ -185,6 +194,11 @@ struct MacAppScanner: @unchecked Sendable {
         for package: ManagedPackage,
         catalog: MacAppCatalogEntry?
     ) async throws -> MacAppVersionCacheRecord? {
+        if let native = package.nativeCaskInstallation {
+            let recipe = try await NativeCaskManager(session: session).recipe(for: native.token)
+            return MacAppVersionCacheRecord(displayVersion: recipe.version, comparisonVersion: recipe.version,
+                source: .homebrewCask, advisoryURL: package.advisoryURL, checkedAt: now())
+        }
         switch package.appProvenance {
         case .appStore:
             guard let appStoreID = catalog?.appStoreID ?? appStoreID(for: package) else { return nil }
@@ -332,7 +346,10 @@ private extension ManagedPackage {
     func applying(_ record: MacAppVersionCacheRecord?, catalog: MacAppCatalogEntry?) -> ManagedPackage {
         guard let record else { return self }
         let installedComparison = record.source == .sparkle ? bundleVersion : installedVersion
-        let latest = numericVersionComparison(installedComparison, record.comparisonVersion) == .orderedAscending
+        let isNewer = nativeCaskInstallation != nil
+            ? NativeCaskManager.isNewer(record.comparisonVersion, than: installedComparison ?? "")
+            : numericVersionComparison(installedComparison, record.comparisonVersion) == .orderedAscending
+        let latest = isNewer
             ? record.displayVersion
             : nil
         return ManagedPackage(
@@ -358,7 +375,8 @@ private extension ManagedPackage {
             appProvenance: appProvenance,
             versionSource: record.source,
             advisoryURL: record.advisoryURL ?? advisoryURL ?? catalog?.advisoryURL,
-            versionCheckedAt: record.checkedAt
+            versionCheckedAt: record.checkedAt,
+            nativeCaskInstallation: nativeCaskInstallation
         )
     }
 
