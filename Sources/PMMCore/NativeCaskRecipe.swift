@@ -52,12 +52,16 @@ public struct NativeCaskRecipe: Equatable, Sendable {
             }
         }
         guard raw["disabled"] as? Bool != true else { throw NativeCaskError("This cask has been disabled by Homebrew.") }
-        guard let version = raw["version"] as? String, !version.isEmpty, version != "latest",
-              let sha = raw["sha256"] as? String, sha.count == 64,
-              sha.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }),
-              let address = raw["url"] as? String, let url = URL(string: address),
+        guard let version = raw["version"] as? String, !version.isEmpty, version != "latest" else {
+            throw NativeCaskError("This cask does not specify a fixed version. Native management is unavailable.")
+        }
+        guard let sha = raw["sha256"] as? String, sha.count == 64,
+              sha.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else {
+            throw NativeCaskError("This cask does not provide a SHA-256 checksum. PMM cannot verify its download.")
+        }
+        guard let address = raw["url"] as? String, let url = URL(string: address),
               url.scheme == "https", url.host != nil, url.user == nil, url.password == nil else {
-            throw NativeCaskError("Native installation requires a versioned HTTPS download with a SHA-256 checksum.")
+            throw NativeCaskError("This cask does not provide a supported HTTPS download URL.")
         }
         let urlSpecs = raw["url_specs"] as? [String: Any] ?? [:]
         let container = raw["container"] as? [String: String]

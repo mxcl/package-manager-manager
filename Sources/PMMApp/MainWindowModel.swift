@@ -1443,6 +1443,11 @@ final class MainWindowModel: NSObject, ObservableObject {
     func canUpdate(_ package: ManagedPackage) -> Bool {
         if PackageActions.usesNativeManagement(package), !isRemoteSelection,
            let token = NativeCaskManager.token(for: package), case .failure = nativeCaskRecipes[token] { return false }
+        return showsUpdateAction(package)
+    }
+
+    // Recipe checks disable actions without changing the detail pane’s layout.
+    func showsUpdateAction(_ package: ManagedPackage) -> Bool {
         guard PackageActions.canUpdate(package, nativeEnabled: nativeActionsEnabled) else { return false }
         guard package.manager.isLinuxSystem else { return true }
         return selectedRemoteState?.systemPackageManager == package.manager
@@ -1452,6 +1457,10 @@ final class MainWindowModel: NSObject, ObservableObject {
     func canUninstall(_ package: ManagedPackage) -> Bool {
         if PackageActions.canAdopt(package), !isRemoteSelection,
            let token = NativeCaskManager.token(for: package), case .failure = nativeCaskRecipes[token] { return false }
+        return showsUninstallAction(package)
+    }
+
+    func showsUninstallAction(_ package: ManagedPackage) -> Bool {
         guard PackageActions.canUninstall(package, nativeEnabled: nativeActionsEnabled) else { return false }
         guard package.manager.isLinuxSystem else { return true }
         return selectedRemoteState?.systemPackageManager == package.manager

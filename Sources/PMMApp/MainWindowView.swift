@@ -489,7 +489,7 @@ struct MainWindowDossierView: View {
                             .disabled(isPackageActionRunning)
                         }
                         if package.isOutdated {
-                            if model.canUpdate(package) {
+                            if model.showsUpdateAction(package) {
                                 Button {
                                     model.update(package)
                                 } label: {
@@ -499,10 +499,10 @@ struct MainWindowDossierView: View {
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(.large)
                                 .tint(SystemColor.orange)
-                                .disabled(isPackageActionRunning || model.isLoadingNativeRecipe(package))
+                                .disabled(isPackageActionRunning || model.isLoadingNativeRecipe(package) || !model.canUpdate(package))
                             }
                         }
-                        if model.canUninstall(package) {
+                        if model.showsUninstallAction(package) {
                             Button { model.uninstall(package) } label: {
                                 Label("Uninstall", systemImage: "trash")
                                     .frame(maxWidth: .infinity)
@@ -510,7 +510,7 @@ struct MainWindowDossierView: View {
                             .buttonStyle(.borderedProminent)
                             .controlSize(.large)
                             .tint(.red)
-                            .disabled(isPackageActionRunning || (PackageActions.canAdopt(package) && model.isLoadingNativeRecipe(package)))
+                            .disabled(isPackageActionRunning || !model.canUninstall(package) || (PackageActions.canAdopt(package) && model.isLoadingNativeRecipe(package)))
                         }
                         if model.isReadOnlySystemPackage(package) {
                             Label("Read-only: passwordless sudo is unavailable on this host.", systemImage: "lock")

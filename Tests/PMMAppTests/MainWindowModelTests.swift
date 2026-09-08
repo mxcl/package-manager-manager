@@ -2370,3 +2370,30 @@ private func nativeTestPackage(receipted: Bool = true, provenance: MacAppProvena
     #expect(!model.canUpdate(direct))
     #expect(!model.canUninstall(direct))
 }
+
+@MainActor
+@Test func unsupportedNativeRecipeKeepsActionsVisibleAfterLoading() async throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("native-actions-\(UUID().uuidString).json")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let preferences = PackagePreferencesStore(url: url)
+    try await preferences.setNativeCaskManagementEnabled(true)
+    // Spotify's API recipe explicitly omits a download checksum.
+    let recipe = Data(#"{"token":"spotify","tap":"homebrew/cask","version":"1.2.99.317","url":"https://download.scdn.co/Spotify.dmg","sha256":"no_check","artifacts":[{"app":["Spotify.app"]}]}"#.utf8)
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, usesPackageHostNotifications: false,
+        preferencesStore: preferences, nativeRecipeLoader: { token in try NativeCaskRecipe.decode(recipe, token: token) })
+    let spotify = ManagedPackage(manager: .macApp, identifier: "mac-app:com.spotify.client", catalogIdentifier: "brew:cask:spotify",
+        installedVersion: "1.2.94.583", latestVersion: "1.2.99.317", installLocation: "/Applications/Spotify.app",
+        bundleIdentifier: "com.spotify.client", appProvenance: .direct)
+    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [spotify]), homebrewAvailable: false))
+    await model.reloadNativePreferences()
+    #expect(model.isLoadingNativeRecipe(spotify))
+    #expect(model.showsUpdateAction(spotify))
+    #expect(model.showsUninstallAction(spotify))
+    await model.loadNativeCaskRecipe(for: spotify)
+    #expect(!model.isLoadingNativeRecipe(spotify))
+    #expect(model.showsUpdateAction(spotify))
+    #expect(model.showsUninstallAction(spotify))
+    #expect(!model.canUpdate(spotify))
+    #expect(!model.canUninstall(spotify))
+    #expect(model.nativeCaskMessage(spotify)?.contains("checksum") == true)
+}
