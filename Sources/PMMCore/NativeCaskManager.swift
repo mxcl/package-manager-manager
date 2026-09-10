@@ -308,6 +308,7 @@ public struct NativeCaskManager: Sendable {
     }
 
     private func fileOperation(_ executable: String, _ arguments: [String], allowAuthorization: Bool,
+                               onProgress: (@Sendable (PackageCommandProgress) -> Void)?,
                                perform: () throws -> Void) throws {
         do { try perform() }
         catch {
@@ -324,18 +325,21 @@ public struct NativeCaskManager: Sendable {
                 do shell script commandText with administrator privileges
             end run
             """
+            onProgress?(.output("Requesting administrator authorization in the macOS dialog…\n"))
             try command("/usr/bin/osascript", ["-e", script, executable] + arguments)
         }
     }
 
-    private func moveApp(_ source: URL, to destination: URL, allowAuthorization: Bool = true) throws {
-        try fileOperation("/bin/mv", [source.path, destination.path], allowAuthorization: allowAuthorization) {
+    private func moveApp(_ source: URL, to destination: URL, allowAuthorization: Bool = true,
+                         onProgress: (@Sendable (PackageCommandProgress) -> Void)?) throws {
+        try fileOperation("/bin/mv", [source.path, destination.path], allowAuthorization: allowAuthorization, onProgress: onProgress) {
             try FileManager.default.moveItem(at: source, to: destination)
         }
     }
 
-    private func removeApp(_ url: URL, allowAuthorization: Bool) throws {
-        try fileOperation("/bin/rm", ["-rf", url.path], allowAuthorization: allowAuthorization) {
+    private func removeApp(_ url: URL, allowAuthorization: Bool,
+                           onProgress: (@Sendable (PackageCommandProgress) -> Void)?) throws {
+        try fileOperation("/bin/rm", ["-rf", url.path], allowAuthorization: allowAuthorization, onProgress: onProgress) {
             try FileManager.default.removeItem(at: url)
         }
     }
@@ -545,20 +549,21 @@ public struct NativeCaskManager: Sendable {
         journalWritten = true
         onProgress?(.output("Installing \(recipe.targetName)…\n"))
         do {
-            if previous != nil { try moveApp(destination, to: staging.appendingPathComponent("previous.app")) }
-            try moveApp(staged, to: destination)
+            if previous != nil { try moveApp(destination, to: staging.appendingPathComponent("previous.app"), onProgress: onProgress) }
+            try moveApp(staged, to: destination, onProgress: onProgress)
             receipts[recipe.token] = receipt
             try store.save(receipts)
-            try recover(allowAuthorization: true)
+            try recover(allowAuthorization: true, onProgress: onProgress)
         } catch {
-            try recover(allowAuthorization: true)
+            try recover(allowAuthorization: true, onProgress: onProgress)
             throw error
         }
         onProgress?(.output("Installed \(recipe.version).\n"))
     }
 
     /// The receipt is the commit point. Before it commits, restore the old bundle.
-    func recover(allowAuthorization: Bool = false) throws {
+    func recover(allowAuthorization: Bool = false,
+                 onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) throws {
         guard FileManager.default.fileExists(atPath: store.journalURL.path) else { return }
         let transaction = try JSONDecoder().decode(NativeCaskTransaction.self, from: Data(contentsOf: store.journalURL))
         let destination = try checkedPath(transaction.receipt.appPath)
@@ -577,16 +582,16 @@ public struct NativeCaskManager: Sendable {
                 }
                 if FileManager.default.fileExists(atPath: destination.path) {
                     try verifyRecoveryDestination(destination, receipt: transaction.receipt)
-                    try removeApp(destination, allowAuthorization: allowAuthorization)
+                    try removeApp(destination, allowAuthorization: allowAuthorization, onProgress: onProgress)
                 }
-                try moveApp(previous, to: destination, allowAuthorization: allowAuthorization)
+                try moveApp(previous, to: destination, allowAuthorization: allowAuthorization, onProgress: onProgress)
             } else if transaction.previous == nil && !FileManager.default.fileExists(atPath: staging.appendingPathComponent("new.app").path),
                       FileManager.default.fileExists(atPath: destination.path) {
                 try verifyRecoveryDestination(destination, receipt: transaction.receipt)
-                try removeApp(destination, allowAuthorization: allowAuthorization)
+                try removeApp(destination, allowAuthorization: allowAuthorization, onProgress: onProgress)
             }
         }
-        if FileManager.default.fileExists(atPath: staging.path) { try removeApp(staging, allowAuthorization: allowAuthorization) }
+        if FileManager.default.fileExists(atPath: staging.path) { try removeApp(staging, allowAuthorization: allowAuthorization, onProgress: onProgress) }
         try FileManager.default.removeItem(at: store.journalURL)
     }
 

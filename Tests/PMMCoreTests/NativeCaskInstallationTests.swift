@@ -11,6 +11,7 @@ private final class CaskTestRunner: CommandRunning, @unchecked Sendable {
     var isRunning = false
     var denyAuthorization = false
     var authorizationRequests = 0
+    var authorizationNotices = 0
 
     func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
         try run(executable, arguments, options: CommandRunOptions(), onOutput: nil)
@@ -22,6 +23,7 @@ private final class CaskTestRunner: CommandRunning, @unchecked Sendable {
         switch URL(fileURLWithPath: executable).lastPathComponent {
         case "osascript":
             authorizationRequests += 1
+            #expect(authorizationNotices == authorizationRequests)
             if denyAuthorization { return CommandResult(stdout: "", stderr: "User canceled.", status: 1) }
             let tool = arguments[2]
             let paths = Array(arguments.dropFirst(3))
@@ -110,10 +112,11 @@ private struct CaskFixture {
         return (archive, recipe, work)
     }
 
-    func install(version: String, previous: NativeCaskInstallation? = nil, dmg: Bool = false) throws -> NativeCaskInstallation {
+    func install(version: String, previous: NativeCaskInstallation? = nil, dmg: Bool = false,
+                 onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) throws -> NativeCaskInstallation {
         let (archive, recipe, work) = try archive(version: version, dmg: dmg)
         try NativeCaskManager.verifyChecksum(archive, expected: recipe.sha256)
-        try manager.installArchive(archive, work: work, recipe: recipe, previous: previous, onProgress: nil)
+        try manager.installArchive(archive, work: work, recipe: recipe, previous: previous, onProgress: onProgress)
         return try #require(NativeCaskStore(directory: state).load()["example"])
     }
 
@@ -155,11 +158,16 @@ func nativeUpdateRequestsAuthorizationForProtectedApp(denied: Bool) async throws
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: first.appPath)
         defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: first.appPath) }
         fixture.runner.denyAuthorization = denied
+        let progress: @Sendable (PackageCommandProgress) -> Void = { [runner = fixture.runner] event in
+            if case .output(let text) = event, text.contains("Requesting administrator authorization") {
+                runner.authorizationNotices += 1
+            }
+        }
         if denied {
-            #expect(throws: NativeCaskError.self) { try fixture.install(version: "2.0", previous: first) }
+            #expect(throws: NativeCaskError.self) { try fixture.install(version: "2.0", previous: first, onProgress: progress) }
             #expect(try fixture.manager.installations()["example"] == first)
         } else {
-            let updated = try fixture.install(version: "2.0", previous: first)
+            let updated = try fixture.install(version: "2.0", previous: first, onProgress: progress)
             #expect(updated.version == "2.0")
         }
         #expect(fixture.runner.authorizationRequests == (denied ? 1 : 2))
