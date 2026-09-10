@@ -1188,7 +1188,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     func updateInAppStore(_ package: ManagedPackage) {
         guard showsAppStoreFallback(package), !isPackageActionRunning, let url = package.appStoreURL else { return }
-        checkAppsBeforeUpdate([package]) { NSWorkspace.shared.open(url) }
+        NSWorkspace.shared.open(url)
     }
 
     func update(_ package: ManagedPackage) {
