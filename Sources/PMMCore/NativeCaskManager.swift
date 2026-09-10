@@ -307,6 +307,39 @@ public struct NativeCaskManager: Sendable {
         return result
     }
 
+    private func fileOperation(_ executable: String, _ arguments: [String], allowAuthorization: Bool,
+                               perform: () throws -> Void) throws {
+        do { try perform() }
+        catch {
+            let failure = error as NSError
+            guard allowAuthorization,
+                  (failure.domain == NSCocoaErrorDomain && failure.code == NSFileWriteNoPermissionError)
+                    || (failure.domain == NSPOSIXErrorDomain && [Int(EACCES), Int(EPERM)].contains(failure.code)) else { throw error }
+            let script = """
+            on run argv
+                set commandText to ""
+                repeat with argument in argv
+                    set commandText to commandText & quoted form of argument & " "
+                end repeat
+                do shell script commandText with administrator privileges
+            end run
+            """
+            try command("/usr/bin/osascript", ["-e", script, executable] + arguments)
+        }
+    }
+
+    private func moveApp(_ source: URL, to destination: URL, allowAuthorization: Bool = true) throws {
+        try fileOperation("/bin/mv", [source.path, destination.path], allowAuthorization: allowAuthorization) {
+            try FileManager.default.moveItem(at: source, to: destination)
+        }
+    }
+
+    private func removeApp(_ url: URL, allowAuthorization: Bool) throws {
+        try fileOperation("/bin/rm", ["-rf", url.path], allowAuthorization: allowAuthorization) {
+            try FileManager.default.removeItem(at: url)
+        }
+    }
+
     static func verifyChecksum(_ archive: URL, expected: String) throws {
         let handle = try FileHandle(forReadingFrom: archive)
         defer { try? handle.close() }
@@ -512,20 +545,20 @@ public struct NativeCaskManager: Sendable {
         journalWritten = true
         onProgress?(.output("Installing \(recipe.targetName)…\n"))
         do {
-            if previous != nil { try FileManager.default.moveItem(at: destination, to: staging.appendingPathComponent("previous.app")) }
-            try FileManager.default.moveItem(at: staged, to: destination)
+            if previous != nil { try moveApp(destination, to: staging.appendingPathComponent("previous.app")) }
+            try moveApp(staged, to: destination)
             receipts[recipe.token] = receipt
             try store.save(receipts)
-            try recover()
+            try recover(allowAuthorization: true)
         } catch {
-            try recover()
+            try recover(allowAuthorization: true)
             throw error
         }
         onProgress?(.output("Installed \(recipe.version).\n"))
     }
 
     /// The receipt is the commit point. Before it commits, restore the old bundle.
-    func recover() throws {
+    func recover(allowAuthorization: Bool = false) throws {
         guard FileManager.default.fileExists(atPath: store.journalURL.path) else { return }
         let transaction = try JSONDecoder().decode(NativeCaskTransaction.self, from: Data(contentsOf: store.journalURL))
         let destination = try checkedPath(transaction.receipt.appPath)
@@ -544,16 +577,16 @@ public struct NativeCaskManager: Sendable {
                 }
                 if FileManager.default.fileExists(atPath: destination.path) {
                     try verifyRecoveryDestination(destination, receipt: transaction.receipt)
-                    try FileManager.default.removeItem(at: destination)
+                    try removeApp(destination, allowAuthorization: allowAuthorization)
                 }
-                try FileManager.default.moveItem(at: previous, to: destination)
+                try moveApp(previous, to: destination, allowAuthorization: allowAuthorization)
             } else if transaction.previous == nil && !FileManager.default.fileExists(atPath: staging.appendingPathComponent("new.app").path),
                       FileManager.default.fileExists(atPath: destination.path) {
                 try verifyRecoveryDestination(destination, receipt: transaction.receipt)
-                try FileManager.default.removeItem(at: destination)
+                try removeApp(destination, allowAuthorization: allowAuthorization)
             }
         }
-        if FileManager.default.fileExists(atPath: staging.path) { try FileManager.default.removeItem(at: staging) }
+        if FileManager.default.fileExists(atPath: staging.path) { try removeApp(staging, allowAuthorization: allowAuthorization) }
         try FileManager.default.removeItem(at: store.journalURL)
     }
 

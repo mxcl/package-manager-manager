@@ -9,6 +9,8 @@ private final class CaskTestRunner: CommandRunning, @unchecked Sendable {
     var homebrewOwnsApp = false
     var team = "EXAMPLETEAM"
     var isRunning = false
+    var denyAuthorization = false
+    var authorizationRequests = 0
 
     func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
         try run(executable, arguments, options: CommandRunOptions(), onOutput: nil)
@@ -18,6 +20,26 @@ private final class CaskTestRunner: CommandRunning, @unchecked Sendable {
              onOutput: (@Sendable (String) -> Void)?) throws -> CommandResult {
         #expect(!Thread.isMainThread)
         switch URL(fileURLWithPath: executable).lastPathComponent {
+        case "osascript":
+            authorizationRequests += 1
+            if denyAuthorization { return CommandResult(stdout: "", stderr: "User canceled.", status: 1) }
+            let tool = arguments[2]
+            let paths = Array(arguments.dropFirst(3))
+            // Simulate authorization only inside the fixture; never request real administrator access in tests.
+            let protectedPath = tool == "/bin/mv" ? paths[0] : paths.last!
+            let attributes = try FileManager.default.attributesOfItem(atPath: protectedPath)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: protectedPath)
+            if tool == "/bin/rm", let entries = FileManager.default.enumerator(atPath: protectedPath) {
+                for case let path as String in entries {
+                    try FileManager.default.setAttributes([.posixPermissions: 0o755],
+                        ofItemAtPath: URL(fileURLWithPath: protectedPath).appendingPathComponent(path).path)
+                }
+            }
+            let result = try SystemCommandRunner().run(tool, paths)
+            if tool == "/bin/mv", result.status == 0 {
+                try FileManager.default.setAttributes([.posixPermissions: attributes[.posixPermissions]!], ofItemAtPath: paths[1])
+            }
+            return result
         case "codesign", "spctl":
             return CommandResult(stdout: "", stderr: "TeamIdentifier=\(team)\n", status: rejectSignature ? 1 : 0)
         case "brew":
@@ -120,6 +142,30 @@ private struct CaskFixture {
         #expect(!FileManager.default.fileExists(atPath: second.appPath))
         #expect(try NativeCaskStore(directory: fixture.state).load().isEmpty)
         #expect(try String(contentsOf: userData, encoding: .utf8) == "keep me")
+    }
+}
+
+@Test(arguments: [false, true])
+func nativeUpdateRequestsAuthorizationForProtectedApp(denied: Bool) async throws {
+    let fixture = try CaskFixture()
+    defer { fixture.clean() }
+    try await fixture.preferences.setNativeCaskManagementEnabled(true)
+    try await nativeCaskWork {
+        let first = try fixture.install(version: "1.0")
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: first.appPath)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: first.appPath) }
+        fixture.runner.denyAuthorization = denied
+        if denied {
+            #expect(throws: NativeCaskError.self) { try fixture.install(version: "2.0", previous: first) }
+            #expect(try fixture.manager.installations()["example"] == first)
+        } else {
+            let updated = try fixture.install(version: "2.0", previous: first)
+            #expect(updated.version == "2.0")
+        }
+        #expect(fixture.runner.authorizationRequests == (denied ? 1 : 2))
+        let info = try PropertyListSerialization.propertyList(from: Data(contentsOf: URL(fileURLWithPath: first.appPath).appendingPathComponent("Contents/Info.plist")), format: nil) as? [String: String]
+        #expect(info?["CFBundleShortVersionString"] == (denied ? "1.0" : "2.0"))
+        #expect(!FileManager.default.fileExists(atPath: fixture.state.appendingPathComponent("native-cask-transaction.json").path))
     }
 }
 
