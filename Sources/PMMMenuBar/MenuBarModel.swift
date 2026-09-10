@@ -273,7 +273,8 @@ func menuBarSnapshot(
             packages.append(package.withInstalledVersion(package.latestVersion))
         }
     case .update:
-        if package.manager == .macApp || PackageActions.usesNativeManagement(package) { return snapshot }
+        if (package.manager == .macApp || PackageActions.usesNativeManagement(package)),
+           !NativeCaskManager.supportsDirectUpdate(package) { return snapshot }
         guard let latestVersion = package.latestVersion,
               let index = packages.firstIndex(where: { $0.id == package.id }) else { return snapshot }
         if package.manager == .pkgx {
@@ -303,7 +304,8 @@ func menuBarSnapshot(
                 binaryPath: nextBinary
             )
         } else {
-            packages[index] = package.withInstalledVersion(latestVersion)
+            packages[index] = package.withInstalledVersion(latestVersion,
+                installedVersions: package.manager == .macApp ? [latestVersion] : nil)
         }
     case .uninstall:
         if package.manager == .uv, package.summary == "uv-managed Python", let nextVersion = package.otherInstalledVersions.first,
@@ -346,6 +348,7 @@ private extension ManagedPackage {
         ManagedPackage(
             manager: manager,
             identifier: identifier,
+            catalogIdentifier: catalogIdentifier,
             displayName: displayName,
             installedVersion: version,
             installedVersions: installedVersions ?? self.installedVersions,
@@ -359,7 +362,15 @@ private extension ManagedPackage {
             pulseKind: pulseKind,
             installLocation: installLocation ?? self.installLocation,
             binaryPath: binaryPath ?? self.binaryPath,
-            executableNames: executableNames
+            executableNames: executableNames,
+            bundleIdentifier: bundleIdentifier,
+            bundleVersion: version == installedVersion ? bundleVersion : nil,
+            appProvenance: appProvenance,
+            versionSource: versionSource,
+            advisoryURL: advisoryURL,
+            updateDownloadURL: updateDownloadURL,
+            versionCheckedAt: versionCheckedAt,
+            nativeCaskInstallation: nativeCaskInstallation
         )
     }
 }

@@ -336,6 +336,23 @@ private final class LockedStrings: @unchecked Sendable {
     #expect(snapshot.inventory?.packages.contains { $0.identifier == installed.identifier } == false)
 }
 
+@Test func successfulSparkleUpdateLeavesOutdatedImmediately() throws {
+    let package = ManagedPackage(manager: .macApp, identifier: "mac-app:dev.thanhtran.macgit",
+        displayName: "Commit+", installedVersion: "1.0.9", latestVersion: "1.1.0",
+        repo: "https://github.com/Commit-Plus/macgit", installLocation: "/Applications/Commit+.app",
+        bundleIdentifier: "dev.thanhtran.macgit", appProvenance: .direct, versionSource: .sparkle,
+        updateDownloadURL: "https://github.com/Commit-Plus/macgit/releases/download/v1.1.0/Commit+-1.1.0-arm64.zip")
+    let snapshot = menuBarSnapshot(PackageHostSnapshot(inventory: PackageInventory(packages: [package])),
+        applyingSuccessfulAction: .update, package: package)
+    let updated = try #require(snapshot.inventory?.packages.first)
+    #expect(updated.installedVersion == "1.1.0")
+    #expect(!updated.isOutdated)
+    #expect(updated.bundleIdentifier == package.bundleIdentifier)
+    #expect(updated.sourceTitle == "Sparkle App")
+    #expect(updated.repo == package.repo)
+    #expect(updated.updateDownloadURL == package.updateDownloadURL)
+}
+
 @Test func uninstallingManagedPythonKeepsOtherInstalledVersions() {
     let python = ManagedPackage(
         manager: .uv,
