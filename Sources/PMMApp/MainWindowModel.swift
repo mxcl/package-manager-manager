@@ -588,6 +588,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var dashboardBlogEntries: [DashboardBlogEntry] = []
     @Published private(set) var dashboardBlogEntriesAreLoading = false
     @Published private(set) var pendingInstallPackConfirmation: MainWindowInstallPackConfirmation?
+    @Published var appsToCloseMessage: String?
+    @Published private(set) var isCheckingAppsBeforeUpdate = false
     @Published var searchText = ""
     @Published var showsCategoryCLIs = true {
         didSet { reconcilePackageSelection() }
@@ -1182,7 +1184,25 @@ final class MainWindowModel: NSObject, ObservableObject {
             runRemoteAction(.update, package: package, host: host)
             return
         }
-        if usesPackageHostNotifications { PackageHostNotifications.postUpdateRequested(packageID: package.id) }
+        checkAppsBeforeUpdate([package]) {
+            PackageHostNotifications.postUpdateRequested(packageID: package.id)
+        }
+    }
+
+    private func checkAppsBeforeUpdate(_ packages: [ManagedPackage], perform: @escaping @MainActor () -> Void) {
+        isCheckingAppsBeforeUpdate = true
+        Task { [weak self] in
+            let messages = await Task.detached(priority: .userInitiated) {
+                packages.compactMap { package -> String? in
+                    do { try PackageUpdater.requireAppsClosed(package); return nil }
+                    catch { return error.localizedDescription }
+                }
+            }.value
+            guard let self else { return }
+            self.isCheckingAppsBeforeUpdate = false
+            if !messages.isEmpty { self.appsToCloseMessage = messages.joined(separator: "\n") }
+            else if self.usesPackageHostNotifications { perform() }
+        }
     }
 
     func updateAllOutdatedPackages() {
@@ -1195,8 +1215,9 @@ final class MainWindowModel: NSObject, ObservableObject {
             runRemoteAction(.updateAll, package: nil, host: host)
             return
         }
-        if usesPackageHostNotifications {
-            PackageHostNotifications.postUpdateAllRequested(packageIDs: hasMultipleSelectedPackages ? packagesToUpdate.map(\.id) : [])
+        let ids = hasMultipleSelectedPackages ? packagesToUpdate.map(\.id) : []
+        checkAppsBeforeUpdate(packagesToUpdate) {
+            PackageHostNotifications.postUpdateAllRequested(packageIDs: ids)
         }
     }
 
@@ -1397,6 +1418,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func isLoadingNativeRecipe(_ package: ManagedPackage) -> Bool {
+        if NativeCaskManager.supportsDirectUpdate(package) { return false }
         guard !isRemoteSelection, let token = NativeCaskManager.token(for: package) else { return false }
         return nativePreferencesAreLoading || (nativeCaskManagementEnabled && nativeCaskRecipes[token] == nil)
     }
@@ -1441,6 +1463,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func canUpdate(_ package: ManagedPackage) -> Bool {
+        if NativeCaskManager.supportsDirectUpdate(package) { return true }
         if PackageActions.usesNativeManagement(package), !isRemoteSelection,
            let token = NativeCaskManager.token(for: package), case .failure = nativeCaskRecipes[token] { return false }
         return showsUpdateAction(package)
@@ -1472,7 +1495,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     private var isPackageActionRunning: Bool {
-        installingPackageName != nil || uninstallingPackageName != nil || updatingPackageName != nil
+        isCheckingAppsBeforeUpdate || installingPackageName != nil || uninstallingPackageName != nil || updatingPackageName != nil
     }
 
     private var newUpdatedUnreadCount: Int? {
@@ -2011,6 +2034,7 @@ struct PackageIndex: Sendable {
             appProvenance: installedPackage.appProvenance,
             versionSource: installedPackage.versionSource,
             advisoryURL: installedPackage.advisoryURL,
+            updateDownloadURL: installedPackage.updateDownloadURL,
             versionCheckedAt: installedPackage.versionCheckedAt,
             nativeCaskInstallation: installedPackage.nativeCaskInstallation
         )

@@ -170,6 +170,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
     public let appProvenance: MacAppProvenance?
     public let versionSource: MacAppVersionSource?
     public let advisoryURL: String?
+    public let updateDownloadURL: String?
     public let versionCheckedAt: Date?
     public let nativeCaskInstallation: NativeCaskInstallation?
 
@@ -198,6 +199,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         appProvenance: MacAppProvenance? = nil,
         versionSource: MacAppVersionSource? = nil,
         advisoryURL: String? = nil,
+        updateDownloadURL: String? = nil,
         versionCheckedAt: Date? = nil,
         nativeCaskInstallation: NativeCaskInstallation? = nil
     ) {
@@ -224,6 +226,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
             appProvenance: appProvenance,
             versionSource: versionSource,
             advisoryURL: advisoryURL,
+            updateDownloadURL: updateDownloadURL,
             versionCheckedAt: versionCheckedAt,
             nativeCaskInstallation: nativeCaskInstallation
         )
@@ -252,6 +255,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         appProvenance: MacAppProvenance? = nil,
         versionSource: MacAppVersionSource? = nil,
         advisoryURL: String? = nil,
+        updateDownloadURL: String? = nil,
         versionCheckedAt: Date? = nil,
         nativeCaskInstallation: NativeCaskInstallation? = nil
     ) {
@@ -277,6 +281,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         self.appProvenance = appProvenance
         self.versionSource = versionSource
         self.advisoryURL = advisoryURL
+        self.updateDownloadURL = updateDownloadURL
         self.versionCheckedAt = versionCheckedAt
         self.nativeCaskInstallation = nativeCaskInstallation
     }
@@ -313,6 +318,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
             appProvenance: try container.decodeIfPresent(MacAppProvenance.self, forKey: .appProvenance),
             versionSource: try container.decodeIfPresent(MacAppVersionSource.self, forKey: .versionSource),
             advisoryURL: try container.decodeIfPresent(String.self, forKey: .advisoryURL),
+            updateDownloadURL: try container.decodeIfPresent(String.self, forKey: .updateDownloadURL),
             versionCheckedAt: try container.decodeIfPresent(Date.self, forKey: .versionCheckedAt),
             nativeCaskInstallation: try container.decodeIfPresent(NativeCaskInstallation.self, forKey: .nativeCaskInstallation)
         )
@@ -345,6 +351,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         try container.encodeIfPresent(appProvenance, forKey: .appProvenance)
         try container.encodeIfPresent(versionSource, forKey: .versionSource)
         try container.encodeIfPresent(advisoryURL, forKey: .advisoryURL)
+        try container.encodeIfPresent(updateDownloadURL, forKey: .updateDownloadURL)
         try container.encodeIfPresent(versionCheckedAt, forKey: .versionCheckedAt)
         try container.encodeIfPresent(nativeCaskInstallation, forKey: .nativeCaskInstallation)
     }
@@ -391,6 +398,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
             appProvenance: appProvenance,
             versionSource: versionSource,
             advisoryURL: advisoryURL,
+            updateDownloadURL: updateDownloadURL,
             versionCheckedAt: versionCheckedAt,
             nativeCaskInstallation: nativeCaskInstallation
         )
@@ -422,6 +430,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
                 appProvenance: newest.appProvenance,
                 versionSource: newest.versionSource,
                 advisoryURL: newest.advisoryURL,
+                updateDownloadURL: newest.updateDownloadURL,
                 versionCheckedAt: newest.versionCheckedAt,
                 nativeCaskInstallation: newest.nativeCaskInstallation
             )
@@ -486,6 +495,7 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         case appProvenance
         case versionSource
         case advisoryURL
+        case updateDownloadURL
         case versionCheckedAt
         case nativeCaskInstallation
     }

@@ -126,6 +126,8 @@ struct MacAppScannerTests {
           <item>
             <sparkle:version>200</sparkle:version>
             <sparkle:shortVersionString>2.0</sparkle:shortVersionString>
+            <enclosure url="https://example.com/app.zip"/>
+            <sparkle:deltas><enclosure url="https://example.com/delta.zip" sparkle:deltaFrom="100"/></sparkle:deltas>
             <sparkle:releaseNotesLink>https://example.com/releases/2</sparkle:releaseNotesLink>
           </item>
         </channel></rss>
@@ -137,6 +139,9 @@ struct MacAppScannerTests {
         #expect(first.isOutdated)
         #expect(first.versionSource == .sparkle)
         #expect(first.advisoryURL == "https://example.com/releases/2")
+        #expect(first.updateDownloadURL == "https://example.com/app.zip")
+        #expect(PackageActions.canUpdate(first, nativeEnabled: false))
+        #expect(try JSONDecoder().decode(ManagedPackage.self, from: JSONEncoder().encode(first)) == first)
         #expect(MacAppURLProtocol.requests == 1)
 
         _ = try await fixture.packages(scanner: scanner, mode: .fresh)
@@ -194,7 +199,7 @@ struct MacAppScannerTests {
           <item><enclosure url="https://example.com/app.zip" sparkle:version="42" sparkle:shortVersionString="4.2" /></item>
         </channel></rss>
         """.utf8)))
-        #expect(parser.items == [SparkleAppcastItem(version: "42", shortVersion: "4.2", channel: nil, infoURL: "https://example.com/app.zip")])
+        #expect(parser.items == [SparkleAppcastItem(version: "42", shortVersion: "4.2", channel: nil, infoURL: "https://example.com/app.zip", downloadURL: "https://example.com/app.zip")])
     }
 
     @Test func parsesSparkleEnclosuresWithVersionInSiblingElements() {
@@ -204,7 +209,7 @@ struct MacAppScannerTests {
           <item><enclosure url="https://example.com/app.zip"/><sparkle:version>42</sparkle:version></item>
         </channel></rss>
         """.utf8)))
-        #expect(parser.items == [SparkleAppcastItem(version: "42", shortVersion: nil, channel: nil, infoURL: "https://example.com/app.zip")])
+        #expect(parser.items == [SparkleAppcastItem(version: "42", shortVersion: nil, channel: nil, infoURL: "https://example.com/app.zip", downloadURL: "https://example.com/app.zip")])
     }
 
     private func testSession() -> URLSession {

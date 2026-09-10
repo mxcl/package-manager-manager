@@ -2397,3 +2397,18 @@ private func nativeTestPackage(receipted: Bool = true, provenance: MacAppProvena
     #expect(!model.canUninstall(spotify))
     #expect(model.nativeCaskMessage(spotify)?.contains("checksum") == true)
 }
+
+@MainActor
+@Test func sparkleDownloadOffersUpdateWithoutNativeCaskSetting() {
+    let package = ManagedPackage(manager: .macApp, identifier: "mac-app:dev.thanhtran.macgit", displayName: "Commit+",
+        installedVersion: "1.0.9", latestVersion: "1.1.0", installLocation: "/Applications/Commit+.app",
+        bundleIdentifier: "dev.thanhtran.macgit", appProvenance: .direct, versionSource: .sparkle,
+        updateDownloadURL: "https://example.com/Commit+-1.1.0-arm64.zip")
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, usesPackageHostNotifications: false)
+    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [package])))
+    model.selectSection(.outdated)
+    #expect(model.showsUpdateAction(package))
+    #expect(model.canUpdate(package))
+    #expect(!model.isLoadingNativeRecipe(package))
+    #expect(model.canUpdateAllOutdatedPackages)
+}

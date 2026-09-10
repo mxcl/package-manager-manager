@@ -143,6 +143,14 @@ struct MainWindowRootView: View {
             )
             .interactiveDismissDisabled(true)
         }
+        .alert("Close apps before updating", isPresented: Binding(
+            get: { model.appsToCloseMessage != nil },
+            set: { if !$0 { model.appsToCloseMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { model.appsToCloseMessage = nil }
+        } message: {
+            Text(model.appsToCloseMessage ?? "")
+        }
         .alert("Install \(model.pendingInstallPackConfirmation?.packageCount ?? 0) packages?", isPresented: installPackConfirmationBinding) {
             Button("Cancel", role: .cancel) {
                 model.cancelPendingInstallPack()
@@ -191,7 +199,10 @@ struct MainWindowRootView: View {
                 Button {
                     model.updateAllOutdatedPackages()
                 } label: {
-                    Label(model.updateOutdatedPackagesButtonTitle, systemImage: "arrow.down.circle")
+                    HStack {
+                        if model.isCheckingAppsBeforeUpdate { ProgressView().controlSize(.small) }
+                        Label(model.updateOutdatedPackagesButtonTitle, systemImage: "arrow.down.circle")
+                    }
                 }
                 .disabled(!model.canUpdateAllOutdatedPackages)
                 .labelStyle(.titleAndIcon)

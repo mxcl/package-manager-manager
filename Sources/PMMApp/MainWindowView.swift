@@ -493,13 +493,16 @@ struct MainWindowDossierView: View {
                                 Button {
                                     model.update(package)
                                 } label: {
-                                    Label(updateButtonTitle(for: package), systemImage: "arrow.down.circle")
-                                        .frame(maxWidth: .infinity)
+                                    HStack {
+                                        if model.isCheckingAppsBeforeUpdate { ProgressView().controlSize(.small) }
+                                        Label(updateButtonTitle(for: package), systemImage: "arrow.down.circle")
+                                    }
+                                    .frame(maxWidth: .infinity)
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(.large)
                                 .tint(SystemColor.orange)
-                                .disabled(isPackageActionRunning || model.isLoadingNativeRecipe(package) || !model.canUpdate(package))
+                                .disabled(isPackageActionRunning || model.isCheckingAppsBeforeUpdate || model.isLoadingNativeRecipe(package) || !model.canUpdate(package))
                             }
                         }
                         if model.showsUninstallAction(package) {

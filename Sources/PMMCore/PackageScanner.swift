@@ -1055,6 +1055,7 @@ public struct PackageScanner: @unchecked Sendable {
                     appProvenance: pkg.appProvenance,
                     versionSource: pkg.versionSource,
                     advisoryURL: pkg.advisoryURL,
+                    updateDownloadURL: pkg.updateDownloadURL,
                     versionCheckedAt: Date()
                 )
             }

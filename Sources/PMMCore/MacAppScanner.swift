@@ -183,7 +183,7 @@ struct MacAppScanner: @unchecked Sendable {
     ) async -> MacAppCheckResult {
         let catalog = package.bundleIdentifier.flatMap(database.app)
         let automaticManagement = nativeEnabled && PackageActions.canAdopt(package)
-        if !automaticManagement, !ignoresCache, let cached, (package.nativeCaskInstallation == nil || cached.source == .homebrewCask), now().timeIntervalSince(cached.checkedAt) < Self.cacheLifetime {
+        if !automaticManagement, !ignoresCache, let cached, (cached.source != .sparkle || cached.downloadMetadataVersion == 1), (package.nativeCaskInstallation == nil || cached.source == .homebrewCask), now().timeIntervalSince(cached.checkedAt) < Self.cacheLifetime {
             return MacAppCheckResult(package: package.applying(cached, catalog: catalog), record: cached)
         }
 
@@ -288,7 +288,8 @@ struct MacAppScanner: @unchecked Sendable {
             comparisonVersion: latest.version,
             source: .sparkle,
             advisoryURL: latest.infoURL,
-            checkedAt: now()
+            checkedAt: now(),
+            updateDownloadURL: latest.downloadURL
         )
     }
 
@@ -346,6 +347,8 @@ struct MacAppVersionCacheRecord: Codable, Sendable {
     let source: MacAppVersionSource
     let advisoryURL: String?
     let checkedAt: Date
+    var updateDownloadURL: String? = nil
+    var downloadMetadataVersion: Int? = 1
 }
 
 private struct MacAppCheckResult: Sendable {
@@ -386,6 +389,7 @@ private extension ManagedPackage {
             appProvenance: appProvenance,
             versionSource: record.source,
             advisoryURL: record.advisoryURL ?? advisoryURL ?? catalog?.advisoryURL,
+            updateDownloadURL: record.updateDownloadURL,
             versionCheckedAt: record.checkedAt,
             nativeCaskInstallation: nativeCaskInstallation
         )
@@ -461,6 +465,7 @@ struct SparkleAppcastItem: Equatable {
     var shortVersion: String?
     var channel: String?
     var infoURL: String?
+    var downloadURL: String?
 }
 
 final class SparkleAppcastParser: NSObject, XMLParserDelegate {
@@ -486,10 +491,11 @@ final class SparkleAppcastParser: NSObject, XMLParserDelegate {
         element = elementName
         text = ""
         if elementName == "item" { item = SparkleAppcastItem() }
-        guard var item, elementName == "enclosure" else { return }
+        guard var item, elementName == "enclosure", attributeDict["sparkle:deltaFrom"] == nil else { return }
         item.version = attributeDict["sparkle:version"] ?? item.version
         item.shortVersion = attributeDict["sparkle:shortVersionString"] ?? item.shortVersion
         item.infoURL = attributeDict["url"] ?? item.infoURL
+        item.downloadURL = attributeDict["url"]
         self.item = item
     }
 

@@ -18,7 +18,7 @@ private final class CaskTestRunner: CommandRunning, @unchecked Sendable {
              onOutput: (@Sendable (String) -> Void)?) throws -> CommandResult {
         #expect(!Thread.isMainThread)
         switch URL(fileURLWithPath: executable).lastPathComponent {
-        case "codesign", "spctl":
+        case "codesign", "spctl", "lipo":
             return CommandResult(stdout: "", stderr: "TeamIdentifier=\(team)\n", status: rejectSignature ? 1 : 0)
         case "brew":
             let json = homebrewOwnsApp ? #"{"casks":[{"token":"example"}]}"# : #"{"casks":[]}"#
@@ -283,5 +283,44 @@ func nativeActionsAutomaticallyAdoptRecognizedApps(kind: PackageHostActionKind) 
         #expect(receipt.bundleIdentifier == package.bundleIdentifier)
         // The API says it is already current; ownership is established without replacing it.
         #expect(receipt.version == "1.0")
+    }
+}
+
+@Test(arguments: ["success", "signature", "team", "running", "old-version"])
+func directAppReplacementPreservesOriginalOnFailure(scenario: String) async throws {
+    let fixture = try CaskFixture()
+    defer { fixture.clean() }
+    try await nativeCaskWork {
+        let app = try fixture.app(version: "1.0", in: fixture.apps)
+        let previous = NativeCaskInstallation(token: "example", version: "1.0", appPath: app.path,
+            bundleIdentifier: "com.example.native-test", teamIdentifier: "EXAMPLETEAM", shortVersion: "1.0", bundleVersion: "1.0")
+        let (archive, recipe, work) = try fixture.archive(version: scenario == "old-version" ? "1.0" : "2.0")
+        fixture.runner.rejectSignature = scenario == "signature"
+        fixture.runner.team = scenario == "team" ? "OTHERTEAM" : "EXAMPLETEAM"
+        fixture.runner.isRunning = scenario == "running"
+        let install = {
+            try fixture.manager.installArchive(archive, work: work, recipe: recipe, previous: previous, direct: true, onProgress: nil)
+        }
+        if scenario == "success" { try install() }
+        else { #expect(throws: NativeCaskError.self) { try install() } }
+        let info = try PropertyListSerialization.propertyList(from: Data(contentsOf: app.appendingPathComponent("Contents/Info.plist")), format: nil) as? [String: String]
+        #expect(info?["CFBundleVersion"] == (scenario == "success" ? "2.0" : "1.0"))
+        #expect(try NativeCaskStore(directory: fixture.state).load().isEmpty)
+    }
+}
+
+@Test func updateGuardFindsRunningAppThroughHomebrewSymlink() async throws {
+    let fixture = try CaskFixture()
+    defer { fixture.clean() }
+    try await nativeCaskWork {
+        let app = try fixture.app(version: "1.0", in: fixture.apps)
+        let caskroom = fixture.root.appendingPathComponent("Caskroom/example/1.0")
+        try FileManager.default.createDirectory(at: caskroom, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: caskroom.appendingPathComponent("Example.app"), withDestinationURL: app)
+        let package = ManagedPackage(manager: .homebrew, identifier: "brew:cask:example", displayName: "Example", installedVersion: "1.0", latestVersion: "2.0", installLocation: caskroom.path)
+        #expect(throws: NativeCaskError("Quit Example, then try Update again.")) {
+            try PackageUpdater.requireAppsClosed(package, isRunning: { $0 == "com.example.native-test" })
+        }
+        try PackageUpdater.requireAppsClosed(package, isRunning: { _ in false })
     }
 }

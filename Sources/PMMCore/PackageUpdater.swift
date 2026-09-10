@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 public struct PackageUpdater: Sendable {
@@ -27,6 +28,7 @@ public struct PackageUpdater: Sendable {
 
     public func update(_ package: ManagedPackage, onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) throws {
         guard package.isOutdated else { return }
+        try Self.requireAppsClosed(package)
         switch package.manager {
         case .cargoInstall:
             try run(
@@ -82,6 +84,38 @@ public struct PackageUpdater: Sendable {
             throw PackageUpdateError.unsupportedManager(package.manager)
         }
         PostHogTelemetry.shared.capturePackageUpdated(package)
+    }
+
+    /// Called on the worker queue for individual, bulk and remote updates.
+    public static func requireAppsClosed(_ package: ManagedPackage,
+        isRunning: (String) -> Bool = { !NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty }) throws {
+        var ids = Set(package.nativeCaskInstallation?.quitBundleIdentifiers ?? [])
+        if let id = package.bundleIdentifier { ids.insert(id) }
+        if let path = package.installLocation {
+            var root = URL(fileURLWithPath: path)
+            if root.pathExtension == "app" {
+                if let id = Bundle(url: root)?.bundleIdentifier { ids.insert(id) }
+            } else if package.identifier.hasPrefix("brew:cask:") {
+                if !FileManager.default.fileExists(atPath: root.path),
+                   root.deletingLastPathComponent().lastPathComponent == package.packageToken {
+                    root.deleteLastPathComponent()
+                }
+                // Homebrew stores the app (often a symlink) below its versioned Caskroom directory.
+                guard let entries = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil,
+                    options: [.skipsPackageDescendants]) else {
+                    throw NativeCaskError("Could not check whether \(package.displayName) is running. Refresh and try again.")
+                }
+                for case let app as URL in entries where app.pathExtension == "app" {
+                    if let id = Bundle(url: app)?.bundleIdentifier { ids.insert(id) }
+                }
+            }
+        }
+        guard package.appProvenance == nil || !ids.isEmpty else {
+            throw NativeCaskError("Could not identify \(package.displayName) to check whether it is running. Refresh and try again.")
+        }
+        guard !ids.contains(where: isRunning) else {
+            throw NativeCaskError("Quit \(package.displayName), then try Update again.")
+        }
     }
 
     public static func supports(_ package: ManagedPackage) -> Bool {

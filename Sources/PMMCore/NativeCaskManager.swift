@@ -181,6 +181,50 @@ public struct NativeCaskManager: Sendable {
             onProgress?(.output("This app is already current.\n"))
             return
         }
+        try await downloadAndInstall(recipe, previous: previous, onProgress: onProgress)
+    }
+
+    public static func supportsDirectUpdate(_ package: ManagedPackage) -> Bool {
+        guard package.manager == .macApp, package.appProvenance == .direct,
+              package.nativeCaskInstallation == nil, package.isOutdated, package.versionSource == .sparkle,
+              package.bundleIdentifier != nil, package.installLocation != nil,
+              let address = package.updateDownloadURL, let url = URL(string: address),
+              url.scheme == "https", url.host != nil, url.user == nil, url.password == nil else { return false }
+        return ["zip", "dmg"].contains(url.pathExtension.lowercased())
+    }
+
+    public func updateDirectApp(_ package: ManagedPackage,
+                                onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) async throws {
+        guard Self.supportsDirectUpdate(package), let path = package.installLocation,
+              let id = package.bundleIdentifier, let version = package.latestVersion,
+              let address = package.updateDownloadURL, let url = URL(string: address) else {
+            throw NativeCaskError("This app does not provide a supported update download.")
+        }
+        let fd = try await nativeCaskWork { try store.lock() }
+        defer { flock(fd, LOCK_UN); close(fd) }
+        let previous = try await nativeCaskWork {
+            try recover()
+            let app = try checkedPath(path)
+            try requireClosed(id)
+            try requireHomebrewDoesNotOwn(token: Self.token(for: package) ?? id, app: app)
+            guard !(try store.load()).values.contains(where: { $0.appPath == path }) else {
+                throw NativeCaskError("PMM ownership changed. Refresh and try again.")
+            }
+            let identity = try inspect(app)
+            guard identity.id == id else { throw NativeCaskError("The installed app’s identity changed. Refresh and try again.") }
+            return NativeCaskInstallation(token: id, version: identity.short, appPath: path,
+                bundleIdentifier: id, teamIdentifier: identity.team, shortVersion: identity.short, bundleVersion: identity.build)
+        }
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        let recipe = NativeCaskRecipe(token: previous.token, version: version, url: url,
+            sha256: "", app: name, targetName: name, conflicts: [], quitBundleIdentifiers: [])
+        onProgress?(.started(command: "Update \(package.displayName)"))
+        try await downloadAndInstall(recipe, previous: previous, direct: true, onProgress: onProgress)
+        PostHogTelemetry.shared.capturePackageUpdated(package)
+    }
+
+    private func downloadAndInstall(_ recipe: NativeCaskRecipe, previous: NativeCaskInstallation?, direct: Bool = false,
+                                    onProgress: (@Sendable (PackageCommandProgress) -> Void)?) async throws {
         let work = try await nativeCaskWork { () throws -> URL in
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("pmm-cask-\(UUID().uuidString)", isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -201,10 +245,10 @@ public struct NativeCaskManager: Sendable {
             try await nativeCaskWork {
                 try FileManager.default.moveItem(at: download, to: archive)
                 onProgress?(.output("Verifying download…\n"))
-                try Self.verifyChecksum(archive, expected: recipe.sha256)
+                if !direct { try Self.verifyChecksum(archive, expected: recipe.sha256) }
                 // Do not remove Gatekeeper's first-launch check from software acquired by PMM.
                 try command("/usr/bin/xattr", ["-w", "com.apple.quarantine", "0081;\(String(Int(Date().timeIntervalSince1970), radix: 16));PMM;", archive.path])
-                try installArchive(archive, work: work, recipe: recipe, previous: previous, onProgress: onProgress)
+                try installArchive(archive, work: work, recipe: recipe, previous: previous, direct: direct, onProgress: onProgress)
             }
             try await nativeCaskWork { try FileManager.default.removeItem(at: work) }
         } catch {
@@ -335,7 +379,7 @@ public struct NativeCaskManager: Sendable {
 
     private func requireClosed(_ id: String) throws {
         guard !isAppRunning(id) else {
-            throw NativeCaskError("Quit this app before updating or removing it.")
+            throw NativeCaskError("Quit \(id) before updating or removing it, then try again.")
         }
     }
 
@@ -379,7 +423,7 @@ public struct NativeCaskManager: Sendable {
         return receipt
     }
 
-    func installArchive(_ archive: URL, work: URL, recipe: NativeCaskRecipe, previous: NativeCaskInstallation?,
+    func installArchive(_ archive: URL, work: URL, recipe: NativeCaskRecipe, previous: NativeCaskInstallation?, direct: Bool = false,
                                 onProgress: (@Sendable (PackageCommandProgress) -> Void)?) throws {
         let handle = try FileHandle(forReadingFrom: archive)
         let header = try handle.read(upToCount: 4)
@@ -427,9 +471,37 @@ public struct NativeCaskManager: Sendable {
             guard identity.id == previous.bundleIdentifier, identity.team == previous.teamIdentifier else { throw NativeCaskError("The update’s developer or bundle identity does not match the installed app.") }
             let existing = try inspect(destination)
             guard existing.id == previous.bundleIdentifier, existing.team == previous.teamIdentifier else { throw NativeCaskError("The installed app changed while the update downloaded.") }
+            if direct {
+                guard existing.short == previous.shortVersion, existing.build == previous.bundleVersion else {
+                    throw NativeCaskError("The installed app changed while the update downloaded. Try again.")
+                }
+            }
             guard !Self.isNewer(existing.short, than: identity.short) else { throw NativeCaskError("The installed app is newer than this download.") }
         }
         try requireHomebrewDoesNotOwn(token: recipe.token, app: destination)
+        if direct {
+            guard let previous,
+                  identity.short == recipe.version,
+                  Self.isNewer(identity.build, than: previous.bundleVersion) else {
+                throw NativeCaskError("The download does not contain the expected newer app version.")
+            }
+            let info = try PropertyListSerialization.propertyList(from: Data(contentsOf: staged.appendingPathComponent("Contents/Info.plist")), format: nil) as? [String: Any]
+            if let minimum = info?["LSMinimumSystemVersion"] as? String,
+               Self.isNewer(minimum, than: NativeCaskRecipe.currentOSVersion) {
+                throw NativeCaskError("This update requires macOS \(minimum) or later.")
+            }
+            guard let executable = info?["CFBundleExecutable"] as? String, !executable.isEmpty,
+                  !executable.contains("/"), executable != ".." else { throw NativeCaskError("The app has no valid executable.") }
+            try command("/usr/bin/lipo", ["-verify_arch", NativeCaskRecipe.isAppleSilicon ? "arm64" : "x86_64",
+                staged.appendingPathComponent("Contents/MacOS").appendingPathComponent(executable).path])
+            // Both bundles stay on the same volume. Atomic exchange leaves the old app intact on failure.
+            try requireClosed(identity.id)
+            guard renameatx_np(AT_FDCWD, staged.path, AT_FDCWD, destination.path, UInt32(RENAME_SWAP)) == 0 else {
+                throw NativeCaskError("Could not replace the app: \(String(cString: strerror(errno))). Nothing was changed.")
+            }
+            onProgress?(.output("Installed \(recipe.version).\n"))
+            return
+        }
         let receipt = NativeCaskInstallation(token: recipe.token, version: recipe.version, appPath: destination.path,
             bundleIdentifier: identity.id, teamIdentifier: identity.team, shortVersion: identity.short, bundleVersion: identity.build, quitBundleIdentifiers: recipe.quitBundleIdentifiers)
         try requireEnabled()

@@ -3,7 +3,7 @@ import Foundation
 /// Shared execution entry point for the menu bar host and SSH helper.
 public enum PackageActions {
     public static func canUpdate(_ package: ManagedPackage, nativeEnabled: Bool) -> Bool {
-        usesNativeManagement(package) ? nativeEnabled && package.isOutdated : PackageUpdater.supports(package)
+        NativeCaskManager.supportsDirectUpdate(package) || (usesNativeManagement(package) ? nativeEnabled && package.isOutdated : PackageUpdater.supports(package))
     }
 
     public static func canUninstall(_ package: ManagedPackage, nativeEnabled: Bool) -> Bool {
@@ -24,6 +24,13 @@ public enum PackageActions {
 
     public static func perform(_ kind: PackageHostActionKind, package: ManagedPackage,
                                onProgress: (@Sendable (PackageCommandProgress) -> Void)? = nil) async throws {
+        if kind == .update {
+            try await nativeCaskWork { try PackageUpdater.requireAppsClosed(package) }
+            if NativeCaskManager.supportsDirectUpdate(package) {
+                try await NativeCaskManager().updateDirectApp(package, onProgress: onProgress)
+                return
+            }
+        }
         let enabled = try await nativeCaskWork { PackagePreferencesStore().load().nativeCaskManagementEnabled }
         let native = NativeCaskManager()
         if usesNativeManagement(package) || kind == .adopt {
