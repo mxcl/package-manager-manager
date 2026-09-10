@@ -174,6 +174,21 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
     public let versionCheckedAt: Date?
     public let nativeCaskInstallation: NativeCaskInstallation?
 
+    public var appStoreID: String? {
+        guard manager == .macApp, appProvenance == .appStore,
+              let address = advisoryURL, let url = URL(string: address),
+              ["https", "http", "macappstore"].contains(url.scheme?.lowercased() ?? ""),
+              url.host?.lowercased() == "apps.apple.com" else { return nil }
+        let component = url.lastPathComponent
+        guard component.hasPrefix("id") else { return nil }
+        let id = String(component.dropFirst(2))
+        return !id.isEmpty && id.utf8.allSatisfy { (48...57).contains($0) } ? id : nil
+    }
+
+    public var appStoreURL: URL? {
+        appStoreID.flatMap { URL(string: "macappstore://apps.apple.com/app/id\($0)") }
+    }
+
     public var sourceTitle: String {
         if appProvenance == .direct, versionSource == .sparkle,
            NativeCaskManager.token(for: self) == nil { return "Sparkle App" }

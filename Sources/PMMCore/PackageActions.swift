@@ -2,8 +2,9 @@ import Foundation
 
 /// Shared execution entry point for the menu bar host and SSH helper.
 public enum PackageActions {
-    public static func canUpdate(_ package: ManagedPackage, nativeEnabled: Bool) -> Bool {
-        NativeCaskManager.supportsDirectUpdate(package) || (usesNativeManagement(package) ? nativeEnabled && package.isOutdated : PackageUpdater.supports(package))
+    public static func canUpdate(_ package: ManagedPackage, nativeEnabled: Bool, masAvailable: Bool = false) -> Bool {
+        if package.appProvenance == .appStore { return masAvailable && PackageUpdater.supports(package) }
+        return NativeCaskManager.supportsDirectUpdate(package) || (usesNativeManagement(package) ? nativeEnabled && package.isOutdated : PackageUpdater.supports(package))
     }
 
     public static func canUninstall(_ package: ManagedPackage, nativeEnabled: Bool) -> Bool {

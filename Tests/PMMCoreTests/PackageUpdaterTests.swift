@@ -209,3 +209,29 @@ private func package(
         category: category
     )
 }
+
+@Test func appStoreUpdateUsesNumericIDAndSystemAuthorization() throws {
+    let runner = RecordingRunner()
+    let app = ManagedPackage(manager: .macApp, identifier: "mac-app:com.example.mas-test", installedVersion: "1", latestVersion: "2",
+        bundleIdentifier: "com.example.mas-test", appProvenance: .appStore,
+        advisoryURL: "https://apps.apple.com/us/app/example/id123456?mt=12")
+    #expect(app.appStoreID == "123456")
+    #expect(app.appStoreURL?.absoluteString == "macappstore://apps.apple.com/app/id123456")
+    #expect(!PackageActions.canUpdate(app, nativeEnabled: false))
+    #expect(PackageActions.canUpdate(app, nativeEnabled: false, masAvailable: true))
+    try PackageUpdater(runner: runner, toolPaths: ["mas": "/fake/mas"]).update(app)
+    #expect(runner.commands.count == 1)
+    #expect(runner.commands[0].contains("with administrator privileges"))
+    #expect(runner.commands[0].hasSuffix("/fake/mas 123456"))
+    #expect(runner.options[0].terminal == false)
+    runner.result = CommandResult(stdout: "", stderr: "User canceled.", status: 1)
+    #expect(throws: PackageUpdateError.self) { try PackageUpdater(runner: runner, toolPaths: ["mas": "/fake/mas"]).update(app) }
+}
+
+@Test(arguments: ["https://example.com/id123", "https://apps.apple.com/app/id123;bad", "https://apps.apple.com/app/id"])
+func appStoreUpdateRejectsInvalidIDs(address: String) {
+    let app = ManagedPackage(manager: .macApp, identifier: "mac-app:test", installedVersion: "1", latestVersion: "2",
+        appProvenance: .appStore, advisoryURL: address)
+    #expect(app.appStoreID == nil)
+    #expect(!PackageActions.canUpdate(app, nativeEnabled: false, masAvailable: true))
+}

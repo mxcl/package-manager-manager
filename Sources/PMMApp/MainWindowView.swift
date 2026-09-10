@@ -489,7 +489,15 @@ struct MainWindowDossierView: View {
                             .disabled(isPackageActionRunning)
                         }
                         if package.isOutdated {
-                            if model.showsUpdateAction(package) {
+                            if package.appStoreID != nil && model.masAvailable == nil && !model.isRemoteSelection {
+                                ProgressView().controlSize(.small)
+                            } else if model.showsAppStoreFallback(package) {
+                                Button("Update in App Store…") { model.updateInAppStore(package) }
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.large)
+                                    .tint(SystemColor.orange)
+                                    .disabled(isPackageActionRunning || model.isCheckingAppsBeforeUpdate)
+                            } else if model.showsUpdateAction(package) {
                                 Button {
                                     model.update(package)
                                 } label: {

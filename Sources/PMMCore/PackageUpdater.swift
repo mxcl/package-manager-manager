@@ -36,8 +36,27 @@ public struct PackageUpdater: Sendable {
                     .updateCommands(for: package.packageToken),
                 onProgress: onProgress
             )
-        case .apk, .apt, .dnf, .zypper, .macApp, .rustup, .mise, .skills:
+        case .apk, .apt, .dnf, .zypper, .rustup, .mise, .skills:
             throw PackageUpdateError.unsupportedManager(package.manager)
+        case .macApp:
+            guard let id = package.appStoreID else { throw PackageUpdateError.unsupportedManager(.macApp) }
+            guard let mas = toolPaths["mas"] ?? firstExecutable(named: "mas") else {
+                throw PackageUpdateError.missingExecutable("mas")
+            }
+            // The output panel is read-only; let macOS collect authorization instead of sudo on a PTY.
+            let script = """
+            on run argv
+                do shell script (quoted form of (item 1 of argv) & " upgrade " & quoted form of (item 2 of argv)) with administrator privileges
+            end run
+            """
+            onProgress?(.started(command: "mas upgrade \(id)"))
+            onProgress?(.output("Authorize the update in the macOS dialog.\n"))
+            let result = try runner.run("/usr/bin/osascript", ["-e", script, mas, id], options: CommandRunOptions()) {
+                onProgress?(.output($0))
+            }
+            guard result.status == 0 else {
+                throw PackageUpdateError.failed("mas upgrade \(id)", result.stderr.isEmpty ? result.stdout : result.stderr)
+            }
         case .homebrew:
             try run("brew", ["upgrade", package.packageToken], onProgress: onProgress)
         case .npm:
@@ -121,7 +140,8 @@ public struct PackageUpdater: Sendable {
     public static func supports(_ package: ManagedPackage) -> Bool {
         switch package.manager {
         case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .goInstall, .pkgx: package.isOutdated
-        case .macApp, .rustup, .mise, .skills, .uvx: false
+        case .macApp: package.isOutdated && package.appStoreID != nil
+        case .rustup, .mise, .skills, .uvx: false
         }
     }
 

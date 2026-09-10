@@ -27,6 +27,7 @@ enum MenuBarMenuRow: Equatable {
 struct MenuBarMenuState: Equatable {
     var inventory: PackageInventory?
     var nativeCaskManagementEnabled = false
+    var masAvailable = false
     var isRefreshing = false
     var errorMessage: String?
 
@@ -72,7 +73,7 @@ struct MenuBarMenuState: Equatable {
     }
 
     private var actionableOutdatedPackages: [ManagedPackage] {
-        (inventory?.outdatedPackages ?? []).filter { PackageActions.canUpdate($0, nativeEnabled: nativeCaskManagementEnabled) }
+        (inventory?.outdatedPackages ?? []).filter { PackageActions.canUpdate($0, nativeEnabled: nativeCaskManagementEnabled, masAvailable: masAvailable) }
     }
 }
 
@@ -182,7 +183,7 @@ func menuBarCommandPackage(id: String, kind: PackageHostActionKind, snapshot: Pa
         return PackageActions.canAdopt(package) ? package : nil
     case .update:
         guard let package = installedPackage else { return nil }
-        return PackageActions.canUpdate(package, nativeEnabled: snapshot.nativeCaskManagementEnabled == true) ? package : nil
+        return PackageActions.canUpdate(package, nativeEnabled: snapshot.nativeCaskManagementEnabled == true, masAvailable: snapshot.masAvailable == true) ? package : nil
     case .uninstall:
         guard let package = installedPackage else { return nil }
         return PackageActions.canUninstall(package, nativeEnabled: snapshot.nativeCaskManagementEnabled == true) ? package : nil
@@ -193,7 +194,7 @@ func menuBarCommandUpdateAllPackages(snapshot: PackageHostSnapshot, packageIDs: 
     guard snapshot.runningAction == nil else { return [] }
     let selectedIDs = Set(packageIDs)
     return (snapshot.inventory?.outdatedPackages ?? []).filter {
-        PackageActions.canUpdate($0, nativeEnabled: snapshot.nativeCaskManagementEnabled == true) && (selectedIDs.isEmpty || selectedIDs.contains($0.id))
+        PackageActions.canUpdate($0, nativeEnabled: snapshot.nativeCaskManagementEnabled == true, masAvailable: snapshot.masAvailable == true) && (selectedIDs.isEmpty || selectedIDs.contains($0.id))
     }
 }
 
@@ -272,7 +273,7 @@ func menuBarSnapshot(
             packages.append(package.withInstalledVersion(package.latestVersion))
         }
     case .update:
-        if PackageActions.usesNativeManagement(package) || NativeCaskManager.supportsDirectUpdate(package) { return snapshot }
+        if package.manager == .macApp || PackageActions.usesNativeManagement(package) { return snapshot }
         guard let latestVersion = package.latestVersion,
               let index = packages.firstIndex(where: { $0.id == package.id }) else { return snapshot }
         if package.manager == .pkgx {

@@ -2434,3 +2434,16 @@ private func nativeTestPackage(receipted: Bool = true, provenance: MacAppProvena
     #expect(unknown.repo == nil)
     #expect(unknown.sourceTitle == "Direct Download")
 }
+
+@MainActor
+@Test(arguments: [false, true])
+func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
+    let app = ManagedPackage(manager: .macApp, identifier: "mac-app:com.example.mas-test", installedVersion: "1", latestVersion: "2",
+        appProvenance: .appStore, advisoryURL: "https://apps.apple.com/us/app/example/id123456")
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, usesPackageHostNotifications: false)
+    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [app]), masAvailable: available))
+    model.selectSection(.outdated)
+    #expect(model.showsAppStoreFallback(app) == !available)
+    #expect(model.canUpdate(app) == available)
+    #expect(model.canUpdateAllOutdatedPackages == available)
+}

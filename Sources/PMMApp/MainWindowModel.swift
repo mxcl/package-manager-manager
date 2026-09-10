@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import PMMCore
 import SystemConfiguration
@@ -564,6 +565,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var nativeCaskManagementEnabled = false
     @Published private(set) var nativePreferencesAreLoading = true
     @Published private(set) var homebrewAvailable: Bool?
+    @Published private(set) var masAvailable: Bool?
     @Published private(set) var nativeCaskRecipes: [String: Result<NativeCaskRecipe, NativeCaskError>] = [:]
     @Published private(set) var nativeRecipeRefreshID = UUID()
     @Published var showsHostManagement = false
@@ -1178,6 +1180,15 @@ final class MainWindowModel: NSObject, ObservableObject {
         preferencesStore.save(cargoSetup.preferences)
     }
 
+    func showsAppStoreFallback(_ package: ManagedPackage) -> Bool {
+        !isRemoteSelection && package.isOutdated && package.appStoreURL != nil && masAvailable == false
+    }
+
+    func updateInAppStore(_ package: ManagedPackage) {
+        guard showsAppStoreFallback(package), !isPackageActionRunning, let url = package.appStoreURL else { return }
+        checkAppsBeforeUpdate([package]) { NSWorkspace.shared.open(url) }
+    }
+
     func update(_ package: ManagedPackage) {
         guard canUpdate(package), !isPackageActionRunning else { return }
         if let host = selectedRemoteHost {
@@ -1471,7 +1482,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     // Recipe checks disable actions without changing the detail pane’s layout.
     func showsUpdateAction(_ package: ManagedPackage) -> Bool {
-        guard PackageActions.canUpdate(package, nativeEnabled: nativeActionsEnabled) else { return false }
+        guard PackageActions.canUpdate(package, nativeEnabled: nativeActionsEnabled, masAvailable: !isRemoteSelection && masAvailable == true) else { return false }
         guard package.manager.isLinuxSystem else { return true }
         return selectedRemoteState?.systemPackageManager == package.manager
             && selectedRemoteState?.canManageSystemPackages == true
@@ -1770,6 +1781,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     func apply(snapshot: PackageHostSnapshot) {
         homebrewAvailable = snapshot.homebrewAvailable
+        masAvailable = snapshot.masAvailable
         guard let inventory = snapshot.inventory else {
             hasInventory = false
             installedPackageFirstSeenAtByID = nil

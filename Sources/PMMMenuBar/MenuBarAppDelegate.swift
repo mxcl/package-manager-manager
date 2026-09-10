@@ -144,6 +144,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         guard refreshTask == nil, actionTask == nil else { return }
         rescanTask?.cancel()
         rescanTask = nil
+        reloadNativePreferences()
         let missingManagers = snapshot.inventory == nil
             ? Set(PackageManagerKind.localCases)
             : (snapshot.loadingManagers ?? [])
@@ -382,11 +383,12 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     private func reloadNativePreferences() {
         Task { [weak self] in
             let values = await runBlocking {
-                (PackagePreferencesStore().load().nativeCaskManagementEnabled, PackageScanner().homebrewPrefix() != nil)
+                (PackagePreferencesStore().load().nativeCaskManagementEnabled, PackageScanner().homebrewPrefix() != nil, firstExecutable(named: "mas") != nil)
             }
             guard let self else { return }
             snapshot.nativeCaskManagementEnabled = values.0
             snapshot.homebrewAvailable = values.1
+            snapshot.masAvailable = values.2
             publishSnapshot(updateFirstSeen: false)
         }
     }
@@ -410,6 +412,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         state = MenuBarMenuState(
             inventory: snapshot.inventory,
             nativeCaskManagementEnabled: snapshot.nativeCaskManagementEnabled == true,
+            masAvailable: snapshot.masAvailable == true,
             isRefreshing: snapshot.isRefreshing,
             errorMessage: snapshot.errorMessage ?? snapshot.inventory?.errors.first
         )
@@ -432,7 +435,8 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             errorMessage: errorMessage ?? inventory.errors.first,
             lastBrewUpdateAt: lastBrewUpdateAt,
             nativeCaskManagementEnabled: PackagePreferencesStore().load().nativeCaskManagementEnabled,
-            homebrewAvailable: scanner.homebrewPrefix() != nil
+            homebrewAvailable: scanner.homebrewPrefix() != nil,
+            masAvailable: firstExecutable(named: "mas") != nil
         )
     }
 

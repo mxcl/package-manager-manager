@@ -56,6 +56,7 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
     public var appUpdate: AppUpdateHostState?
     public var nativeCaskManagementEnabled: Bool?
     public var homebrewAvailable: Bool?
+    public var masAvailable: Bool?
 
     public init(
         inventory: PackageInventory? = nil,
@@ -68,7 +69,8 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         installedPackageFirstSeenAtByID: [String: Date]? = nil,
         appUpdate: AppUpdateHostState? = nil,
         nativeCaskManagementEnabled: Bool? = nil,
-        homebrewAvailable: Bool? = nil
+        homebrewAvailable: Bool? = nil,
+        masAvailable: Bool? = nil
     ) {
         self.inventory = inventory
         self.catalogPackages = catalogPackages
@@ -81,6 +83,7 @@ public struct PackageHostSnapshot: Codable, Equatable, Sendable {
         self.appUpdate = appUpdate
         self.nativeCaskManagementEnabled = nativeCaskManagementEnabled
         self.homebrewAvailable = homebrewAvailable
+        self.masAvailable = masAvailable
     }
 
     public mutating func updateInstalledPackageFirstSeenAtByID() {
