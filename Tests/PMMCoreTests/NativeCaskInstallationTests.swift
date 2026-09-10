@@ -18,7 +18,7 @@ private final class CaskTestRunner: CommandRunning, @unchecked Sendable {
              onOutput: (@Sendable (String) -> Void)?) throws -> CommandResult {
         #expect(!Thread.isMainThread)
         switch URL(fileURLWithPath: executable).lastPathComponent {
-        case "codesign", "spctl", "lipo":
+        case "codesign", "spctl":
             return CommandResult(stdout: "", stderr: "TeamIdentifier=\(team)\n", status: rejectSignature ? 1 : 0)
         case "brew":
             let json = homebrewOwnsApp ? #"{"casks":[{"token":"example"}]}"# : #"{"casks":[]}"#
@@ -57,6 +57,17 @@ private struct CaskFixture {
         let info = ["CFBundleIdentifier": "com.example.native-test", "CFBundleShortVersionString": version,
                     "CFBundleVersion": version, "CFBundleExecutable": "Example", "CFBundlePackageType": "APPL"]
         try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0).write(to: contents.appendingPathComponent("Info.plist"))
+        let binaries = contents.appendingPathComponent("MacOS")
+        try FileManager.default.createDirectory(at: binaries, withIntermediateDirectories: true)
+        let executable = root.appendingPathComponent("example-binary")
+        if !FileManager.default.fileExists(atPath: executable.path) {
+            let source = root.appendingPathComponent("example.c")
+            try "int main(void) { return 0; }".write(to: source, atomically: true, encoding: .utf8)
+            let result = try SystemCommandRunner().run("/usr/bin/clang", ["-arch", NativeCaskRecipe.isAppleSilicon ? "arm64" : "x86_64",
+                source.path, "-o", executable.path])
+            #expect(result.status == 0)
+        }
+        try FileManager.default.copyItem(at: executable, to: binaries.appendingPathComponent("Example"))
         return app
     }
 
