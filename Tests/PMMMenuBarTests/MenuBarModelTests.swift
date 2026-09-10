@@ -89,7 +89,7 @@ private final class LockedStrings: @unchecked Sendable {
 
     #expect(state.statusSymbolName == "shippingbox")
     #expect(state.rows == [
-        .package(MenuBarPackageRow(ecosystemTitle: "DIY", ecosystemIcon: .system(name: "macwindow"), name: "Fork", installedVersion: "1.0.0", latestVersion: "2.0.0"))
+        .package(MenuBarPackageRow(ecosystemTitle: "Direct Download", ecosystemIcon: .system(name: "macwindow"), name: "Fork", installedVersion: "1.0.0", latestVersion: "2.0.0"))
     ])
 }
 

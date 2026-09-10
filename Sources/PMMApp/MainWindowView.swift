@@ -1224,7 +1224,7 @@ struct PackageEcosystemMark: View {
         guard section == .apps else { return section.title }
         return package.appProvenance == .homebrew
             ? "Homebrew Cask app"
-            : (package.appProvenance ?? .unknown).title
+            : package.sourceTitle
     }
 
     private var color: Color {
@@ -1331,7 +1331,7 @@ private struct DossierHeader: View {
                 if package.manager == .mise { MiseMark() }
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text((package.appProvenance?.title ?? package.manager.title).uppercased())
+                Text(package.sourceTitle.uppercased())
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(SystemColor.quietText)
                     .tracking(0.8)
@@ -1360,7 +1360,7 @@ private struct MacAppDetailsSection: View {
 
     var body: some View {
         InfoSection(title: "App") {
-            InfoRow(label: "Source", value: (package.appProvenance ?? .unknown).title)
+            InfoRow(label: "Source", value: package.sourceTitle)
             if let bundleIdentifier = package.bundleIdentifier {
                 InfoRow(label: "Bundle Identifier", value: bundleIdentifier)
             }

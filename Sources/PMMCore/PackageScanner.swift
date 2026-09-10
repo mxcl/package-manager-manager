@@ -2165,7 +2165,7 @@ private func sourceRepositoryURL(_ raw: Any?) -> String? {
     return githubRepositoryURL(cleaned) ?? cleaned
 }
 
-private func githubRepositoryURL(_ string: String) -> String? {
+func githubRepositoryURL(_ string: String) -> String? {
     guard let url = URL(string: string),
           url.host()?.lowercased() == "github.com" else { return nil }
     let parts = url.pathComponents.filter { $0 != "/" }

@@ -2412,3 +2412,25 @@ private func nativeTestPackage(receipted: Bool = true, provenance: MacAppProvena
     #expect(!model.isLoadingNativeRecipe(package))
     #expect(model.canUpdateAllOutdatedPackages)
 }
+
+@Test func sparkleGitHubDownloadSuppliesRepositoryAndBrowserLinks() throws {
+    let app = ManagedPackage(manager: .macApp, identifier: "mac-app:dev.thanhtran.macgit",
+        installedVersion: "1.0.9", latestVersion: "1.1.0", appProvenance: .direct, versionSource: .sparkle,
+        advisoryURL: "https://github.com/Commit-Plus/macgit/releases/download/v1.1.0/Commit+-1.1.0-arm64.zip")
+    #expect(app.repo == "https://github.com/Commit-Plus/macgit")
+    #expect(app.sourceTitle == "Sparkle App")
+    #expect(mainWindowBrowserLinks(for: app).contains { $0.tab == .repo && $0.url.absoluteString == app.repo })
+    #expect(try JSONDecoder().decode(ManagedPackage.self, from: JSONEncoder().encode(app)).repo == app.repo)
+}
+
+@Test func appSourceLabelsAndExplicitRepositoriesArePreserved() {
+    let app = ManagedPackage(manager: .macApp, identifier: "mac-app:example", installedVersion: "1", latestVersion: "2",
+        repo: "https://example.com/project", appProvenance: .appStore,
+        updateDownloadURL: "https://github.com/owner/repo/releases/download/v2/app.zip")
+    #expect(app.repo == "https://example.com/project")
+    #expect(app.sourceTitle == "Mac App Store")
+    let unknown = ManagedPackage(manager: .macApp, identifier: "mac-app:other", installedVersion: "1", latestVersion: "2",
+        appProvenance: .direct, advisoryURL: "https://downloads.example.com/app.zip")
+    #expect(unknown.repo == nil)
+    #expect(unknown.sourceTitle == "Direct Download")
+}

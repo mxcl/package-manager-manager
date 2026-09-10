@@ -65,9 +65,9 @@ public enum MacAppProvenance: String, Codable, CaseIterable, Sendable {
     public var title: String {
         switch self {
         case .homebrew: "Homebrew"
-        case .appStore: "App Store"
+        case .appStore: "Mac App Store"
         case .setapp: "Setapp"
-        case .direct: "DIY"
+        case .direct: "Direct Download"
         case .unknown: "Unknown"
         }
     }
@@ -81,7 +81,7 @@ public enum MacAppVersionSource: String, Codable, Sendable {
 
     public var title: String {
         switch self {
-        case .appStore: "App Store"
+        case .appStore: "Mac App Store"
         case .setapp: "Setapp"
         case .sparkle: "Sparkle"
         case .homebrewCask: "Homebrew Cask"
@@ -173,6 +173,12 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
     public let updateDownloadURL: String?
     public let versionCheckedAt: Date?
     public let nativeCaskInstallation: NativeCaskInstallation?
+
+    public var sourceTitle: String {
+        if appProvenance == .direct, versionSource == .sparkle,
+           NativeCaskManager.token(for: self) == nil { return "Sparkle App" }
+        return appProvenance?.title ?? manager.title
+    }
 
     public var name: String { identifier }
 
@@ -270,7 +276,9 @@ public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
         self.category = category
         self.homepage = homepage
         self.docs = docs
-        self.repo = repo
+        self.repo = repo ?? (manager == .macApp
+            ? [updateDownloadURL, advisoryURL].compactMap { $0.flatMap(githubRepositoryURL) }.first
+            : nil)
         self.lastUpdatedAt = lastUpdatedAt
         self.pulseKind = pulseKind
         self.installLocation = installLocation

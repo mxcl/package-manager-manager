@@ -62,7 +62,7 @@ struct MenuBarMenuState: Equatable {
             }
             .map {
                 MenuBarPackageRow(
-                    ecosystemTitle: $0.appProvenance?.title ?? $0.manager.title,
+                    ecosystemTitle: $0.sourceTitle,
                     ecosystemIcon: menuBarEcosystemIcon(for: $0),
                     name: $0.displayName,
                     installedVersion: $0.installedVersion ?? "?",
