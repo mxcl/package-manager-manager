@@ -430,3 +430,14 @@ private final class LockedStrings: @unchecked Sendable {
         #expect(state.statusSymbolName == (enabled ? "shippingbox.fill" : "shippingbox"))
     }
 }
+
+@Test(arguments: [false, true])
+func menuBarRefreshesLegacySparkleInventory(hasDownload: Bool) {
+    let now = Date()
+    let app = ManagedPackage(manager: .macApp, identifier: "mac-app:com.binarynights.ForkLift",
+        installedVersion: "4.7.2", latestVersion: "4.7.5", appProvenance: .direct, versionSource: .sparkle,
+        updateDownloadURL: hasDownload ? "https://download.binarynights.com/ForkLift/ForkLift4.zip" : nil)
+    let snapshot = PackageHostSnapshot(inventory: PackageInventory(generatedAt: now, packages: [app]),
+        catalogPackages: [ManagedPackage(manager: .homebrew, name: "git", installedVersion: nil, latestVersion: "1")])
+    #expect(menuBarShouldRefreshOnLaunch(snapshot: snapshot, now: now) == !hasDownload)
+}

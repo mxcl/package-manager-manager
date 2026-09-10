@@ -205,6 +205,7 @@ func menuBarCommandInstallPackages(ids: [String], snapshot: PackageHostSnapshot)
 func menuBarShouldRefreshOnLaunch(snapshot: PackageHostSnapshot, now: Date = Date()) -> Bool {
     guard let inventory = snapshot.inventory else { return true }
     return snapshot.catalogPackages.isEmpty
+        || inventory.packages.contains { $0.isOutdated && $0.versionSource == .sparkle && $0.updateDownloadURL == nil }
         || snapshot.loadingManagers?.isEmpty == false
         || now.timeIntervalSince(inventory.generatedAt) >= menuBarRefreshInterval
 }
