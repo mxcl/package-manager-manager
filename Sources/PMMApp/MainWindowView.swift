@@ -1143,9 +1143,9 @@ private struct PackageRow: View {
 
     private var subtitle: String {
         if showsManager, let summary = package.summary {
-            return "\(package.manager.title) · \(summary)"
+            return "\(package.sourceTitle) · \(summary)"
         }
-        return package.summary ?? package.manager.title
+        return package.summary ?? package.sourceTitle
     }
 }
 
