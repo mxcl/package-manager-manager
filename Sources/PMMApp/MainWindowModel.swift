@@ -591,6 +591,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var dashboardBlogEntriesAreLoading = false
     @Published private(set) var pendingInstallPackConfirmation: MainWindowInstallPackConfirmation?
     @Published var appsToCloseMessage: String?
+    @Published var updateAllFailureMessage: String?
+    private var lastUpdateAllFailureMessage: String?
     @Published private(set) var isCheckingAppsBeforeUpdate = false
     @Published var searchText = ""
     @Published var showsCategoryCLIs = true {
@@ -1227,7 +1229,7 @@ final class MainWindowModel: NSObject, ObservableObject {
             return
         }
         let ids = hasMultipleSelectedPackages ? packagesToUpdate.map(\.id) : []
-        checkAppsBeforeUpdate(packagesToUpdate) {
+        if usesPackageHostNotifications {
             PackageHostNotifications.postUpdateAllRequested(packageIDs: ids)
         }
     }
@@ -1334,6 +1336,10 @@ final class MainWindowModel: NSObject, ObservableObject {
                 packageActionError = error.localizedDescription
             }
             flushRemoteActionOutput(buffer: outputBuffer)
+            switch action {
+            case .updateAll, .updateSelected: updateAllFailureMessage = packageActionError
+            default: break
+            }
             updatingPackageName = nil
             uninstallingPackageName = nil
             remoteActionHostID = nil
@@ -1836,6 +1842,9 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     private func apply(snapshot: PackageHostSnapshot, inventory: PackageInventory) {
         let packageActionWasRunning = isPackageActionRunning
+        let newBatchFailure = snapshot.updateAllFailureMessage != lastUpdateAllFailureMessage
+            ? snapshot.updateAllFailureMessage : nil
+        lastUpdateAllFailureMessage = snapshot.updateAllFailureMessage
         isReloading = snapshot.isRefreshing
         loadingManagers = snapshot.loadingManagers ?? (snapshot.isRefreshing ? Set(PackageManagerKind.localCases) : [])
         var nextErrors = inventory.errors
@@ -1878,6 +1887,10 @@ final class MainWindowModel: NSObject, ObservableObject {
             packageActionCommand = runningAction.command
             packageActionOutput = runningAction.output ?? ""
             packageActionError = nil
+        } else if let newBatchFailure {
+            localActionIdentity = nil
+            packageActionError = newBatchFailure
+            updateAllFailureMessage = newBatchFailure
         } else if packageActionWasRunning, let errorMessage = snapshot.errorMessage {
             localActionIdentity = nil
             packageActionError = errorMessage

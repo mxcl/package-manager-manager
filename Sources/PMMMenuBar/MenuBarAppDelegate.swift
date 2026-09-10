@@ -585,6 +585,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         guard !packages.isEmpty else { return }
         cancelBackgroundRefresh()
         snapshot.errorMessage = nil
+        snapshot.updateAllFailureMessage = nil
         publishSnapshot()
         actionTask = Task { [weak self] in
             var errors: [String] = []
@@ -601,7 +602,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
                 if case .success = result {
                     self.snapshot = menuBarSnapshot(self.snapshot, applyingSuccessfulAction: .update, package: package)
                 } else if case .failure(let error) = result {
-                    errors.append(error.localizedDescription)
+                    errors.append("\(package.displayName): \(error.localizedDescription)")
                 }
             }
 
@@ -609,6 +610,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             let errorMessage = errors.isEmpty ? nil : errors.joined(separator: "\n")
             self.snapshot.runningAction = nil
             self.snapshot.errorMessage = errorMessage
+            self.snapshot.updateAllFailureMessage = errorMessage
             self.publishSnapshot()
             self.finishBusyWork { self.rescanAfterAction(errorMessage: errorMessage) }
         }

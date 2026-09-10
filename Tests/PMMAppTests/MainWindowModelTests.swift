@@ -2447,3 +2447,38 @@ func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
     #expect(model.canUpdate(app) == available)
     #expect(model.canUpdateAllOutdatedPackages == available)
 }
+
+@MainActor
+@Test func bulkUpdateFailureAppearsOnceAfterAllPackagesFinish() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, usesPackageHostNotifications: false)
+    let inventory = PackageInventory(packages: [])
+    for name in ["ChatGPT", "another-package"] {
+        model.apply(snapshot: PackageHostSnapshot(inventory: inventory,
+            runningAction: PackageHostRunningAction(kind: .update, packageID: name, displayName: name)))
+        #expect(model.updateAllFailureMessage == nil)
+    }
+    let error = "ChatGPT: Quit ChatGPT, then try Update again."
+    let finished = PackageHostSnapshot(inventory: inventory, errorMessage: error, updateAllFailureMessage: error)
+    model.apply(snapshot: finished)
+    #expect(model.updatingPackageName == nil)
+    #expect(model.updateAllFailureMessage == error)
+    model.updateAllFailureMessage = nil
+    model.dismissPackageAction()
+    model.apply(snapshot: finished)
+    #expect(model.updateAllFailureMessage == nil)
+    #expect(model.packageActionError == nil)
+}
+
+@MainActor
+@Test func updateAllLeavesCloseChecksToEachPackage() {
+    let app = ManagedPackage(manager: .macApp, identifier: "mac-app:test", installedVersion: "1", latestVersion: "2",
+        installLocation: "/Applications/Test.app", bundleIdentifier: "test", appProvenance: .direct,
+        versionSource: .sparkle, updateDownloadURL: "https://example.com/Test.zip")
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, usesPackageHostNotifications: false)
+    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [app])))
+    model.selectSection(.outdated)
+    #expect(model.canUpdateAllOutdatedPackages)
+    model.updateAllOutdatedPackages()
+    #expect(!model.isCheckingAppsBeforeUpdate)
+    #expect(model.appsToCloseMessage == nil)
+}
