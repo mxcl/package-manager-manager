@@ -1391,6 +1391,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     func dismissPackageAction() {
         guard !isPackageActionRunning else { return }
+        updateAllFailureMessage = nil
         packageActionCommand = nil
         packageActionOutput = ""
         packageActionError = nil

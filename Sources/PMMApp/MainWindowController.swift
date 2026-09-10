@@ -139,20 +139,10 @@ struct MainWindowRootView: View {
                 command: model.packageActionCommand,
                 output: model.packageActionOutput,
                 error: model.packageActionError,
+                failureTitle: model.updateAllFailureMessage == nil ? "Action failed" : "Some updates failed",
                 dismiss: model.dismissPackageAction
             )
             .interactiveDismissDisabled(true)
-            .alert("Some updates failed", isPresented: Binding(
-                get: { model.updateAllFailureMessage != nil },
-                set: { if !$0 { model.updateAllFailureMessage = nil } }
-            )) {
-                Button("OK", role: .cancel) {
-                    model.updateAllFailureMessage = nil
-                    model.dismissPackageAction()
-                }
-            } message: {
-                Text(model.updateAllFailureMessage ?? "")
-            }
         }
         .alert("Close apps before updating", isPresented: Binding(
             get: { model.appsToCloseMessage != nil },

@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 import PMMCore
 import Testing
 @testable import PMMApp
@@ -2462,11 +2463,25 @@ func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
     model.apply(snapshot: finished)
     #expect(model.updatingPackageName == nil)
     #expect(model.updateAllFailureMessage == error)
-    model.updateAllFailureMessage = nil
     model.dismissPackageAction()
+    #expect(model.updateAllFailureMessage == nil)
     model.apply(snapshot: finished)
     #expect(model.updateAllFailureMessage == nil)
     #expect(model.packageActionError == nil)
+}
+
+@MainActor
+@Test func longUpdateFailuresKeepTheDialogWithinTheScreen() {
+    let view = NSHostingView(rootView: PackageCommandProgressView(
+        command: nil,
+        output: "",
+        error: String(repeating: "Package update failed: extensive command output.\n", count: 2_000),
+        failureTitle: "Some updates failed",
+        dismiss: {}
+    ))
+
+    #expect(view.fittingSize.height < 500)
+    #expect(view.fittingSize.width < 800)
 }
 
 @MainActor

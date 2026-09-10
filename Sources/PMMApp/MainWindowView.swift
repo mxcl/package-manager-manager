@@ -1428,11 +1428,16 @@ struct PackageCommandProgressView: View {
     let command: String?
     let output: String
     let error: String?
+    var failureTitle = "Action failed"
     let dismiss: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if let command {
+            if error != nil {
+                Label(failureTitle, systemImage: "exclamationmark.triangle.fill")
+                    .font(.headline)
+                    .foregroundStyle(.red)
+            } else if let command {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text("$")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
@@ -1453,18 +1458,23 @@ struct PackageCommandProgressView: View {
                 }
             }
             ZStack(alignment: .center) {
-                TerminalOutputTextView(output: output)
-                    .frame(width: TerminalOutputTextView.scrollViewWidth, height: 300)
+                if let error {
+                    ScrollView {
+                        Text(error)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    TerminalOutputTextView(output: output)
+                }
                 if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && error == nil {
                     ProgressView()
                         .controlSize(.regular)
                 }
             }
-            if let error {
+            .frame(width: TerminalOutputTextView.scrollViewWidth, height: 300)
+            if error != nil {
                 HStack {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                        .textSelection(.enabled)
                     Spacer()
                     Button("Dismiss", action: dismiss)
                         .keyboardShortcut(.cancelAction)
