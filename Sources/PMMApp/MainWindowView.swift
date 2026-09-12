@@ -576,8 +576,6 @@ struct MainWindowLinksView: View {
         Group {
             if let url = selectedURL {
                 PackageWebView(url: url)
-                    .frame(maxWidth: packageWebViewMaximumWidth(for: model.selectedPackage))
-                    .frame(maxWidth: .infinity)
             } else {
                 Spacer(minLength: 0)
             }
@@ -1499,6 +1497,11 @@ private struct PackageWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+        configuration.userContentController.addUserScript(WKUserScript(
+            source: packageWebViewUserScriptSource,
+            injectionTime: .atDocumentEnd,
+            forMainFrameOnly: true
+        ))
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         webView.underPageBackgroundColor = .white
@@ -1534,9 +1537,13 @@ private struct PackageWebView: NSViewRepresentable {
     }
 }
 
-func packageWebViewMaximumWidth(for package: ManagedPackage?) -> CGFloat {
-    package?.appProvenance == .appStore ? 820 : .infinity
+let packageWebViewUserScriptSource = """
+if (location.hostname === "apps.apple.com") {
+    const style = document.createElement("style");
+    style.textContent = ".navigation-container{display:none!important}.app-container{grid-template-columns:minmax(0,1fr)!important}";
+    document.head.append(style);
 }
+"""
 
 func mainWindowDossierSummary(_ summary: String) -> String {
     summary

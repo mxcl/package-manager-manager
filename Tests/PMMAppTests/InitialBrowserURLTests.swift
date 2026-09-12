@@ -19,24 +19,10 @@ import WebKit
     #expect(initialBrowserURL(for: url) == url)
 }
 
-@Test func appStorePackagesUseAPortraitTabletBrowserWidth() {
-    let appStore = ManagedPackage(
-        manager: .macApp,
-        identifier: "mac-app:com.example.store",
-        installedVersion: "1",
-        latestVersion: nil,
-        appProvenance: .appStore
-    )
-    let direct = ManagedPackage(
-        manager: .macApp,
-        identifier: "mac-app:com.example.direct",
-        installedVersion: "1",
-        latestVersion: nil,
-        appProvenance: .direct
-    )
-
-    #expect(packageWebViewMaximumWidth(for: appStore) == 820)
-    #expect(packageWebViewMaximumWidth(for: direct) == .infinity)
+@Test func packageWebViewHidesAppleNavigation() {
+    #expect(packageWebViewUserScriptSource.contains("location.hostname === \"apps.apple.com\""))
+    #expect(packageWebViewUserScriptSource.contains(".navigation-container{display:none!important}"))
+    #expect(packageWebViewUserScriptSource.contains(".app-container{grid-template-columns:minmax(0,1fr)!important}"))
 }
 
 @Test(arguments: [
