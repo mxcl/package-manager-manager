@@ -575,7 +575,7 @@ struct MainWindowLinksView: View {
 
         Group {
             if let url = selectedURL {
-                PackageWebView(url: url)
+                PackageWebView(url: url, customUserAgent: packageWebViewUserAgent(for: model.selectedPackage))
             } else {
                 Spacer(minLength: 0)
             }
@@ -1353,7 +1353,7 @@ private struct DossierHeader: View {
                 }
             }
             if let summary = package.summary {
-                Text(summary)
+                Text(mainWindowDossierSummary(summary))
                     .font(.system(size: 13))
                     .foregroundStyle(SystemColor.secondaryText)
                     .lineSpacing(2)
@@ -1489,6 +1489,8 @@ struct PackageCommandProgressView: View {
 
 private struct PackageWebView: NSViewRepresentable {
     let url: URL
+    let customUserAgent: String?
+
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
@@ -1504,9 +1506,11 @@ private struct PackageWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        if context.coordinator.loadedURL != url {
+        if context.coordinator.loadedURL != url || context.coordinator.loadedUserAgent != customUserAgent {
             context.coordinator.loadedURL = url
+            context.coordinator.loadedUserAgent = customUserAgent
             context.coordinator.allowsEmbeddedNavigation = true
+            webView.customUserAgent = customUserAgent
             webView.setValue(true, forKey: "drawsBackground")
             webView.load(URLRequest(url: initialBrowserURL(for: url)))
         }
@@ -1514,6 +1518,7 @@ private struct PackageWebView: NSViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var loadedURL: URL?
+        var loadedUserAgent: String?
         var allowsEmbeddedNavigation = false
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -1529,6 +1534,21 @@ private struct PackageWebView: NSViewRepresentable {
             decisionHandler(policy)
         }
     }
+}
+
+func packageWebViewUserAgent(for package: ManagedPackage?) -> String? {
+    guard package?.appProvenance == .appStore else { return nil }
+    return "Mozilla/5.0 (iPad; CPU OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1"
+}
+
+func mainWindowDossierSummary(_ summary: String) -> String {
+    summary
+        .replacingOccurrences(of: "\r\n", with: "\n")
+        .replacingOccurrences(of: "\r", with: "\n")
+        .split(separator: "\n", omittingEmptySubsequences: false)
+        .prefix { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        .joined(separator: "\n")
+        .trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
 /// Determines the navigation policy for the embedded package web view.

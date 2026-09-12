@@ -1,4 +1,5 @@
 import Foundation
+import PMMCore
 import Testing
 import WebKit
 @testable import PMMApp
@@ -16,6 +17,35 @@ import WebKit
 @Test func initialBrowserURLLeavesGitHubNavigationURLsAlone() throws {
     let url = URL(string: "https://github.com/foo/bar/issues")!
     #expect(initialBrowserURL(for: url) == url)
+}
+
+@Test func appStorePackagesUseAnIPadBrowserIdentity() {
+    let appStore = ManagedPackage(
+        manager: .macApp,
+        identifier: "mac-app:com.example.store",
+        installedVersion: "1",
+        latestVersion: nil,
+        appProvenance: .appStore
+    )
+    let direct = ManagedPackage(
+        manager: .macApp,
+        identifier: "mac-app:com.example.direct",
+        installedVersion: "1",
+        latestVersion: nil,
+        appProvenance: .direct
+    )
+
+    #expect(packageWebViewUserAgent(for: appStore)?.contains("(iPad;") == true)
+    #expect(packageWebViewUserAgent(for: direct) == nil)
+}
+
+@Test(arguments: [
+    ("First paragraph.\n\nSecond paragraph.", "First paragraph."),
+    ("First line.\r\n \r\nSecond paragraph.", "First line."),
+    ("  One paragraph.  ", "One paragraph."),
+])
+func dossierShowsOnlyTheFirstDescriptionParagraph(summary: String, expected: String) {
+    #expect(mainWindowDossierSummary(summary) == expected)
 }
 
 @Test func packageWebViewNavigationPolicyAllowsEmbeddedInitialLoadAndSubframes() {
