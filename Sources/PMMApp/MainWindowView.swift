@@ -1122,11 +1122,13 @@ private struct PackageRow: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
-                Text(subtitle)
-                    .font(.system(size: 12))
-                    .foregroundStyle(SystemColor.quietText)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let subtitle = mainWindowPackageSubtitle(package, showsManager: showsManager) {
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(SystemColor.quietText)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
@@ -1149,12 +1151,12 @@ private struct PackageRow: View {
         .buttonStyle(.plain)
     }
 
-    private var subtitle: String {
-        if showsManager, let summary = package.summary {
-            return "\(package.sourceTitle) · \(summary)"
-        }
-        return package.summary ?? package.sourceTitle
-    }
+}
+
+func mainWindowPackageSubtitle(_ package: ManagedPackage, showsManager: Bool) -> String? {
+    if package.manager == .macApp { return package.summary }
+    if showsManager, let summary = package.summary { return "\(package.sourceTitle) · \(summary)" }
+    return package.summary ?? package.sourceTitle
 }
 
 struct PackageEcosystemMark: View {

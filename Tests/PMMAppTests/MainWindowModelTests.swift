@@ -2436,6 +2436,15 @@ private func nativeTestPackage(receipted: Bool = true, provenance: MacAppProvena
     #expect(unknown.sourceTitle == "Direct Download")
 }
 
+@Test func packageListHidesSourcesOnlyForApps() {
+    let app = ManagedPackage(manager: .macApp, name: "Claude", installedVersion: "1", latestVersion: "2",
+        summary: "Anthropic's official Claude AI desktop app", appProvenance: .direct)
+    let npm = ManagedPackage(manager: .npm, name: "npm", installedVersion: "1", latestVersion: "2",
+        summary: "a package manager for JavaScript")
+    #expect(mainWindowPackageSubtitle(app, showsManager: true) == app.summary)
+    #expect(mainWindowPackageSubtitle(npm, showsManager: true) == "npm · a package manager for JavaScript")
+}
+
 @MainActor
 @Test(arguments: [false, true])
 func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
