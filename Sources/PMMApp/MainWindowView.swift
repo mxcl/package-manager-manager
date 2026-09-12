@@ -575,7 +575,9 @@ struct MainWindowLinksView: View {
 
         Group {
             if let url = selectedURL {
-                PackageWebView(url: url, customUserAgent: packageWebViewUserAgent(for: model.selectedPackage))
+                PackageWebView(url: url)
+                    .frame(maxWidth: packageWebViewMaximumWidth(for: model.selectedPackage))
+                    .frame(maxWidth: .infinity)
             } else {
                 Spacer(minLength: 0)
             }
@@ -1489,7 +1491,6 @@ struct PackageCommandProgressView: View {
 
 private struct PackageWebView: NSViewRepresentable {
     let url: URL
-    let customUserAgent: String?
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -1506,11 +1507,9 @@ private struct PackageWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        if context.coordinator.loadedURL != url || context.coordinator.loadedUserAgent != customUserAgent {
+        if context.coordinator.loadedURL != url {
             context.coordinator.loadedURL = url
-            context.coordinator.loadedUserAgent = customUserAgent
             context.coordinator.allowsEmbeddedNavigation = true
-            webView.customUserAgent = customUserAgent
             webView.setValue(true, forKey: "drawsBackground")
             webView.load(URLRequest(url: initialBrowserURL(for: url)))
         }
@@ -1518,7 +1517,6 @@ private struct PackageWebView: NSViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var loadedURL: URL?
-        var loadedUserAgent: String?
         var allowsEmbeddedNavigation = false
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -1536,9 +1534,8 @@ private struct PackageWebView: NSViewRepresentable {
     }
 }
 
-func packageWebViewUserAgent(for package: ManagedPackage?) -> String? {
-    guard package?.appProvenance == .appStore else { return nil }
-    return "Mozilla/5.0 (iPad; CPU OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1"
+func packageWebViewMaximumWidth(for package: ManagedPackage?) -> CGFloat {
+    package?.appProvenance == .appStore ? 820 : .infinity
 }
 
 func mainWindowDossierSummary(_ summary: String) -> String {

@@ -19,7 +19,7 @@ import WebKit
     #expect(initialBrowserURL(for: url) == url)
 }
 
-@Test func appStorePackagesUseAnIPadBrowserIdentity() {
+@Test func appStorePackagesUseAPortraitTabletBrowserWidth() {
     let appStore = ManagedPackage(
         manager: .macApp,
         identifier: "mac-app:com.example.store",
@@ -35,8 +35,8 @@ import WebKit
         appProvenance: .direct
     )
 
-    #expect(packageWebViewUserAgent(for: appStore)?.contains("(iPad;") == true)
-    #expect(packageWebViewUserAgent(for: direct) == nil)
+    #expect(packageWebViewMaximumWidth(for: appStore) == 820)
+    #expect(packageWebViewMaximumWidth(for: direct) == .infinity)
 }
 
 @Test(arguments: [
