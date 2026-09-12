@@ -265,7 +265,8 @@ struct MacAppScanner: @unchecked Sendable {
             comparisonVersion: app.version,
             source: .appStore,
             advisoryURL: app.trackViewURL,
-            checkedAt: now()
+            checkedAt: now(),
+            summary: nonEmpty(app.description)
         )
     }
 
@@ -349,6 +350,7 @@ struct MacAppVersionCacheRecord: Codable, Sendable {
     let checkedAt: Date
     var updateDownloadURL: String? = nil
     var downloadMetadataVersion: Int? = 1
+    var summary: String? = nil
 }
 
 private struct MacAppCheckResult: Sendable {
@@ -374,7 +376,7 @@ private extension ManagedPackage {
             installedVersion: installedVersion,
             installedVersions: installedVersions,
             latestVersion: latest,
-            summary: summary ?? catalog?.summary,
+            summary: summary ?? record.summary ?? catalog?.summary,
             category: category ?? catalog?.category,
             homepage: homepage ?? catalog?.homepage,
             docs: docs,
@@ -453,10 +455,12 @@ private struct AppStoreLookupResponse: Decodable {
 private struct AppStoreLookupResult: Decodable {
     let version: String
     let trackViewURL: String?
+    let description: String?
 
     private enum CodingKeys: String, CodingKey {
         case version
         case trackViewURL = "trackViewUrl"
+        case description
     }
 }
 

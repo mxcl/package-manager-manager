@@ -156,7 +156,7 @@ struct MacAppScannerTests {
         defer { fixture.remove() }
         let app = try fixture.app("Store.app", id: "com.example.Store", shortVersion: "1.0", build: "10", receipt: true)
         MacAppURLProtocol.configure(data: Data("""
-        {"resultCount":1,"results":[{"version":"1.2","trackViewUrl":"https://apps.apple.com/app/id123"}]}
+        {"resultCount":1,"results":[{"version":"1.2","trackViewUrl":"https://apps.apple.com/app/id123","description":"A useful Mac app."}]}
         """.utf8))
         let mdls = "/fake/mdls -raw -name kMDItemAppStoreAdamID \(app.path)"
         let scanner = fixture.scanner(
@@ -171,6 +171,11 @@ struct MacAppScannerTests {
         #expect(package.latestVersion == "1.2")
         #expect(package.versionSource == .appStore)
         #expect(package.advisoryURL == "https://apps.apple.com/app/id123")
+        #expect(package.summary == "A useful Mac app.")
+
+        let cached = try #require(try await fixture.packages(scanner: scanner, mode: .fresh).first)
+        #expect(cached.summary == "A useful Mac app.")
+        #expect(MacAppURLProtocol.requests == 1)
     }
 
     @Test(arguments: [
