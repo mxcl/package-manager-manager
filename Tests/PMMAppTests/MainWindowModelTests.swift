@@ -2436,12 +2436,17 @@ private func nativeTestPackage(receipted: Bool = true, provenance: MacAppProvena
     #expect(unknown.sourceTitle == "Direct Download")
 }
 
-@Test func packageListHidesSourcesOnlyForApps() {
+@Test func packageListHidesSourcesForAppsAndHomebrew() {
     let app = ManagedPackage(manager: .macApp, name: "Claude", installedVersion: "1", latestVersion: "2",
         summary: "Anthropic's official Claude AI desktop app", appProvenance: .direct)
     let npm = ManagedPackage(manager: .npm, name: "npm", installedVersion: "1", latestVersion: "2",
         summary: "a package manager for JavaScript")
+    let brew = ManagedPackage(manager: .homebrew, name: "ripgrep", installedVersion: "1", latestVersion: "2",
+        summary: "Searches files quickly")
     #expect(mainWindowPackageSubtitle(app, showsManager: true) == app.summary)
+    #expect(mainWindowPackageSubtitle(brew, showsManager: true) == brew.summary)
+    #expect(mainWindowPackageSubtitle(ManagedPackage(manager: .homebrew, name: "curl",
+        installedVersion: "1", latestVersion: "2"), showsManager: true) == nil)
     #expect(mainWindowPackageSubtitle(npm, showsManager: true) == "npm · a package manager for JavaScript")
 }
 

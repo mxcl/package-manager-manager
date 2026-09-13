@@ -1154,7 +1154,7 @@ private struct PackageRow: View {
 }
 
 func mainWindowPackageSubtitle(_ package: ManagedPackage, showsManager: Bool) -> String? {
-    if package.manager == .macApp { return package.summary }
+    if package.manager == .macApp || package.manager == .homebrew { return package.summary }
     if showsManager, let summary = package.summary { return "\(package.sourceTitle) · \(summary)" }
     return package.summary ?? package.sourceTitle
 }
