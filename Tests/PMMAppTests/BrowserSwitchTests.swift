@@ -25,6 +25,7 @@ import WebKit
     view.layoutSubtreeIfNeeded()
     let current = try #require(webView(in: view))
     #expect(current !== original)
+    #expect(current.url == nil)
 }
 
 private func webView(in view: NSView) -> WKWebView? {

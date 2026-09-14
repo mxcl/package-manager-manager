@@ -571,7 +571,9 @@ struct MainWindowLinksView: View {
 
     var body: some View {
         let links = mainWindowBrowserLinks(for: model.selectedPackage)
-        let selectedURL = selectedLink(in: links)?.url
+        let selectedURL = selectedLink(in: links).flatMap { link in
+            link.tab == .update && ["dmg", "pkg", "zip"].contains(link.url.pathExtension.lowercased()) ? nil : link.url
+        }
 
         PackageWebView(url: selectedURL)
             .id(model.selectedPackage?.id)
