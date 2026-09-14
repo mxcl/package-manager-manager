@@ -110,6 +110,45 @@ struct MacAppScannerTests {
         #expect(package.summary == "Multimedia player")
     }
 
+    @Test func caskVersionsKeepMetadataAndCompareOnlyComparableAppVersions() async throws {
+        let fixture = try MacAppFixture()
+        defer { fixture.remove() }
+        _ = try fixture.app("Docker.app", id: "com.docker.docker", shortVersion: "4.86.0", build: "236216")
+        _ = try fixture.app("Unknown.app", id: "com.example.Unknown", shortVersion: "1.0", build: "100")
+        let database = PackageDatabase(apps: [
+            "com.docker.docker": MacAppCatalogEntry(bundleIdentifier: "com.docker.docker", cask: "docker-desktop",
+                versionSource: .homebrewCask, advisoryURL: "https://example.com/docker", version: "4.91.0,239619"),
+            "com.example.Unknown": MacAppCatalogEntry(bundleIdentifier: "com.example.Unknown", cask: "unknown",
+                versionSource: .homebrewCask, version: "latest"),
+        ])
+
+        var scanner = MacAppScanner(
+            runner: MacAppFakeRunner(responses: [:]),
+            fileManager: .default,
+            applicationDirectories: [fixture.applications],
+            brew: nil,
+            mdls: "/usr/bin/mdls",
+            session: .shared,
+            cacheURL: fixture.cache,
+            now: { Date() },
+            storefrontCountry: "US"
+        )
+        scanner.nativeManager = NativeCaskManager(
+            directory: fixture.directory,
+            preferences: PackagePreferencesStore(url: fixture.directory.appendingPathComponent("preferences.json")),
+            applicationDirectories: [fixture.applications]
+        )
+        let packages = try await scanner.scan(database: database, mode: .fresh)
+        let docker = try #require(packages.first { $0.bundleIdentifier == "com.docker.docker" })
+        #expect(docker.latestVersion == "4.91.0")
+        #expect(docker.versionSource == .homebrewCask)
+        #expect(docker.advisoryURL == "https://example.com/docker")
+        let unknown = try #require(packages.first { $0.bundleIdentifier == "com.example.Unknown" })
+        #expect(unknown.latestVersion == nil)
+        #expect(unknown.versionSource == .homebrewCask)
+        #expect(unknown.versionCheckedAt != nil)
+    }
+
     @Test func sparkleUsesBundleBuildForAdvisoryAndCachesTheCheck() async throws {
         let fixture = try MacAppFixture()
         defer { fixture.remove() }

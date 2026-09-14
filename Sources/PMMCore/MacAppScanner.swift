@@ -23,7 +23,7 @@ struct MacAppScanner: @unchecked Sendable {
             return discovered.map { package in
                 cache.records[package.id].flatMap { record in
                     package.nativeCaskInstallation != nil && record.source != .homebrewCask ? nil : record
-                }.map { package.applying($0, catalog: database.app(for: package.bundleIdentifier ?? "")) }
+                }.map { package.applying($0, catalog: database.app(for: package.bundleIdentifier ?? ""), nativeEnabled: nativeEnabled) }
                     ?? package
             }
         }
@@ -184,18 +184,18 @@ struct MacAppScanner: @unchecked Sendable {
         let catalog = package.bundleIdentifier.flatMap(database.app)
         let automaticManagement = nativeEnabled && PackageActions.canAdopt(package)
         if !automaticManagement, !ignoresCache, let cached, (cached.source != .sparkle || cached.downloadMetadataVersion == 1), (package.nativeCaskInstallation == nil || cached.source == .homebrewCask), now().timeIntervalSince(cached.checkedAt) < Self.cacheLifetime {
-            return MacAppCheckResult(package: package.applying(cached, catalog: catalog), record: cached)
+            return MacAppCheckResult(package: package.applying(cached, catalog: catalog, nativeEnabled: nativeEnabled), record: cached)
         }
 
         do {
             let record = try await freshVersion(for: package, catalog: catalog, nativeEnabled: nativeEnabled)
             return MacAppCheckResult(
-                package: package.applying(record ?? cached, catalog: catalog),
+                package: package.applying(record ?? cached, catalog: catalog, nativeEnabled: nativeEnabled),
                 record: record ?? cached
             )
         } catch {
             if automaticManagement { return MacAppCheckResult(package: package, record: nil) }
-            return MacAppCheckResult(package: package.applying(cached, catalog: catalog), record: cached)
+            return MacAppCheckResult(package: package.applying(cached, catalog: catalog, nativeEnabled: nativeEnabled), record: cached)
         }
     }
 
@@ -223,11 +223,14 @@ struct MacAppScanner: @unchecked Sendable {
                let record = try? await sparkleVersion(url: url, channel: catalog?.channel) {
                 return record
             }
-            guard let version = catalog?.version,
-                  numericVersionComparison(package.installedVersion, version) != nil else { return nil }
+            guard let version = catalog?.version else { return nil }
+            let parts = version.split(separator: ",", omittingEmptySubsequences: false)
+            let appVersion = parts.count == 2 && parts[1].allSatisfy({ $0.isASCII && $0.isNumber })
+                && numericVersionComparison(String(parts[0]), String(parts[0])) != nil
+                ? String(parts[0]) : version
             return MacAppVersionCacheRecord(
-                displayVersion: version,
-                comparisonVersion: version,
+                displayVersion: appVersion,
+                comparisonVersion: appVersion,
                 source: .homebrewCask,
                 advisoryURL: catalog?.advisoryURL ?? catalog?.homepage,
                 checkedAt: now()
@@ -359,10 +362,11 @@ private struct MacAppCheckResult: Sendable {
 }
 
 private extension ManagedPackage {
-    func applying(_ record: MacAppVersionCacheRecord?, catalog: MacAppCatalogEntry?) -> ManagedPackage {
+    func applying(_ record: MacAppVersionCacheRecord?, catalog: MacAppCatalogEntry?, nativeEnabled: Bool) -> ManagedPackage {
         guard let record else { return self }
         let installedComparison = record.source == .sparkle ? bundleVersion : installedVersion
-        let isNewer = record.source == .homebrewCask && PackageActions.usesNativeManagement(self)
+        let isNewer = record.source == .homebrewCask
+            && (nativeCaskInstallation != nil || (nativeEnabled && PackageActions.canAdopt(self)))
             ? NativeCaskManager.isNewer(record.comparisonVersion, than: installedComparison ?? "")
             : numericVersionComparison(installedComparison, record.comparisonVersion) == .orderedAscending
         let latest = isNewer
