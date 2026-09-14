@@ -574,6 +574,7 @@ struct MainWindowLinksView: View {
         let selectedURL = selectedLink(in: links)?.url
 
         PackageWebView(url: selectedURL)
+            .id(model.selectedPackage?.id)
             .ignoresSafeArea(.container, edges: .top)
             .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: SystemColor.windowTint).ignoresSafeArea())
             .onChange(of: links) { _, links in
