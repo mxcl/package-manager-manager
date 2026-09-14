@@ -573,20 +573,14 @@ struct MainWindowLinksView: View {
         let links = mainWindowBrowserLinks(for: model.selectedPackage)
         let selectedURL = selectedLink(in: links)?.url
 
-        Group {
-            if let url = selectedURL {
-                PackageWebView(url: url)
-            } else {
-                Spacer(minLength: 0)
+        PackageWebView(url: selectedURL)
+            .ignoresSafeArea(.container, edges: .top)
+            .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: SystemColor.windowTint).ignoresSafeArea())
+            .onChange(of: links) { _, links in
+                if let selectedTab = model.selectedLinkTab, !links.contains(where: { $0.tab == selectedTab }) {
+                    model.selectedLinkTab = nil
+                }
             }
-        }
-        .ignoresSafeArea(.container, edges: .top)
-        .background(LiquidGlassSurface(material: .ultraThinMaterial, tint: SystemColor.windowTint).ignoresSafeArea())
-        .onChange(of: links) { _, links in
-            if let selectedTab = model.selectedLinkTab, !links.contains(where: { $0.tab == selectedTab }) {
-                model.selectedLinkTab = nil
-            }
-        }
     }
 
     private func selectedLink(in links: [MainWindowBrowserLink]) -> MainWindowBrowserLink? {
@@ -1490,7 +1484,7 @@ struct PackageCommandProgressView: View {
 }
 
 private struct PackageWebView: NSViewRepresentable {
-    let url: URL
+    let url: URL?
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -1512,11 +1506,16 @@ private struct PackageWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        if context.coordinator.loadedURL != url {
-            context.coordinator.loadedURL = url
-            context.coordinator.allowsEmbeddedNavigation = true
+        guard context.coordinator.loadedURL != url else { return }
+        context.coordinator.loadedURL = url
+        context.coordinator.allowsEmbeddedNavigation = true
+        if let url {
             webView.setValue(true, forKey: "drawsBackground")
             webView.load(URLRequest(url: initialBrowserURL(for: url)))
+        } else {
+            webView.stopLoading()
+            webView.setValue(false, forKey: "drawsBackground")
+            webView.loadHTMLString("", baseURL: nil)
         }
     }
 
