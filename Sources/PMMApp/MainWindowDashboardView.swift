@@ -646,7 +646,7 @@ private struct DashboardSponsoredCard: View {
     }
 }
 
-private struct DashboardBlogAndPackageSection: View {
+struct DashboardBlogAndPackageSection: View {
     let posts: [DashboardBlogEntry]
     let package: DiscoverFeedPackage?
     let isLoading: Bool
@@ -659,8 +659,9 @@ private struct DashboardBlogAndPackageSection: View {
             DashboardFeedSectionHeading(title: "Blog & Updates")
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 12) {
+                    // Bound the ideal width so ViewThatFits measures the row, not unwrapped post titles.
                     blogContent(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3))
-                        .frame(minWidth: 624, maxWidth: .infinity)
+                        .frame(minWidth: 624, idealWidth: 624, maxWidth: .infinity)
                     packageContent
                         .frame(width: 220)
                 }
