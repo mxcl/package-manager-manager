@@ -208,6 +208,39 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages.first?.binaryPath == bin.appendingPathComponent("shell-crate").path)
 }
 
+@Test func miseScannerIncludesOutdatedMiseItself() throws {
+    let runner = FakeRunner(responses: [
+        "/fake/mise version --json": CommandResult(stdout: #"{"version":"2026.9.1 macos-arm64 (2026-09-02)","latest":"2026.9.9"}"#, stderr: "", status: 0),
+        "/fake/mise ls --installed --json": CommandResult(stdout: "{}", stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["mise": "/fake/mise"], environment: [:])
+    let packages = try scanner.scanMise(database: PackageDatabase())
+    let mise = try #require(packages.first { $0.identifier == "mise:mise" })
+    #expect(mise.installedVersion == "2026.9.1")
+    #expect(mise.latestVersion == "2026.9.9")
+    #expect(mise.isOutdated)
+    #expect(mise.binaryPath == "/fake/mise")
+}
+
+@Test(arguments: ["null", "\"2026.9.1\"", "\"2026.8.0\""])
+func miseScannerDoesNotFlagMissingOrOlderLatestVersion(latest: String) throws {
+    let runner = FakeRunner(responses: [
+        "/fake/mise version --json": CommandResult(stdout: "{\"version\":\"2026.9.1 macos-arm64\",\"latest\":\(latest)}", stderr: "", status: 0),
+        "/fake/mise ls --installed --json": CommandResult(stdout: "", stderr: "invalid config", status: 1),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["mise": "/fake/mise"], environment: [:])
+    let mise = try #require(try scanner.scanMise(database: PackageDatabase()).first)
+    #expect(mise.identifier == "mise:mise")
+    #expect(!mise.isOutdated)
+}
+
+@Test func miseScannerLeavesHomebrewMiseToHomebrew() throws {
+    let runner = RecordingRunner(responses: [:])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["mise": "/opt/homebrew/Cellar/mise/2026.9.1/bin/mise"], environment: [:])
+    #expect(try scanner.scanMise(database: PackageDatabase()).isEmpty)
+    #expect(runner.calls.map(\.command) == ["/opt/homebrew/Cellar/mise/2026.9.1/bin/mise ls --installed --json"])
+}
+
 @Test func miseScannerIncludesAllInstalledTools() throws {
     let json = #"{"node":[{"version":"20.19.4","install_path":"/mise/node/20.19.4"},{"version":"22.17.0","install_path":"/mise/node/22.17.0"}],"python":[{"version":"3.13.5","install_path":"/mise/python/3.13.5"}]}"#
     let runner = RecordingRunner(responses: [
@@ -217,7 +250,7 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
 
     let packages = try scanner.scanMise(database: PackageDatabase())
 
-    #expect(runner.calls.map(\.command) == ["/fake/mise ls --installed --json"])
+    #expect(runner.calls.map(\.command) == ["/fake/mise version --json", "/fake/mise ls --installed --json"])
     #expect(packages.map(\.identifier) == ["mise:node", "mise:python"])
     #expect(packages.map(\.displayName) == ["Node.js", "Python"])
     #expect(packages.first?.installedVersions == ["22.17.0", "20.19.4"])
@@ -226,15 +259,20 @@ private final class EmptyNPMRegistryURLProtocol: URLProtocol, @unchecked Sendabl
     #expect(packages.last?.binaryPath == "/mise/python/3.13.5/bin/python3")
 }
 
-@Test func localMiseScanUsesTheSameInstalledOnlyCommand() async {
+@Test func localMiseScanIncludesMiseWithoutCheckingForUpdates() async {
     let runner = RecordingRunner(responses: [
+        "/fake/mise --version": CommandResult(stdout: "2026.9.1 macos-arm64 (2026-09-02)", stderr: "", status: 0),
         "/fake/mise ls --installed --json": CommandResult(stdout: "{}", stderr: "", status: 0),
     ])
     let scanner = PackageScanner(runner: runner, toolPaths: ["mise": "/fake/mise"], environment: [:])
 
-    for await _ in scanner.results(for: [.mise], database: PackageDatabase(), mode: .local) {}
+    for await result in scanner.results(for: [.mise], database: PackageDatabase(), mode: .local) {
+        #expect(result.packages.first?.identifier == "mise:mise")
+        #expect(result.packages.first?.installedVersion == "2026.9.1")
+        #expect(result.packages.first?.latestVersion == nil)
+    }
 
-    #expect(runner.calls.map(\.command) == ["/fake/mise ls --installed --json"])
+    #expect(runner.calls.map(\.command) == ["/fake/mise --version", "/fake/mise ls --installed --json"])
 }
 
 @Test(.timeLimit(.minutes(1))) func managerScanResultsYieldInCompletionOrder() async throws {

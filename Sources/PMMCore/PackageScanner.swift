@@ -170,12 +170,17 @@ public struct PackageScanner: @unchecked Sendable {
         try scanNPM(database: database, mode: .fresh)
     }
 
-    public func scanMise(database _: PackageDatabase) throws -> [ManagedPackage] {
-        guard let mise = executable(named: "mise") else { return [] }
-        let result = try runner.run(mise, ["ls", "--installed", "--json"])
-        guard result.status == 0, let tools = jsonObject(result.stdout) else { return [] }
+    public func scanMise(database: PackageDatabase) throws -> [ManagedPackage] {
+        try scanMise(database: database, mode: .fresh)
+    }
 
-        return ManagedPackage.consolidatingInstalledVersions(in: tools.flatMap { (tool: String, value: Any) -> [ManagedPackage] in
+    private func scanMise(database _: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
+        guard let mise = executable(named: "mise") else { return [] }
+        let misePackages = misePackage(mise, mode: mode).map { [$0] } ?? []
+        let result = try runner.run(mise, ["ls", "--installed", "--json"])
+        guard result.status == 0, let tools = jsonObject(result.stdout) else { return misePackages }
+
+        return misePackages + ManagedPackage.consolidatingInstalledVersions(in: tools.flatMap { (tool: String, value: Any) -> [ManagedPackage] in
             guard let versions = value as? [[String: Any]] else { return [] }
             return versions.compactMap { row in
                 guard let version = row["version"] as? String,
@@ -196,6 +201,32 @@ public struct PackageScanner: @unchecked Sendable {
                 )
             }
         })
+    }
+
+    private func misePackage(_ mise: String, mode: PackageScanMode) -> ManagedPackage? {
+        // Homebrew already inventories its own copy, including symlinks into the Cellar.
+        let binary = URL(fileURLWithPath: mise).resolvingSymlinksInPath()
+        guard !binary.pathComponents.contains("Cellar") else { return nil }
+        let output = successfulLine(mise, mode.isFresh ? ["version", "--json"] : ["--version"])
+        let info = output.flatMap(jsonObject)
+        let version = (mode.isFresh ? info?["version"] as? String : output)?
+            .split(whereSeparator: \.isWhitespace).first.map(String.init)
+        guard let version else { return nil }
+        let latest = info?["latest"] as? String
+        return ManagedPackage(
+            manager: .mise,
+            identifier: "mise:mise",
+            displayName: "mise",
+            installedVersion: version,
+            latestVersion: latest.map { $0.compare(version, options: .numeric) == .orderedDescending ? $0 : version },
+            summary: "Development tool version manager",
+            category: "developer-tools",
+            homepage: "https://mise.jdx.dev/",
+            docs: "https://mise.jdx.dev/",
+            repo: "https://github.com/jdx/mise",
+            installLocation: binary.deletingLastPathComponent().path,
+            binaryPath: mise
+        )
     }
 
     private func scanNPM(database: PackageDatabase, mode: PackageScanMode) throws -> [ManagedPackage] {
@@ -1815,7 +1846,7 @@ public struct PackageScanner: @unchecked Sendable {
                     case .macApp: packages = []
                     case .rustup: packages = try scanRustup(database: database)
                     case .homebrew: packages = try scanHomebrew(database: database, mode: mode)
-                    case .mise: packages = try scanMise(database: database)
+                    case .mise: packages = try scanMise(database: database, mode: mode)
                     case .bun: packages = try scanBun(database: database, mode: mode)
                     case .npm: packages = try scanNPM(database: database, mode: mode)
                     case .npx:
