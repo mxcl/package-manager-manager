@@ -124,6 +124,7 @@ Supported update paths:
 - `go install package@latest`
 - `pkgx +package@version true`
 - `cargo install --force`
+- `mise self-update --yes --no-plugins` (mise itself; protected installations request macOS authorization)
 
 Supported uninstall paths:
 

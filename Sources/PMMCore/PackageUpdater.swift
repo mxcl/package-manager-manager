@@ -36,27 +36,27 @@ public struct PackageUpdater: Sendable {
                     .updateCommands(for: package.packageToken),
                 onProgress: onProgress
             )
-        case .apk, .apt, .dnf, .zypper, .rustup, .mise, .skills:
+        case .apk, .apt, .dnf, .zypper, .rustup, .skills:
             throw PackageUpdateError.unsupportedManager(package.manager)
+        case .mise:
+            guard package.identifier == "mise:mise" else { throw PackageUpdateError.unsupportedManager(.mise) }
+            guard let mise = package.binaryPath ?? toolPaths["mise"] ?? firstExecutable(named: "mise") else {
+                throw PackageUpdateError.missingExecutable("mise")
+            }
+            let arguments = ["self-update", "--yes", "--no-plugins"]
+            let binary = URL(fileURLWithPath: mise).resolvingSymlinksInPath()
+            if fileManager.isWritableFile(atPath: binary.path),
+               fileManager.isWritableFile(atPath: binary.deletingLastPathComponent().path) {
+                try run("mise", arguments, executablePath: mise, onProgress: onProgress)
+            } else {
+                try runAsAdministrator(mise, arguments, onProgress: onProgress)
+            }
         case .macApp:
             guard let id = package.appStoreID else { throw PackageUpdateError.unsupportedManager(.macApp) }
             guard let mas = toolPaths["mas"] ?? firstExecutable(named: "mas") else {
                 throw PackageUpdateError.missingExecutable("mas")
             }
-            // The output panel is read-only; let macOS collect authorization instead of sudo on a PTY.
-            let script = """
-            on run argv
-                do shell script (quoted form of (item 1 of argv) & " upgrade " & quoted form of (item 2 of argv)) with administrator privileges
-            end run
-            """
-            onProgress?(.started(command: "mas upgrade \(id)"))
-            onProgress?(.output("Authorize the update in the macOS dialog.\n"))
-            let result = try runner.run("/usr/bin/osascript", ["-e", script, mas, id], options: CommandRunOptions()) {
-                onProgress?(.output($0))
-            }
-            guard result.status == 0 else {
-                throw PackageUpdateError.failed("mas upgrade \(id)", result.stderr.isEmpty ? result.stdout : result.stderr)
-            }
+            try runAsAdministrator(mas, ["upgrade", id], onProgress: onProgress)
         case .homebrew:
             try run("brew", ["upgrade", package.packageToken], onProgress: onProgress)
         case .npm:
@@ -141,7 +141,8 @@ public struct PackageUpdater: Sendable {
         switch package.manager {
         case .apk, .apt, .cargoInstall, .dnf, .zypper, .homebrew, .npm, .npx, .pnpm, .bun, .pipx, .uv, .goInstall, .pkgx: package.isOutdated
         case .macApp: package.isOutdated && package.appStoreID != nil
-        case .rustup, .mise, .skills, .uvx: false
+        case .mise: package.identifier == "mise:mise" && package.isOutdated
+        case .rustup, .skills, .uvx: false
         }
     }
 
@@ -165,9 +166,10 @@ public struct PackageUpdater: Sendable {
     private func run(
         _ executableName: String,
         _ arguments: [String],
+        executablePath: String? = nil,
         onProgress: (@Sendable (PackageCommandProgress) -> Void)?
     ) throws {
-        guard let executable = toolPaths[executableName] ?? firstExecutable(named: executableName) else {
+        guard let executable = executablePath ?? toolPaths[executableName] ?? firstExecutable(named: executableName) else {
             throw PackageUpdateError.missingExecutable(executableName)
         }
         let command = ([executableName] + arguments).joined(separator: " ")
@@ -175,6 +177,32 @@ public struct PackageUpdater: Sendable {
         let options = CommandRunOptions(terminal: true, environment: effectiveEnvironment)
         let result = try runner.run(executable, arguments, options: options) { output in
             onProgress?(.output(output))
+        }
+        guard result.status == 0 else {
+            throw PackageUpdateError.failed(command, result.stderr.isEmpty ? result.stdout : result.stderr)
+        }
+    }
+
+    private func runAsAdministrator(
+        _ executable: String,
+        _ arguments: [String],
+        onProgress: (@Sendable (PackageCommandProgress) -> Void)?
+    ) throws {
+        // The output panel is read-only; let macOS collect authorization instead of sudo on a PTY.
+        let script = """
+        on run argv
+            set command to ""
+            repeat with argument in argv
+                set command to command & quoted form of (contents of argument) & " "
+            end repeat
+            do shell script command with administrator privileges
+        end run
+        """
+        let command = ([executable] + arguments).joined(separator: " ")
+        onProgress?(.started(command: command))
+        onProgress?(.output("Authorize the update in the macOS dialog.\n"))
+        let result = try runner.run("/usr/bin/osascript", ["-e", script, executable] + arguments, options: CommandRunOptions()) {
+            onProgress?(.output($0))
         }
         guard result.status == 0 else {
             throw PackageUpdateError.failed(command, result.stderr.isEmpty ? result.stdout : result.stderr)

@@ -210,6 +210,34 @@ private func package(
     )
 }
 
+@Test(arguments: [false, true])
+func miseSelfUpdateUsesDetectedBinaryAndRequestsAuthorizationWhenNeeded(protected: Bool) throws {
+    let runner = RecordingRunner()
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let binary = protected ? "/protected/mise" : directory.appendingPathComponent("mise").path
+    if !protected { FileManager.default.createFile(atPath: binary, contents: Data()) }
+    let mise = ManagedPackage(manager: .mise, identifier: "mise:mise", installedVersion: "2026.9.1", latestVersion: "2026.9.9", binaryPath: binary)
+    #expect(PackageActions.canUpdate(mise, nativeEnabled: false))
+    let updater = PackageUpdater(runner: runner, toolPaths: ["mise": "/wrong/mise"], environment: [:])
+    try updater.update(mise)
+    #expect(runner.commands.count == 1)
+    #expect(runner.commands[0].hasSuffix("\(binary) self-update --yes --no-plugins"))
+    #expect(runner.commands[0].contains("with administrator privileges") == protected)
+    #expect(runner.options[0].terminal == !protected)
+    runner.result = CommandResult(stdout: "", stderr: "Update failed", status: 1)
+    #expect(throws: PackageUpdateError.self) { try updater.update(mise) }
+}
+
+@Test func miseRuntimeCannotRunSelfUpdate() {
+    let runtime = package(.mise, "mise:node")
+    let runner = RecordingRunner()
+    #expect(!PackageActions.canUpdate(runtime, nativeEnabled: false))
+    #expect(throws: PackageUpdateError.self) { try PackageUpdater(runner: runner).update(runtime) }
+    #expect(runner.commands.isEmpty)
+}
+
 @Test func appStoreUpdateUsesNumericIDAndSystemAuthorization() throws {
     let runner = RecordingRunner()
     let app = ManagedPackage(manager: .macApp, identifier: "mac-app:com.example.mas-test", installedVersion: "1", latestVersion: "2",
@@ -222,7 +250,7 @@ private func package(
     try PackageUpdater(runner: runner, toolPaths: ["mas": "/fake/mas"]).update(app)
     #expect(runner.commands.count == 1)
     #expect(runner.commands[0].contains("with administrator privileges"))
-    #expect(runner.commands[0].hasSuffix("/fake/mas 123456"))
+    #expect(runner.commands[0].hasSuffix("/fake/mas upgrade 123456"))
     #expect(runner.options[0].terminal == false)
     runner.result = CommandResult(stdout: "", stderr: "User canceled.", status: 1)
     #expect(throws: PackageUpdateError.self) { try PackageUpdater(runner: runner, toolPaths: ["mas": "/fake/mas"]).update(app) }
