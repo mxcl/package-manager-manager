@@ -747,9 +747,12 @@ private struct DashboardBlogPostCard: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(SystemColor.controlFill)
                     case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
+                        Color.clear
+                            .overlay {
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            }
                     case .failure:
                         Image(systemName: post.systemImage)
                             .font(.system(size: 30, weight: .medium))
