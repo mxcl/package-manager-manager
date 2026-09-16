@@ -659,13 +659,13 @@ private struct DashboardBlogAndPackageSection: View {
             DashboardFeedSectionHeading(title: "Blog & Updates")
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 12) {
-                    blogContent
-                        .frame(minWidth: 420, maxWidth: .infinity)
+                    blogContent(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3))
+                        .frame(minWidth: 624, maxWidth: .infinity)
                     packageContent
                         .frame(width: 220)
                 }
                 VStack(alignment: .leading, spacing: 12) {
-                    blogContent
+                    blogContent()
                     packageContent
                 }
             }
@@ -673,9 +673,9 @@ private struct DashboardBlogAndPackageSection: View {
     }
 
     @ViewBuilder
-    private var blogContent: some View {
+    private func blogContent(columns: [GridItem] = dashboardBlogColumns) -> some View {
         if isLoading {
-            LazyVGrid(columns: dashboardBlogColumns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(0..<3, id: \.self) { _ in
                     ProgressView()
                         .controlSize(.small)
@@ -684,7 +684,7 @@ private struct DashboardBlogAndPackageSection: View {
                 }
             }
         } else if !posts.isEmpty {
-            LazyVGrid(columns: dashboardBlogColumns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(posts) { post in
                     DashboardBlogPostCard(post: post)
                 }
