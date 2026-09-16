@@ -3,6 +3,27 @@ import PMMCore
 import Testing
 @testable import PMMMenuBar
 
+private struct MiseFreshnessRunner: CommandRunning {
+    func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
+        let output = arguments == ["version", "--json"]
+            ? #"{"version":"2026.9.1 macos-arm64 (2026-09-02)","latest":"2026.9.9"}"#
+            : "{}"
+        return CommandResult(stdout: output, stderr: "", status: 0)
+    }
+}
+
+@Test func menuBarFreshnessFlagsStandaloneMiseAsOutdated() async throws {
+    let scanner = PackageScanner(runner: MiseFreshnessRunner(), toolPaths: ["mise": "/fake/mise"], environment: [:])
+    var packages: [ManagedPackage] = []
+    // Only mise is present in this fixture; use the host's actual freshness selection.
+    for await result in scanner.results(for: menuBarFreshnessManagers.intersection([.mise]), database: PackageDatabase(), mode: .fresh) {
+        packages += result.packages
+    }
+    let mise = try #require(packages.first { $0.identifier == "mise:mise" })
+    #expect(mise.isOutdated)
+    #expect(mise.latestVersion == "2026.9.9")
+}
+
 @Test func localProgressRelayCoalescesBurstAndFinishesWithDelayedFinalChunk() {
     let published = LockedStrings()
     let relay = MenuBarActionProgressRelay(interval: 60) { published.append($0) }

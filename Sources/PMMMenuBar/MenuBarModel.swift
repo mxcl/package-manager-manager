@@ -2,6 +2,7 @@ import Foundation
 import PMMCore
 
 let menuBarRefreshInterval: TimeInterval = 55 * 60
+let menuBarFreshnessManagers: Set<PackageManagerKind> = [.mise, .npm, .npx, .pnpm, .bun, .uv, .pipx, .goInstall, .pkgx]
 
 struct MenuBarPackageRow: Equatable {
     let ecosystemTitle: String
