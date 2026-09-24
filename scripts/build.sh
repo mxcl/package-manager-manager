@@ -281,6 +281,7 @@ if $publish; then
     bump_package_version "$planned_version"
     version="$planned_version"
     commit_release_version "$planned_version"
+    release_target="$(git -C "$root" rev-parse HEAD)"
     push_current_branch
   fi
 fi
@@ -518,7 +519,7 @@ if $publish; then
     gh release upload "$tag" "$dmg_path" --clobber
   else
     gh release create "$tag" "$dmg_path" \
-      --target "$(git -C "$root" rev-parse HEAD)" \
+      --target "$release_target" \
       --title "$app_name $version" \
       --notes-file "$release_notes_path"
   fi
