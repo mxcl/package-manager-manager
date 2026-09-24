@@ -1119,12 +1119,14 @@ private struct PackageRow: View {
                     PackageEcosystemMark(package: package)
                     if package.manager == .mise { MiseMark() }
                     if package.isOutdated && !showsManager { PackageBadgePill(text: "Outdated", color: SystemColor.orange) }
-                    Spacer(minLength: 8)
-                    Text(versionText)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(SystemColor.secondaryText)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    if !versionText.isEmpty {
+                        Spacer(minLength: 8)
+                        Text(versionText)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(SystemColor.secondaryText)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
                 if let subtitle = mainWindowPackageSubtitle(package, showsManager: showsManager) {
                     Text(subtitle)
