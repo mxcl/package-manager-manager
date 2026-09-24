@@ -1207,11 +1207,11 @@ struct PackageEcosystemMark: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: size * 0.72, height: size * 0.72)
+                    .frame(width: size, height: size)
                     .foregroundStyle(.orange)
                 Image(systemName: system)
                     .symbolRenderingMode(.monochrome)
-                    .font(.system(size: size * 0.68, weight: .semibold))
+                    .font(.system(size: size * 0.9, weight: .semibold))
                     .foregroundStyle(.teal)
             }
             .offset(y: isBaselineAligned ? 1 : 0)
