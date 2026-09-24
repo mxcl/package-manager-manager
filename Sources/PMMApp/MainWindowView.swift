@@ -362,13 +362,20 @@ struct MainWindowPackageListView: View {
                             Menu {
                                 Toggle("CLIs", isOn: $model.showsCategoryCLIs)
                                 Toggle("GUIs", isOn: $model.showsCategoryGUIs)
+                                Divider()
+                                Picker("Sort Order", selection: $model.categorySortOrder) {
+                                    ForEach(CategorySortOrder.allCases, id: \.self) { order in
+                                        Text(order.rawValue).tag(order)
+                                    }
+                                }
+                                .pickerStyle(.inline)
                             } label: {
-                                Label("Package Types", systemImage: "rectangle.grid.3x2")
+                                Label("Package Options", systemImage: "rectangle.grid.3x2")
                             }
                             .menuStyle(.button)
                             .labelStyle(.iconOnly)
                             .controlSize(.small)
-                            .help("Filter package types")
+                            .help("Filter and sort packages")
                         }
                     }
                 }
@@ -780,7 +787,7 @@ func mainWindowVersionText(_ package: ManagedPackage, section: MainWindowSection
         return pulseKind.capitalized
     }
     if section?.categoryIdentifier != nil, package.installedVersion == nil {
-        return package.manager == .npm ? "NPM" : package.manager.title
+        return ""
     }
     if package.isOutdated {
         if section == nil || section == .outdated {

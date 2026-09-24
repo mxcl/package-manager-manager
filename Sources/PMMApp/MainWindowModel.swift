@@ -595,6 +595,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     private var lastUpdateAllFailureMessage: String?
     @Published private(set) var isCheckingAppsBeforeUpdate = false
     @Published var searchText = ""
+    @Published var categorySortOrder: CategorySortOrder = .recentlyUpdated
     @Published var showsCategoryCLIs = true {
         didSet { reconcilePackageSelection() }
     }
@@ -833,7 +834,13 @@ final class MainWindowModel: NSObject, ObservableObject {
             let query = searchQuery
             return query.isEmpty ? values : values.filter { matchesSearch($0, query: query) }
         }
-        return packages(in: selectedSection)
+        let packages = packages(in: selectedSection)
+        guard selectedSection.categoryIdentifier != nil else { return packages }
+        switch categorySortOrder {
+        case .recentlyUpdated: return packages
+        case .nameAscending: return packages.sorted(by: PackageIndex.alphabetical)
+        case .nameDescending: return packages.sorted { PackageIndex.alphabetical($1, $0) }
+        }
     }
 
     var showsUpdateAllOutdatedPackages: Bool {
@@ -1958,6 +1965,12 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 }
 
+enum CategorySortOrder: String, CaseIterable {
+    case recentlyUpdated = "Recently Updated"
+    case nameAscending = "Name A–Z"
+    case nameDescending = "Name Z–A"
+}
+
 struct PackageIndex: Sendable {
     static let empty = PackageIndex(packages: [], catalogPackages: [], newUpdatedLastClickedAt: nil)
 
@@ -2066,7 +2079,7 @@ struct PackageIndex: Sendable {
         )
     }
 
-    private static func alphabetical(_ lhs: ManagedPackage, _ rhs: ManagedPackage) -> Bool {
+    static func alphabetical(_ lhs: ManagedPackage, _ rhs: ManagedPackage) -> Bool {
         let displayOrder = lhs.displayName.localizedStandardCompare(rhs.displayName)
         if displayOrder != .orderedSame { return displayOrder == .orderedAscending }
         return lhs.identifier < rhs.identifier

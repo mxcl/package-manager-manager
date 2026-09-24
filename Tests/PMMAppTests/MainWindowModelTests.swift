@@ -1104,7 +1104,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     #expect(model.selectedPackage == nil)
 }
 
-@Test func categoryCatalogPackageVersionTextShowsManager() {
+@Test func categoryCatalogPackageVersionTextOmitsRedundantManager() {
     let package = ManagedPackage(
         manager: .npm,
         name: "sherif",
@@ -1113,7 +1113,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
         category: "developer-tools"
     )
 
-    #expect(mainWindowVersionText(package, section: .developerTools) == "NPM")
+    #expect(mainWindowVersionText(package, section: .developerTools) == "")
 }
 
 @MainActor
@@ -2510,4 +2510,32 @@ func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
     model.updateAllOutdatedPackages()
     #expect(!model.isCheckingAppsBeforeUpdate)
     #expect(model.appsToCloseMessage == nil)
+}
+
+@MainActor
+@Test func categorySortOrderAppliesToFilteredResultsAndPreservesSelection() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let alpha = ManagedPackage(manager: .homebrew, name: "alpha", installedVersion: nil, latestVersion: "1",
+                               category: "games", lastUpdatedAt: "2026-09-01")
+    let zulu = ManagedPackage(manager: .homebrew, name: "zulu", installedVersion: nil, latestVersion: "1",
+                              category: "games", lastUpdatedAt: "2026-09-24")
+    model.apply(snapshot: PackageHostSnapshot(
+        inventory: PackageInventory(packages: []),
+        catalogPackages: [alpha, zulu],
+        isRefreshing: false
+    ))
+    model.selectedSection = .category("games")
+    model.select(zulu)
+    #expect(model.displayedPackages.map(\.id) == [zulu.id, alpha.id])
+    model.categorySortOrder = .nameAscending
+    #expect(model.displayedPackages.map(\.id) == [alpha.id, zulu.id])
+    #expect(model.selectedPackage?.id == zulu.id)
+    model.categorySortOrder = .nameDescending
+    #expect(model.displayedPackages.map(\.id) == [zulu.id, alpha.id])
+    model.searchText = "alpha"
+    #expect(model.displayedPackages.map(\.id) == [alpha.id])
+    model.searchText = ""
+    model.categorySortOrder = .recentlyUpdated
+    #expect(model.displayedPackages.map(\.id) == [zulu.id, alpha.id])
+    #expect(mainWindowVersionText(alpha, section: .category("games")) == "")
 }
