@@ -132,6 +132,7 @@
           <p class="eyebrow">Config files, connected</p>
           <h2 id="configuration-title">From package to config in one click.</h2>
           <p>pkg⋅mgr² surfaces the known configuration and credentials files for each package. Click a path and it opens in your default text editor, ready to change.</p>
+          <p>Choose which app opens those files, too. Select a supported installed editor or terminal and set it as your Mac’s default from its dossier. Use the second button to apply your choice to additional text or script formats. <a href="#default-apps">See how to set your defaults.</a></p>
           <ul class="check-list">
             <li>Home and XDG paths resolved for you</li>
             <li>Missing files and folders created when needed</li>
@@ -199,6 +200,12 @@
           <article>
             <h3>Is Package Manager Manager a package manager?</h3>
             <p>No. PMM is a manager for package managers; it doesn’t manage packages itself.</p>
+          </article>
+          <article id="default-apps">
+            <h3>Can I choose my default text editor and terminal?</h3>
+            <p>Yes. Select a supported installed app on your local Mac, then find <strong>Default App</strong> in its dossier (detail pane). Choose <strong>Set as Default Text Editor</strong> for text and plain-text files, or <strong>Set as Default Terminal</strong> for Unix executables and terminal command files. Supported Homebrew-installed apps work too.</p>
+            <p><strong>Use for All Other Text Formats</strong> also assigns common source-code, markup, configuration, and script formats, including Swift, Markdown, JSON, and YAML. For terminals, <strong>Use for All Other Script Formats</strong> adds shell and interpreter scripts such as Bash, Zsh, Python, and Ruby. Both buttons set the basic default too and replace existing associations for those formats.</p>
+            <p>These settings change macOS file associations on your local Mac. They don’t change shell variables such as <code>EDITOR</code> or <code>VISUAL</code>.</p>
           </article>
           <article>
             <h3>How is this different from mise?</h3>

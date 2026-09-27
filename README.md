@@ -106,6 +106,24 @@ location; uninstall moves the app to Trash and preserves its data. Turning the
 setting off keeps managed apps visible as read-only. Remote updates and
 removals require the setting on both Macs; new installs remain local to each Mac.
 
+## Choose Your Default Editor and Terminal
+
+Select an installed text editor or terminal on your local Mac and open its
+**Default App** section in the dossier (detail pane). The buttons appear for
+apps that pkg⋅mgr² recognizes as supporting text editing or shell execution,
+including supported Homebrew-installed apps.
+
+- **Set as Default Text Editor** assigns text and plain-text files to that app.
+  **Use for All Other Text Formats** also assigns common source-code, markup,
+  configuration, and script formats, including Swift, Markdown, JSON, and YAML.
+- **Set as Default Terminal** assigns Unix executables and terminal command files
+  to that app. **Use for All Other Script Formats** also assigns shell and
+  interpreter scripts, including Bash, Zsh, Python, and Ruby.
+
+The additional-formats buttons set the basic default too and replace existing
+associations for those formats. These are macOS file associations for your local
+Mac; they don’t change shell variables such as `EDITOR` or `VISUAL`.
+
 ## Updating and Removing
 
 The detail pane offers update and uninstall actions when pkg⋅mgr² knows the native
