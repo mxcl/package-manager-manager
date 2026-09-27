@@ -103,5 +103,6 @@ verify_running() {
 }
 verify_running
 printf 'This Mac: installed and running PMM (%s).\n' "$revision"
-{ declare -f verify_running; printf '\nverify_running\n'; } | ssh "${ssh_options[@]}" "$remote_host" 'bash -se'
+printf -v verification_command '%q' "$(declare -f verify_running)"$'\nverify_running'
+ssh -n "${ssh_options[@]}" "$remote_host" "/bin/bash -ec $verification_command"
 printf 'pangolin: installed and running the same verified PMM binaries (%s).\n' "$revision"
