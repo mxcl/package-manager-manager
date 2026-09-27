@@ -66,5 +66,13 @@ import Testing
     #expect(direct?.kinds.contains(.editor) == true)
     let cask = await DefaultApplication.load(path: root.path)
     #expect(cask?.bundleID == direct?.bundleID)
+    let caskRoot = root.appendingPathComponent("Caskroom/test-editor")
+    let installed = caskRoot.appendingPathComponent("1.0")
+    try FileManager.default.createDirectory(at: installed, withIntermediateDirectories: true)
+    try FileManager.default.createSymbolicLink(at: installed.appendingPathComponent("Editor.app"), withDestinationURL: app)
+    // Self-updating apps can report a newer version than their Caskroom directory.
+    let updated = await DefaultApplication.load(path: caskRoot.appendingPathComponent("2.0").path)
+    #expect(updated?.bundleID == "test.pmm.editor")
+    #expect(updated?.kinds.contains(.editor) == true)
     #expect(await DefaultApplication.load(path: root.appendingPathComponent("Missing.app").path) == nil)
 }

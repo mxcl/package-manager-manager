@@ -60,12 +60,18 @@ struct DefaultApplication: Sendable {
     }
 
     @concurrent static func load(path: String) async -> DefaultApplication? {
-        let root = URL(fileURLWithPath: path)
+        var root = URL(fileURLWithPath: path)
         if root.pathExtension.lowercased() == "app" { return inspect(root) }
+        // A self-update can change the reported version without moving Homebrew's app link.
+        if !FileManager.default.fileExists(atPath: root.path),
+           root.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent == "Caskroom" {
+            root.deleteLastPathComponent()
+        }
         // Cask dossiers point at a versioned Caskroom directory, containing app symlinks.
         guard let entries = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return nil }
-        for case let url as URL in entries where url.pathExtension.lowercased() == "app" {
+        while let url = entries.nextObject() as? URL {
+            guard url.pathExtension.lowercased() == "app" else { continue }
             entries.skipDescendants()
             if let application = inspect(url), !application.kinds.isEmpty { return application }
         }
