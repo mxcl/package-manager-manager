@@ -539,6 +539,10 @@ struct MainWindowDossierView: View {
                         if model.showsLocalFilesystemActions {
                             PackageConfigurationSection(locations: model.selectedPackageConfigurationLocations)
                             PackageLocationSection(package: package)
+                            if let path = [package.installLocation, package.binaryPath].compactMap({ $0 }).first(where: { $0.lowercased().hasSuffix(".app") })
+                                ?? (package.appProvenance == .homebrew ? package.installLocation : nil) {
+                                DefaultApplicationSection(path: path).id(path)
+                            }
                         }
                         if package.manager == .macApp {
                             MacAppDetailsSection(package: package)
