@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy PMM Everywhere"
+  short_description: "Build and install PMM on both personal Macs"
+  default_prompt: "Use $deploy-pmm-everywhere to build and install PMM on this Mac and pangolin."
