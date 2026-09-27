@@ -1397,7 +1397,7 @@ private struct MacAppDetailsSection: View {
     }
 }
 
-private struct InfoSection<Content: View>: View {
+struct InfoSection<Content: View>: View {
     let title: String
     @ViewBuilder let content: Content
     var body: some View {

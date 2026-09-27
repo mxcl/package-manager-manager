@@ -112,24 +112,27 @@ struct DefaultApplicationSection: View {
     @State private var error: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        Group {
             if isLoading {
-                ProgressView("Checking default app support…").controlSize(.small)
-            } else if let application, !application.kinds.isEmpty {
-                Text("Default App").font(.headline)
-                ForEach(application.kinds, id: \.self) { kind in
-                    Button(kind == .editor ? "Set as Default Text Editor" : "Set as Default Terminal") {
-                        apply(application, kind: kind, additional: false)
-                    }
-                    Button(kind == .editor ? "Use for All Other Text Formats" : "Use for All Other Script Formats") {
-                        apply(application, kind: kind, additional: true)
-                    }
-                    .help(kind == .editor ? "Also assigns source code, markup, configuration and script formats to this editor." : "Also assigns shell and interpreter script formats to this terminal.")
+                InfoSection(title: "Default App") {
+                    ProgressView("Checking default app support…").controlSize(.small)
                 }
-                .disabled(isApplying)
-                if isApplying { ProgressView("Updating defaults…").controlSize(.small) }
-                if let message { Text(message).font(.callout).foregroundStyle(.secondary) }
-                if let error { Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled) }
+            } else if let application, !application.kinds.isEmpty {
+                InfoSection(title: "Default App") {
+                    ForEach(application.kinds, id: \.self) { kind in
+                        Button(kind == .editor ? "Set as Default Text Editor" : "Set as Default Terminal") {
+                            apply(application, kind: kind, additional: false)
+                        }
+                        Button(kind == .editor ? "Use for All Other Text Formats" : "Use for All Other Script Formats") {
+                            apply(application, kind: kind, additional: true)
+                        }
+                        .help(kind == .editor ? "Also assigns source code, markup, configuration and script formats to this editor." : "Also assigns shell and interpreter script formats to this terminal.")
+                    }
+                    .disabled(isApplying)
+                    if isApplying { ProgressView("Updating defaults…").controlSize(.small) }
+                    if let message { Text(message).font(.callout).foregroundStyle(.secondary) }
+                    if let error { Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled) }
+                }
             }
         }
         .task(id: path) {
