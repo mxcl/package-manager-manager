@@ -1283,8 +1283,8 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
             "token": "codex",
             "desc": "OpenAI's coding agent",
             "homepage": "https://github.com/openai/codex",
-            "version": "0.142.5",
-            "installed": "0.142.5",
+            "version": "0.160.0",
+            "installed": "0.154.0",
             "artifacts": [{ "binary": ["codex-aarch64-apple-darwin", { "target": "codex" }], "target": "/fake/homebrew/bin/codex" }]
           }]
         }
@@ -1294,8 +1294,11 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
 
     let package = try #require(scanner.scanHomebrew(database: PackageDatabase()).first)
 
+    #expect(package.installedVersion == "0.154.0")
+    #expect(package.latestVersion == "0.160.0")
+    #expect(package.isOutdated)
     #expect(package.identifier == "brew:cask:codex")
-    #expect(package.installLocation == "/fake/homebrew/Caskroom/codex/0.142.5")
+    #expect(package.installLocation == "/fake/homebrew/Caskroom/codex/0.154.0")
     #expect(package.binaryPath == "/fake/homebrew/bin/codex")
     #expect(package.appProvenance == nil)
 }

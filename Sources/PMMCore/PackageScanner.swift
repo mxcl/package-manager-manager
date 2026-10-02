@@ -1345,13 +1345,13 @@ public struct PackageScanner: @unchecked Sendable {
             let infoMetadata = homebrewMetadata(from: item)
             let cachedMetadata = homebrewCachedMetadata(name: name, kindFlag: "--cask")
             let curation = database.metadata(for: .homebrew, name: name)
-            let version = infoMetadata.version ?? cachedMetadata?.version
+            let version = item["installed"] as? String
             return ManagedPackage(
                 manager: .homebrew,
                 identifier: "brew:cask:\(name)",
                 displayName: name,
                 installedVersion: version,
-                latestVersion: outdated[name] ?? (cachedMetadata?.version == version ? cachedMetadata?.version : infoMetadata.version),
+                latestVersion: outdated[name] ?? infoMetadata.version ?? cachedMetadata?.version,
                 summary: infoMetadata.summary ?? cachedMetadata?.summary,
                 category: curation?.category,
                 homepage: infoMetadata.homepage ?? cachedMetadata?.homepage,
