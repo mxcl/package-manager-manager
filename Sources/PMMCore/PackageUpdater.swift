@@ -58,7 +58,10 @@ public struct PackageUpdater: Sendable {
             }
             try runAsAdministrator(mas, ["upgrade", id], onProgress: onProgress)
         case .homebrew:
-            try run("brew", ["upgrade", package.packageToken], onProgress: onProgress)
+            let arguments = package.identifier.hasPrefix("brew:cask:")
+                ? ["upgrade", "--cask", package.packageToken]
+                : ["upgrade", package.packageToken]
+            try run("brew", arguments, onProgress: onProgress)
         case .npm:
             try run("npm", ["install", "-g", "\(package.packageToken)@latest"], onProgress: onProgress)
         case .pnpm:

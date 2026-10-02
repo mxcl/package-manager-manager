@@ -464,3 +464,10 @@ private func package(
         installLocation: installLocation
     )
 }
+
+@Test func packageUninstallerPassesCaskFlag() throws {
+    let runner = RecordingRunner()
+    let manager = PackageUninstaller(runner: runner, toolPaths: ["brew": "/fake/brew"])
+    try manager.uninstall(package(.homebrew, "brew:cask:codex", displayName: "codex"))
+    #expect(runner.commands == ["/fake/brew uninstall --cask codex"])
+}

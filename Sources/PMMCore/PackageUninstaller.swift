@@ -33,7 +33,10 @@ public struct PackageUninstaller: Sendable {
         case .apk, .apt, .dnf, .zypper, .macApp, .rustup, .mise:
             throw PackageUninstallError.unsupportedManager(package.manager)
         case .homebrew:
-            try run("brew", ["uninstall", package.packageToken], onProgress: onProgress)
+            let arguments = package.identifier.hasPrefix("brew:cask:")
+                ? ["uninstall", "--cask", package.packageToken]
+                : ["uninstall", package.packageToken]
+            try run("brew", arguments, onProgress: onProgress)
         case .npm:
             try run("npm", ["uninstall", "-g", package.packageToken], onProgress: onProgress)
         case .pnpm:

@@ -263,3 +263,10 @@ func appStoreUpdateRejectsInvalidIDs(address: String) {
     #expect(app.appStoreID == nil)
     #expect(!PackageActions.canUpdate(app, nativeEnabled: false, masAvailable: true))
 }
+
+@Test func packageUpdaterPassesCaskFlag() throws {
+    let runner = RecordingRunner()
+    let manager = PackageUpdater(runner: runner, toolPaths: ["brew": "/fake/brew"])
+    try manager.update(package(.homebrew, "brew:cask:codex", displayName: "codex"))
+    #expect(runner.commands == ["/fake/brew upgrade --cask codex"])
+}
