@@ -14,7 +14,7 @@ let package = Package(
         .library(name: "PMMCore", targets: ["PMMCore"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/mxcl/AppUpdater.git", from: "4.0.0"),
+        .package(url: "https://github.com/mxcl/AppUpdater.git", from: "4.2.1"),
     ],
     targets: [
         .target(name: "PMMCore"),

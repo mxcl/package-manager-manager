@@ -352,6 +352,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$app/Contents/Helpers"
 mkdir -p "$helper_app/Contents/MacOS" "$helper_app/Contents/Resources"
 
 cp "$bin_dir/$executable" "$app/Contents/MacOS/$executable"
+ditto "$bin_dir/AppUpdater_AppUpdater.bundle" "$app/Contents/Resources/AppUpdater_AppUpdater.bundle"
 cp "$bin_dir/$helper_executable" "$helper_app/Contents/MacOS/$helper_executable"
 cp "$bin_dir/$control_executable" "$app/Contents/Helpers/$control_executable"
 
