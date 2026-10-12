@@ -546,7 +546,6 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         let refreshItem = menu.addItem(withTitle: "Refresh Now", action: #selector(refreshNow(_:)), keyEquivalent: "")
         refreshItem.target = self
-        refreshItem.image = ecosystemImage(.system(name: "arrow.clockwise"), accessibilityDescription: "Refresh")
         refreshItem.isEnabled = !state.isRefreshing && snapshot.runningAction == nil
 
         let openItem = menu.addItem(withTitle: "Open Package Manager Manager", action: #selector(openMainWindow(_:)), keyEquivalent: "")
@@ -559,7 +558,6 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         let quitItem = menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quitItem.target = NSApp
-        quitItem.image = ecosystemImage(.system(name: "power"), accessibilityDescription: "Quit")
 
         statusItem.menu = menu
     }
