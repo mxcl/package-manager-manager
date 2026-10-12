@@ -848,7 +848,7 @@ private extension ManagedPackage {
             return "Popular in \(category)"
         }
         if let latestVersion {
-            return "Latest \(latestVersion)"
+            return "Latest \(packageVersionDisplayText(latestVersion))"
         }
         return manager.title
     }

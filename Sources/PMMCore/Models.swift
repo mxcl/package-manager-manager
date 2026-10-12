@@ -145,6 +145,11 @@ public struct MacAppCatalogEntry: Equatable, Sendable {
     }
 }
 
+// Cask versions can append download/build identifiers after a comma; keep those out of labels.
+public func packageVersionDisplayText(_ version: String) -> String {
+    String(version.prefix { $0 != "," })
+}
+
 public struct ManagedPackage: Codable, Equatable, Identifiable, Sendable {
     public var id: String { "\(identifier):\(installLocation ?? "")" }
 

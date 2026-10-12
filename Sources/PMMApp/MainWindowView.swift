@@ -573,7 +573,7 @@ struct MainWindowDossierView: View {
     }
 
     private func updateButtonTitle(for package: ManagedPackage) -> String {
-        package.latestVersion.map { "Update → \($0)" } ?? "Update"
+        package.latestVersion.map { "Update → \(packageVersionDisplayText($0))" } ?? "Update"
     }
 }
 
@@ -795,11 +795,11 @@ func mainWindowVersionText(_ package: ManagedPackage, section: MainWindowSection
     }
     if package.isOutdated {
         if section == nil || section == .outdated {
-            return "\(package.installedVersion ?? "?") → \(package.latestVersion ?? "?")"
+            return "\(packageVersionDisplayText(package.installedVersion ?? "?")) → \(packageVersionDisplayText(package.latestVersion ?? "?"))"
         }
-        return package.installedVersion ?? package.latestVersion ?? "available"
+        return packageVersionDisplayText(package.installedVersion ?? package.latestVersion ?? "available")
     }
-    return package.installedVersion ?? package.latestVersion ?? "available"
+    return packageVersionDisplayText(package.installedVersion ?? package.latestVersion ?? "available")
 }
 
 private func mainWindowHomeRelativePath(_ path: String?) -> String {
@@ -1342,7 +1342,7 @@ private struct DossierHeader: View {
                     .truncationMode(.tail)
                     .layoutPriority(1)
                 if let version = package.installedVersion ?? package.latestVersion {
-                    Text(version)
+                    Text(packageVersionDisplayText(version))
                         .font(.system(size: 14, weight: .thin))
                         .foregroundStyle(SystemColor.secondaryText)
                         .lineLimit(1)

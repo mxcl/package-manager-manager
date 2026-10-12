@@ -87,3 +87,10 @@ import Testing
     #expect(ManagedPackage(manager: .npm, name: "old", installedVersion: "1.0.0", latestVersion: "1.1.0").isOutdated)
     #expect(!ManagedPackage(manager: .npm, name: "current", installedVersion: "1.1.0", latestVersion: "1.1.0").isOutdated)
 }
+
+@Test func packageVersionLabelsOmitCommaSeparatedMetadata() {
+    #expect(packageVersionDisplayText("2.19675.0,5706e5524dba58b23e105c31c358df8ab0a95852") == "2.19675.0")
+    #expect(packageVersionDisplayText("1.2.3,456,789") == "1.2.3")
+    #expect(packageVersionDisplayText("1.2.3-beta+build.4") == "1.2.3-beta+build.4")
+    #expect(packageVersionDisplayText("") == "")
+}

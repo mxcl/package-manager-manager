@@ -728,7 +728,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func packageItem(_ package: MenuBarPackageRow) -> NSMenuItem {
-        let title = "\(package.name) \(package.installedVersion) -> \(package.latestVersion)"
+        let title = "\(package.name) \(packageVersionDisplayText(package.installedVersion)) -> \(packageVersionDisplayText(package.latestVersion))"
         let item = disabledItem(title)
         item.image = ecosystemImage(package.ecosystemIcon, accessibilityDescription: package.ecosystemTitle)
         item.toolTip = package.ecosystemTitle
