@@ -535,7 +535,9 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             case .loading:
                 menu.addItem(loadingItem())
             case .empty:
-                menu.addItem(disabledItem("No outdated packages"))
+                let item = disabledItem("No outdated packages")
+                item.image = ecosystemImage(.system(name: "checkmark.circle"), accessibilityDescription: "Up to date")
+                menu.addItem(item)
             case .package(let package):
                 menu.addItem(packageItem(package))
             }
@@ -544,18 +546,22 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         let refreshItem = menu.addItem(withTitle: "Refresh Now", action: #selector(refreshNow(_:)), keyEquivalent: "")
         refreshItem.target = self
+        refreshItem.image = ecosystemImage(.system(name: "arrow.clockwise"), accessibilityDescription: "Refresh")
         refreshItem.isEnabled = !state.isRefreshing && snapshot.runningAction == nil
 
         let openItem = menu.addItem(withTitle: "Open Package Manager Manager", action: #selector(openMainWindow(_:)), keyEquivalent: "")
         openItem.target = self
+        openItem.image = ecosystemImage(.system(name: "shippingbox"), accessibilityDescription: "Open Package Manager Manager")
 
         let loginItem = menu.addItem(withTitle: "Start at Login", action: #selector(toggleStartAtLogin(_:)), keyEquivalent: "")
         loginItem.target = self
+        loginItem.image = ecosystemImage(.system(name: "person.crop.circle.badge.checkmark"), accessibilityDescription: "Start at Login")
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
 
         menu.addItem(.separator())
         let quitItem = menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quitItem.target = NSApp
+        quitItem.image = ecosystemImage(.system(name: "power"), accessibilityDescription: "Quit")
 
         statusItem.menu = menu
     }
@@ -750,9 +756,14 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
         case .system(let name):
             source = NSImage(systemSymbolName: name, accessibilityDescription: accessibilityDescription)
         }
-        guard let image = source?.copy() as? NSImage else { return nil }
+        guard let source else { return nil }
+        // Give symbol images a concrete bitmap so disabled menu rows render them consistently.
+        let image = NSImage(size: NSSize(width: 16, height: 16))
+        image.lockFocus()
+        source.draw(in: NSRect(x: 0, y: 0, width: 16, height: 16))
+        image.unlockFocus()
         image.isTemplate = true
-        image.size = NSSize(width: 16, height: 16)
+        image.accessibilityDescription = accessibilityDescription
         return image
     }
 
