@@ -1126,7 +1126,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     /// Gated on activeSidebarSection, not selectedSection: the latter keeps its value while a
     /// remote host is selected, and helpers install on this Mac, not the one being viewed.
     func setupOffer(for section: MainWindowSection) -> ManagerSetupOffer? {
-        guard activeSidebarSection == section, let setupOffer, mainWindowSetupSection(setupOffer.manager) == section else {
+        guard let setupOffer, showsSetup(for: setupOffer.manager, in: section) else {
             return nil
         }
         return setupOffer
@@ -1135,10 +1135,16 @@ final class MainWindowModel: NSObject, ObservableObject {
     /// True while a section that could still produce an offer is waiting on detection, so the card
     /// slot can hold a spinner rather than render "not detected yet" as "nothing to offer".
     func isDetectingSetupOffer(for section: MainWindowSection) -> Bool {
-        guard activeSidebarSection == section, setupOffer == nil, let manager = setupDetectingManager else {
+        guard setupOffer == nil, let manager = setupDetectingManager else {
             return false
         }
+        return showsSetup(for: manager, in: section)
+    }
+
+    private func showsSetup(for manager: PackageManagerKind, in section: MainWindowSection) -> Bool {
+        guard activeSidebarSection == section else { return false }
         return mainWindowSetupSection(manager) == section
+            || (section == .outdated && inventory.packages.contains { $0.manager == manager && $0.isOutdated })
     }
 
     /// Detecting tools shells out, so it never runs on the main thread.

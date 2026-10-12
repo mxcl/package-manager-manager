@@ -2060,6 +2060,40 @@ private func package(
 }
 
 @MainActor
+@Test func outdatedCargoPackagesShowSetupOfferAndDetection() async {
+    let store = temporaryPreferencesStore()
+    defer { store.remove() }
+    let model = MainWindowModel(
+        userDefaults: UserDefaults(suiteName: UUID().uuidString)!,
+        usesPackageHostNotifications: false,
+        preferencesStore: store.store,
+        detectCargoSetup: { preferences in
+            CargoSetupState(status: CargoToolchainStatus(cargo: "/c", binstall: nil, installUpdate: nil), preferences: preferences)
+        }
+    )
+    let crate = package(.cargoInstall, "cargo-llvm-cov", installedVersion: "0.9.0", latestVersion: "0.9.1")
+    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [crate])))
+    model.selectedSection = .outdated
+    #expect(model.isDetectingSetupOffer(for: .outdated))
+    #expect(!model.isDetectingSetupOffer(for: .rust))
+
+    model.refreshSetupOffers()
+    await waitForModel { model.setupOffer != nil }
+    #expect(model.setupOffer(for: .outdated)?.id == CargoHelper.binstall.promptKey)
+    #expect(!model.isDetectingSetupOffer(for: .outdated))
+
+    let currentCrate = package(.cargoInstall, "cargo-llvm-cov", installedVersion: "0.9.1", latestVersion: "0.9.1")
+    let outdatedBrew = package(.homebrew, "curl", installedVersion: "1", latestVersion: "2")
+    model.apply(snapshot: PackageHostSnapshot(inventory: PackageInventory(packages: [currentCrate, outdatedBrew])))
+    #expect(model.setupOffer(for: .outdated) == nil)
+    model.selectedSection = .rust
+    #expect(model.setupOffer(for: .rust)?.id == CargoHelper.binstall.promptKey)
+
+    model.selectedSection = .installed
+    #expect(model.setupOffer(for: .installed) == nil)
+}
+
+@MainActor
 @Test func dismissingTwoHelpersInARowPersistsBoth() throws {
     // The offer advances the moment the first is dismissed, so the second dismissal follows almost
     // immediately. Both have to survive, whatever order their writes land in.
