@@ -551,11 +551,9 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
 
         let openItem = menu.addItem(withTitle: "Open Package Manager Manager", action: #selector(openMainWindow(_:)), keyEquivalent: "")
         openItem.target = self
-        openItem.image = ecosystemImage(.system(name: "shippingbox"), accessibilityDescription: "Open Package Manager Manager")
 
         let loginItem = menu.addItem(withTitle: "Start at Login", action: #selector(toggleStartAtLogin(_:)), keyEquivalent: "")
         loginItem.target = self
-        loginItem.image = ecosystemImage(.system(name: "person.crop.circle.badge.checkmark"), accessibilityDescription: "Start at Login")
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
 
         menu.addItem(.separator())
