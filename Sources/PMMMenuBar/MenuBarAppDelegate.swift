@@ -413,8 +413,7 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
             inventory: snapshot.inventory,
             nativeCaskManagementEnabled: snapshot.nativeCaskManagementEnabled == true,
             masAvailable: snapshot.masAvailable == true,
-            isRefreshing: snapshot.isRefreshing,
-            errorMessage: snapshot.errorMessage ?? snapshot.inventory?.errors.first
+            isRefreshing: snapshot.isRefreshing
         )
         try? store.save(snapshot)
         PackageHostNotifications.postSnapshotChanged()
@@ -537,8 +536,6 @@ final class MenuBarAppDelegate: NSObject, NSApplicationDelegate {
                 menu.addItem(loadingItem())
             case .empty:
                 menu.addItem(disabledItem("No outdated packages"))
-            case .error(let message):
-                menu.addItem(disabledItem("Error: \(message)"))
             case .package(let package):
                 menu.addItem(packageItem(package))
             }

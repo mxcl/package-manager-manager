@@ -21,7 +21,6 @@ enum MenuBarEcosystemIcon: Equatable {
 enum MenuBarMenuRow: Equatable {
     case loading
     case empty
-    case error(String)
     case package(MenuBarPackageRow)
 }
 
@@ -30,7 +29,6 @@ struct MenuBarMenuState: Equatable {
     var nativeCaskManagementEnabled = false
     var masAvailable = false
     var isRefreshing = false
-    var errorMessage: String?
 
     var statusSymbolName: String {
         actionableOutdatedPackages.isEmpty ? "shippingbox" : "shippingbox.fill"
@@ -40,9 +38,6 @@ struct MenuBarMenuState: Equatable {
         var rows: [MenuBarMenuRow] = []
         if inventory == nil || isRefreshing {
             rows.append(.loading)
-        }
-        if let errorMessage {
-            rows.append(.error(errorMessage))
         }
         if inventory != nil {
             let packages = outdatedRows
