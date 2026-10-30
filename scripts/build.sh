@@ -373,7 +373,8 @@ xcrun actool "$icon" "$assets" \
 cp "$work/assets/Assets.car" "$app/Contents/Resources/Assets.car"
 ln -s ../../../../../Resources/Assets.car "$helper_app/Contents/Resources/Assets.car"
 curl --fail --location --retry 3 --output "$app/Contents/Resources/db.json" https://www.automicvault.com/db.json
-plutil -extract sources.db.formulas xml1 -o /dev/null "$app/Contents/Resources/db.json" ||
+# Keep validation in JSON: discovery metadata contains nulls, which XML plists cannot represent.
+plutil -extract sources.db.formulas json -o /dev/null "$app/Contents/Resources/db.json" ||
   die "Downloaded db.json has an unexpected shape"
 "$bin_dir/$control_executable" compile-catalog \
   "$app/Contents/Resources/db.json" \
