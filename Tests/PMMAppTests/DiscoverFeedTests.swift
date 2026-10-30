@@ -161,3 +161,47 @@ private func discoverPackage(_ id: String, category: String?) -> DiscoverFeedPac
         installURL: nil
     )
 }
+
+@Test func discoverTrendingDecodesPkgSoAndMapsCasksForNavigation() throws {
+    let feed = try JSONDecoder().decode(DiscoverTrendingFeed.self, from: Data("""
+    {"trending":[
+      {"packageKey":"brew:python@3.15","displayName":"Python","summary":"Language","homepage":"https://python.org"},
+      {"packageKey":"cask:owner/tap/tool","displayName":"Tool","summary":"Utility","homepage":null}
+    ],"recentlyDiscovered":[],"independentTaps":[]}
+    """.utf8))
+
+    #expect(feed.packages.map(\.id) == ["brew:python@3.15", "brew:cask:owner/tap/tool"])
+    let cask = try #require(feed.packages.last)
+    #expect(MainWindowPackageURLRequest(identifier: cask.id)?.name == "cask/owner/tap/tool")
+    let url = try #require(cask.installURL)
+    #expect(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first?.value == cask.id)
+}
+
+@Test func discoverTrendingFallsBackToRecentAndDeduplicates() throws {
+    let entry = """
+    {"packageKey":"brew:new","displayName":"New","summary":"New to the catalog"}
+    """
+    let feed = try JSONDecoder().decode(DiscoverTrendingFeed.self, from: Data("""
+    {"trending":[],"recentlyDiscovered":[\(entry),\(entry)]}
+    """.utf8))
+    #expect(feed.packages.map(\.id) == ["brew:new"])
+}
+
+@Test @MainActor func discoverTrendingLoadingIsIndependentOfEditorials() async {
+    let store = DiscoverFeedStore(trendingLoader: {
+        throw URLError(.notConnectedToInternet)
+    })
+    await store.loadTrending()
+    #expect(store.trendingLoadFailed)
+    #expect(!store.isLoadingTrending)
+    #expect(store.pages.isEmpty)
+    #expect(!store.initialLoadFailed)
+
+    // A separate successful loader verifies that even an empty response finishes loading.
+    let emptyStore = DiscoverFeedStore(trendingLoader: {
+        DiscoverTrendingFeed(trending: [], recentlyDiscovered: [])
+    })
+    await emptyStore.loadTrending()
+    #expect(emptyStore.trendingFeed != nil)
+    #expect(!emptyStore.trendingLoadFailed)
+}

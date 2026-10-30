@@ -77,8 +77,54 @@ struct DiscoverFeedPackage: Decodable, Identifiable, Sendable {
     }
 }
 
+/// The same ranked preview used by pkg.so, with newly discovered packages as its fallback.
+struct DiscoverTrendingFeed: Decodable, Sendable {
+    let trending: [Entry]
+    let recentlyDiscovered: [Entry]
+
+    static let url = URL(string: "https://pkg.so/new-and-trending.json")!
+
+    static func load() async throws -> Self {
+        try await loadJSON(Self.self, from: url)
+    }
+
+    var packages: [DiscoverFeedPackage] {
+        var seen = Set<String>()
+        return (trending.isEmpty ? recentlyDiscovered : trending)
+            .filter { seen.insert($0.packageKey).inserted }
+            .prefix(5)
+            .map(\.package)
+    }
+
+    struct Entry: Decodable, Sendable {
+        let packageKey: String
+        let displayName: String
+        let summary: String
+        let homepage: URL?
+
+        var package: DiscoverFeedPackage {
+            // pkg.so uses cask: while PMM's package navigation uses brew:cask:.
+            let id = packageKey.hasPrefix("cask:") ? "brew:" + packageKey : packageKey
+            var installURL = URLComponents()
+            installURL.scheme = "pkgmgrmgr"
+            installURL.host = "install"
+            installURL.queryItems = [URLQueryItem(name: "package", value: id)]
+            return DiscoverFeedPackage(
+                id: id,
+                displayName: displayName,
+                agentSummary: summary,
+                manager: "homebrew",
+                category: nil,
+                homepage: homepage,
+                installURL: installURL.url
+            )
+        }
+    }
+}
+
 @MainActor
 final class DiscoverFeedStore: ObservableObject {
+    typealias TrendingLoader = @Sendable () async throws -> DiscoverTrendingFeed
     typealias PageLoader = @Sendable (URL) async throws -> DiscoverFeedPage
     @Published private(set) var pages: [DiscoverFeedPage] = []
     @Published private(set) var isLoadingInitial = false
@@ -86,13 +132,20 @@ final class DiscoverFeedStore: ObservableObject {
     @Published private(set) var initialLoadFailed = false
     @Published private(set) var nextPageLoadFailed = false
 
+    @Published private(set) var trendingFeed: DiscoverTrendingFeed?
+    @Published private(set) var isLoadingTrending = false
+    @Published private(set) var trendingLoadFailed = false
+
+    private let trendingLoader: TrendingLoader
     private let pageLoader: PageLoader
     private var loadedURLs: Set<URL> = []
 
     init(
-        pageLoader: @escaping PageLoader = { try await DiscoverFeedPage.load(from: $0) }
+        pageLoader: @escaping PageLoader = { try await DiscoverFeedPage.load(from: $0) },
+        trendingLoader: @escaping TrendingLoader = { try await DiscoverTrendingFeed.load() }
     ) {
         self.pageLoader = pageLoader
+        self.trendingLoader = trendingLoader
     }
 
     var newestBatch: [DiscoverFeedContent] {
@@ -105,6 +158,21 @@ final class DiscoverFeedStore: ObservableObject {
     }
 
     var hasNextPage: Bool { pages.last?.nextPageURL != nil }
+
+    func loadTrending() async {
+        guard trendingFeed == nil, !isLoadingTrending else { return }
+        isLoadingTrending = true
+        trendingLoadFailed = false
+        defer { isLoadingTrending = false }
+        do {
+            let feed = try await trendingLoader()
+            try Task.checkCancellation()
+            trendingFeed = feed
+        } catch is CancellationError {
+        } catch {
+            if !Task.isCancelled { trendingLoadFailed = true }
+        }
+    }
 
     func loadInitial() async {
         guard pages.isEmpty, !isLoadingInitial else { return }
@@ -157,7 +225,8 @@ final class DiscoverFeedStore: ObservableObject {
     }
 }
 
-private func loadJSON<Value: Decodable>(_ type: Value.Type, from url: URL) async throws -> Value {
+@concurrent
+private func loadJSON<Value: Decodable & Sendable>(_ type: Value.Type, from url: URL) async throws -> Value {
     let (data, response) = try await URLSession.shared.data(from: url)
     guard let response = response as? HTTPURLResponse, 200..<300 ~= response.statusCode else {
         throw URLError(.badServerResponse)

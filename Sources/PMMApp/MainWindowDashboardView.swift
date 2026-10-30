@@ -113,6 +113,8 @@ private struct DashboardDiscoverFeedView: View {
                         installPackage: installPackage
                     )
 
+                    newAndTrending
+
                     ForEach(store.olderContent) { item in
                         discoverBlock(item)
                     }
@@ -139,6 +141,9 @@ private struct DashboardDiscoverFeedView: View {
         .task {
             await store.loadInitial()
         }
+        .task {
+            await store.loadTrending()
+        }
         .sheet(item: $selectedEditorial) { editorial in
             DashboardDiscoverEditorialReader(
                 editorial: editorial,
@@ -147,6 +152,45 @@ private struct DashboardDiscoverFeedView: View {
                 openPackage: openPackage,
                 installPackage: installPackage
             )
+        }
+    }
+
+    private var newAndTrending: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                DashboardFeedSectionHeading(title: "New & Trending")
+                Spacer()
+                Link("See all", destination: URL(string: "https://pkg.so/new-and-trending/")!)
+            }
+            if let feed = store.trendingFeed {
+                if feed.packages.isEmpty {
+                    Text("No new or trending packages right now")
+                        .foregroundStyle(SystemColor.secondaryText)
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                } else {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 12)], spacing: 12) {
+                        ForEach(feed.packages) { package in
+                            DashboardDiscoverPackageLink(
+                                package: package,
+                                isInstalled: isPackageInstalled(package),
+                                open: { openPackage(package) },
+                                install: { installPackage(package) }
+                            )
+                        }
+                    }
+                }
+            } else if store.trendingLoadFailed {
+                VStack(spacing: 8) {
+                    Text("New & Trending is unavailable")
+                        .foregroundStyle(SystemColor.secondaryText)
+                    Button("Retry") { Task { await store.loadTrending() } }
+                }
+                .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                ProgressView("Loading New & Trending")
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity, minHeight: 120)
+            }
         }
     }
 
