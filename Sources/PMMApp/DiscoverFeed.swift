@@ -34,22 +34,6 @@ struct DiscoverFeedContent: Decodable, Identifiable, Sendable {
     let relatedPackages: [DiscoverFeedPackage]?
     let packages: [DiscoverFeedPackage]?
 
-    var blogEntry: DashboardBlogEntry? {
-        guard type == "editorial", id.hasPrefix("editorial:"), let title else { return nil }
-        let path = String(id.dropFirst("editorial:".count)).replacingOccurrences(of: ":", with: "/")
-        let url = URL(string: "https://pkg.so/blog/")!.appending(path: path + "/")
-        return DashboardBlogEntry(
-            slug: id,
-            title: title,
-            subtitle: deck ?? "",
-            category: .blog,
-            systemImage: "newspaper",
-            publishedAt: String((publishedAt ?? "").prefix(10)),
-            url: url,
-            artworkURL: artworkURL
-        )
-    }
-
     var artworkURL: URL? {
         guard let path = artwork?.path else { return nil }
         if path.hasPrefix("feed/") {
@@ -171,11 +155,6 @@ final class DiscoverFeedStore: ObservableObject {
 
     var olderContent: [DiscoverFeedContent] {
         Array(uniqueContent.dropFirst(newestBatch.count))
-    }
-
-    var blogPosts: [DashboardBlogEntry] {
-        uniqueContent.compactMap(\.blogEntry)
-            .sorted { $0.publishedAt > $1.publishedAt }
     }
 
     var hasNextPage: Bool { pages.last?.nextPageURL != nil }

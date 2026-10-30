@@ -407,8 +407,7 @@ struct DashboardBlogEntry: Codable, Equatable, Identifiable, Sendable {
     let url: URL
 
     var id: String { slug }
-    var artworkURL: URL? = nil
-    var imageURL: URL { artworkURL ?? url.appending(path: "hero.png") }
+    var imageURL: URL { url.appending(path: "hero.png") }
 }
 
 struct DashboardBlogIndex: Decodable, Sendable {
@@ -555,6 +554,7 @@ private final class CappedActionOutputBuffer: @unchecked Sendable {
 
 @MainActor
 final class MainWindowModel: NSObject, ObservableObject {
+    static let defaultDashboardBlogURL = URL(string: "https://mxcl.dev/package-manager-manager/blog/index.json")!
 
     @Published var selectedSection: MainWindowSection = .home
     @Published private(set) var selectedRemoteHostID: UUID?
@@ -587,6 +587,9 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var packageActionOutput = ""
     @Published private(set) var packageActionError: String?
     @Published private(set) var discoverPackageIDToScrollIntoView: String?
+    @Published private(set) var dashboardBlogEntries: [DashboardBlogEntry] = []
+    @Published private(set) var dashboardBlogEntriesAreLoading = false
+    @Published private(set) var dashboardBlogLoadFailed = false
     @Published private(set) var pendingInstallPackConfirmation: MainWindowInstallPackConfirmation?
     @Published var appsToCloseMessage: String?
     @Published var updateAllFailureMessage: String?
@@ -632,6 +635,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     private let remoteClient: RemoteSSHClient
     private let usesPackageHostNotifications: Bool
     private var dossierTask: Task<Void, Never>?
+    private var dashboardBlogEntriesTask: Task<Void, Never>?
     private var remoteTasks: [UUID: Task<Void, Never>] = [:]
     private var remoteActionTask: Task<Void, Never>?
     private var remoteActionHostID: UUID?
@@ -650,6 +654,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         store: PackageHostStore = PackageHostStore(),
         bundledCatalog: [ManagedPackage] = PackageHostStore.bundledCatalog(),
         dossierClient: PackageDossierClient? = nil,
+        dashboardBlogURL: URL? = nil,
         remoteClient: RemoteSSHClient = RemoteSSHClient(),
         usesPackageHostNotifications: Bool = true,
         preferencesStore: PackagePreferencesStore = PackagePreferencesStore(),
@@ -680,6 +685,9 @@ final class MainWindowModel: NSObject, ObservableObject {
             showTerminalDemo()
         } else {
             syncFromHost()
+            if let dashboardBlogURL {
+                loadDashboardBlogEntries(from: dashboardBlogURL)
+            }
             if usesPackageHostNotifications {
                 notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
                 notificationCenter.addObserver(self, selector: #selector(hostActionOutputChanged(_:)), name: PackageHostNotifications.actionOutputChanged, object: nil)
@@ -688,6 +696,9 @@ final class MainWindowModel: NSObject, ObservableObject {
         }
 #else
         syncFromHost()
+        if let dashboardBlogURL {
+            loadDashboardBlogEntries(from: dashboardBlogURL)
+        }
         if usesPackageHostNotifications {
             notificationCenter.addObserver(self, selector: #selector(hostSnapshotChanged(_:)), name: PackageHostNotifications.snapshotChanged, object: nil)
             notificationCenter.addObserver(self, selector: #selector(hostActionOutputChanged(_:)), name: PackageHostNotifications.actionOutputChanged, object: nil)
@@ -698,6 +709,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     deinit {
         dossierTask?.cancel()
+        dashboardBlogEntriesTask?.cancel()
         remoteTasks.values.forEach { $0.cancel() }
         remoteActionTask?.cancel()
         pendingRemoteActionOutputPublishTask?.cancel()
@@ -795,6 +807,14 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     var dashboardRecommendedPackages: [ManagedPackage] {
         Array(packageIndex.recommendedPackages.prefix(3))
+    }
+
+    var dashboardBlogPosts: [DashboardBlogEntry] {
+        dashboardBlogEntries.filter { $0.category == .blog }
+    }
+
+    var dashboardInstallPacks: [DashboardBlogEntry] {
+        dashboardBlogEntries.filter { $0.category == .pack }
     }
 
     var visibleManagerSections: [MainWindowSection] {
@@ -1549,6 +1569,42 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     private var searchQuery: String {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    @concurrent
+    private static func fetchDashboardBlogEntries(from url: URL) async throws -> [DashboardBlogEntry] {
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard let response = response as? HTTPURLResponse, 200..<300 ~= response.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        return try JSONDecoder().decode(DashboardBlogIndex.self, from: data).posts
+    }
+
+    func retryDashboardBlog() {
+        loadDashboardBlogEntries(from: Self.defaultDashboardBlogURL)
+    }
+
+    private func loadDashboardBlogEntries(from url: URL) {
+        dashboardBlogEntriesTask?.cancel()
+        dashboardBlogEntriesAreLoading = true
+        dashboardBlogLoadFailed = false
+        dashboardBlogEntriesTask = Task { [url] in
+            let result = await Task.detached(priority: .utility) { () -> Result<[DashboardBlogEntry], Error> in
+                do {
+                    return .success(try await Self.fetchDashboardBlogEntries(from: url))
+                } catch {
+                    return .failure(error)
+                }
+            }.value
+
+            guard !Task.isCancelled else { return }
+            dashboardBlogEntriesAreLoading = false
+            if case .success(let posts) = result {
+                dashboardBlogEntries = posts
+            } else {
+                dashboardBlogLoadFailed = true
+            }
+        }
     }
 
     private func packages(in section: MainWindowSection) -> [ManagedPackage] {

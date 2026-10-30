@@ -3,7 +3,7 @@ import PMMCore
 import SwiftUI
 
 private let dashboardItemCornerRadius: CGFloat = 17.5
-private let dashboardBlogURL = URL(string: "https://pkg.so/blog/")!
+private let dashboardBlogURL = URL(string: "https://mxcl.dev/package-manager-manager/blog/")!
 private let dashboardBlogColumns = [GridItem(.adaptive(minimum: 200), spacing: 12)]
 
 struct MainWindowDashboardView: View {
@@ -44,6 +44,10 @@ struct MainWindowDashboardView: View {
                 .padding(.horizontal, 8)
             DashboardDiscoverFeedView(
                 store: store,
+                posts: model.dashboardBlogPosts,
+                supportingContentIsLoading: model.dashboardBlogEntriesAreLoading,
+                blogLoadFailed: model.dashboardBlogLoadFailed,
+                retryBlog: model.retryDashboardBlog,
                 isPackageInstalled: model.isDiscoverPackageInstalled,
                 openPackage: { model.openDiscoverPackage($0) },
                 installPackage: { model.openDiscoverPackage($0, installing: true) }
@@ -84,6 +88,10 @@ private struct DashboardCard<Content: View>: View {
 
 private struct DashboardDiscoverFeedView: View {
     @ObservedObject var store: DiscoverFeedStore
+    let posts: [DashboardBlogEntry]
+    let supportingContentIsLoading: Bool
+    let blogLoadFailed: Bool
+    let retryBlog: () -> Void
     let isPackageInstalled: (DiscoverFeedPackage) -> Bool
     let openPackage: (DiscoverFeedPackage) -> Void
     let installPackage: (DiscoverFeedPackage) -> Void
@@ -101,9 +109,11 @@ private struct DashboardDiscoverFeedView: View {
                     }
 
                     DashboardBlogAndPackageSection(
-                        posts: Array(store.blogPosts.prefix(3)),
+                        posts: Array(posts.prefix(3)),
                         package: spotlightPackage,
-                        isLoading: store.isLoadingInitial,
+                        isLoading: supportingContentIsLoading,
+                        loadFailed: blogLoadFailed,
+                        retry: retryBlog,
                         isPackageInstalled: isPackageInstalled,
                         openPackage: openPackage,
                         installPackage: installPackage
@@ -692,6 +702,8 @@ struct DashboardBlogAndPackageSection: View {
     let posts: [DashboardBlogEntry]
     let package: DiscoverFeedPackage?
     let isLoading: Bool
+    var loadFailed = false
+    var retry: () -> Void = {}
     let isPackageInstalled: (DiscoverFeedPackage) -> Bool
     let openPackage: (DiscoverFeedPackage) -> Void
     let installPackage: (DiscoverFeedPackage) -> Void
@@ -732,6 +744,14 @@ struct DashboardBlogAndPackageSection: View {
                     DashboardBlogPostCard(post: post)
                 }
             }
+        } else if loadFailed {
+            VStack(spacing: 8) {
+                Text("Blog posts couldn’t be loaded")
+                    .foregroundStyle(SystemColor.secondaryText)
+                Button("Retry", action: retry)
+            }
+            .frame(maxWidth: .infinity, minHeight: 250)
+            .background(SystemColor.controlFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         } else {
             Text("No blog posts yet")
                 .font(.callout)
