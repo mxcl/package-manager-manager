@@ -205,3 +205,21 @@ private func discoverPackage(_ id: String, category: String?) -> DiscoverFeedPac
     #expect(emptyStore.trendingFeed != nil)
     #expect(!emptyStore.trendingLoadFailed)
 }
+
+@Test @MainActor func discoverBlogUsesPkgSoEditorialLinksAndArtwork() async throws {
+    let page = try decodePage("""
+    {"pageID":"head","generatedAt":"2026-10-30","nextPageURL":null,"content":[
+      {"id":"shelf","type":"newPackages","title":"Packages"},
+      {"id":"editorial:2026-10-28:coding-agents","type":"editorial","title":"Coding agents","deck":"Local tools","publishedAt":"2026-10-28T12:00:00Z","artwork":{"path":"feed/assets/agents.png"}},
+      {"id":"editorial:2026-10-29:newer","type":"editorial","title":"Newer","publishedAt":"2026-10-29T12:00:00Z"}
+    ]}
+    """)
+    let store = DiscoverFeedStore(pageLoader: { _ in page })
+    await store.loadInitial()
+    #expect(store.blogPosts.map(\.title) == ["Newer", "Coding agents"])
+    let post = try #require(store.blogPosts.last)
+    #expect(post.url.absoluteString == "https://pkg.so/blog/2026-10-28/coding-agents/")
+    #expect(post.imageURL.absoluteString == "https://pkg.so/discover/feed/assets/agents.png")
+    #expect(post.subtitle == "Local tools")
+    #expect(post.publishedAt == "2026-10-28")
+}

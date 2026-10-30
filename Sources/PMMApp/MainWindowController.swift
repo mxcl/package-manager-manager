@@ -6,8 +6,7 @@ import SwiftUI
 @MainActor
 final class MainWindowController: NSHostingController<MainWindowRootView> {
     private let model = MainWindowModel(
-        dossierClient: PackageDossierClient(),
-        dashboardBlogURL: MainWindowModel.defaultDashboardBlogURL
+        dossierClient: PackageDossierClient()
     )
     private var outdatedPackageCountCancellable: AnyCancellable?
     private var showsAppUpdateButton = false

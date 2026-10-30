@@ -3,7 +3,7 @@ import PMMCore
 import SwiftUI
 
 private let dashboardItemCornerRadius: CGFloat = 17.5
-private let dashboardBlogURL = URL(string: "https://mxcl.dev/package-manager-manager/blog/")!
+private let dashboardBlogURL = URL(string: "https://pkg.so/blog/")!
 private let dashboardBlogColumns = [GridItem(.adaptive(minimum: 200), spacing: 12)]
 
 struct MainWindowDashboardView: View {
@@ -44,8 +44,6 @@ struct MainWindowDashboardView: View {
                 .padding(.horizontal, 8)
             DashboardDiscoverFeedView(
                 store: store,
-                posts: model.dashboardBlogPosts,
-                supportingContentIsLoading: model.dashboardBlogEntriesAreLoading,
                 isPackageInstalled: model.isDiscoverPackageInstalled,
                 openPackage: { model.openDiscoverPackage($0) },
                 installPackage: { model.openDiscoverPackage($0, installing: true) }
@@ -86,8 +84,6 @@ private struct DashboardCard<Content: View>: View {
 
 private struct DashboardDiscoverFeedView: View {
     @ObservedObject var store: DiscoverFeedStore
-    let posts: [DashboardBlogEntry]
-    let supportingContentIsLoading: Bool
     let isPackageInstalled: (DiscoverFeedPackage) -> Bool
     let openPackage: (DiscoverFeedPackage) -> Void
     let installPackage: (DiscoverFeedPackage) -> Void
@@ -105,9 +101,9 @@ private struct DashboardDiscoverFeedView: View {
                     }
 
                     DashboardBlogAndPackageSection(
-                        posts: Array(posts.prefix(3)),
+                        posts: Array(store.blogPosts.prefix(3)),
                         package: spotlightPackage,
-                        isLoading: supportingContentIsLoading,
+                        isLoading: store.isLoadingInitial,
                         isPackageInstalled: isPackageInstalled,
                         openPackage: openPackage,
                         installPackage: installPackage
@@ -158,7 +154,9 @@ private struct DashboardDiscoverFeedView: View {
     private var newAndTrending: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                DashboardFeedSectionHeading(title: "New & Trending")
+                Text("New & Trending")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(SystemColor.primaryText)
                 Spacer()
                 Link("See all", destination: URL(string: "https://pkg.so/new-and-trending/")!)
             }
