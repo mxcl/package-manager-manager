@@ -540,10 +540,26 @@ public struct NativeCaskManager: Sendable {
                   !executable.contains("/"), executable != ".", executable != ".." else { throw NativeCaskError("The app has no valid executable.") }
             try command("/usr/bin/lipo", [staged.appendingPathComponent("Contents/MacOS").appendingPathComponent(executable).path,
                 "-verify_arch", NativeCaskRecipe.isAppleSilicon ? "arm64" : "x86_64"])
-            // Both bundles stay on the same volume. Atomic exchange leaves the old app intact on failure.
+            // Cross-parent directory swaps require write access to both bundles (to update
+            // their parent links). A root-owned app can still be exchanged within its parent.
+            // Verify under the original bundle name above before moving to this hidden sibling.
+            let replacement = parent.appendingPathComponent(".pmm-\(UUID().uuidString).app")
+            guard renameatx_np(AT_FDCWD, staged.path, AT_FDCWD, replacement.path, UInt32(RENAME_EXCL)) == 0 else {
+                throw NativeCaskError("Could not stage the app: \(String(cString: strerror(errno))). Nothing was changed.")
+            }
+            var exchanged = false
+            defer { if !exchanged { try? FileManager.default.removeItem(at: replacement) } }
             try requireClosed(identity.id)
-            guard renameatx_np(AT_FDCWD, staged.path, AT_FDCWD, destination.path, UInt32(RENAME_SWAP)) == 0 else {
+            guard renameatx_np(AT_FDCWD, replacement.path, AT_FDCWD, destination.path, UInt32(RENAME_SWAP)) == 0 else {
                 throw NativeCaskError("Could not replace the app: \(String(cString: strerror(errno))). Nothing was changed.")
+            }
+            exchanged = true
+            // The update is committed. Cleanup may need authorization for a root-owned app;
+            // cancellation must not report an installation failure after a successful swap.
+            do {
+                try removeApp(replacement, allowAuthorization: true, onProgress: onProgress)
+            } catch {
+                onProgress?(.output("Updated successfully, but could not remove the old app at \(replacement.path): \(error.localizedDescription)\n"))
             }
             onProgress?(.output("Installed \(recipe.version).\n"))
             return

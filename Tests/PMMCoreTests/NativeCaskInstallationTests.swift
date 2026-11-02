@@ -379,6 +379,37 @@ func directAppReplacementPreservesOriginalOnFailure(scenario: String) async thro
     }
 }
 
+@Test(arguments: [false, true])
+func directAppReplacementHandlesProtectedBundle(denyCleanup: Bool) async throws {
+    let fixture = try CaskFixture()
+    defer { fixture.clean() }
+    try await nativeCaskWork {
+        let app = try fixture.app(version: "1.0", in: fixture.apps)
+        // Reproduce the effective permissions of a root-owned 0755 app.
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: app.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: app.path) }
+        let previous = NativeCaskInstallation(token: "example", version: "1.0", appPath: app.path,
+            bundleIdentifier: "com.example.native-test", teamIdentifier: "EXAMPLETEAM", shortVersion: "1.0", bundleVersion: "1.0")
+        let (archive, recipe, work) = try fixture.archive(version: "2.0")
+        fixture.runner.denyAuthorization = denyCleanup
+        let progress: @Sendable (PackageCommandProgress) -> Void = { event in
+            if case .output(let text) = event, text.contains("Requesting administrator") {
+                fixture.runner.authorizationNotices += 1
+            }
+        }
+        try fixture.manager.installArchive(archive, work: work, recipe: recipe, previous: previous, direct: true, onProgress: progress)
+        let info = try PropertyListSerialization.propertyList(from: Data(contentsOf: app.appendingPathComponent("Contents/Info.plist")), format: nil) as? [String: String]
+        #expect(info?["CFBundleVersion"] == "2.0")
+        #expect(fixture.runner.authorizationRequests == 1)
+        #expect(try NativeCaskStore(directory: fixture.state).load().isEmpty)
+        let leftovers = try FileManager.default.contentsOfDirectory(at: fixture.apps, includingPropertiesForKeys: nil).filter { $0.lastPathComponent.hasPrefix(".pmm-") }
+        #expect(leftovers.count == (denyCleanup ? 1 : 0))
+        for leftover in leftovers {
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: leftover.path)
+        }
+    }
+}
+
 @Test func updateGuardFindsRunningAppThroughHomebrewSymlink() async throws {
     let fixture = try CaskFixture()
     defer { fixture.clean() }
