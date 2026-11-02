@@ -263,13 +263,23 @@ struct MacAppScanner: @unchecked Sendable {
         let data = try await fetch(components.url!, maximumBytes: 1_000_000)
         let response = try JSONDecoder().decode(AppStoreLookupResponse.self, from: data)
         guard let app = response.results.first else { return nil }
+        // Universal listings can return an iOS version even with entity=macSoftware.
+        // Only a mac-software result is platform-specific; otherwise verify the Mac page.
+        var version = app.version
+        if app.kind != "mac-software" {
+            let url = URL(string: "https://apps.apple.com/\(storefrontCountry)/app/id\(id)?platform=mac")!
+            let page = try await fetch(url, maximumBytes: 5_000_000)
+            guard let macVersion = macAppStorePageVersion(page, id: id) else { return nil }
+            version = macVersion
+        }
         return MacAppVersionCacheRecord(
-            displayVersion: app.version,
-            comparisonVersion: app.version,
+            displayVersion: version,
+            comparisonVersion: version,
             source: .appStore,
             advisoryURL: app.trackViewURL,
             checkedAt: now(),
-            summary: nonEmpty(app.description)
+            summary: nonEmpty(app.description),
+            appStorePlatformVersion: 1
         )
     }
 
@@ -335,7 +345,9 @@ struct MacAppVersionCache: Codable {
 
     static func load(from url: URL) -> MacAppVersionCache {
         guard let data = try? Data(contentsOf: url),
-              let cache = try? JSONDecoder().decode(MacAppVersionCache.self, from: data) else { return MacAppVersionCache() }
+              var cache = try? JSONDecoder().decode(MacAppVersionCache.self, from: data) else { return MacAppVersionCache() }
+        // Older records may contain mobile versions. Never reuse them, even offline.
+        cache.records = cache.records.filter { $0.value.source != .appStore || $0.value.appStorePlatformVersion == 1 }
         return cache
     }
 
@@ -354,6 +366,7 @@ struct MacAppVersionCacheRecord: Codable, Sendable {
     var updateDownloadURL: String? = nil
     var downloadMetadataVersion: Int? = 1
     var summary: String? = nil
+    var appStorePlatformVersion: Int? = nil
 }
 
 private struct MacAppCheckResult: Sendable {
@@ -457,11 +470,13 @@ private struct AppStoreLookupResponse: Decodable {
 }
 
 private struct AppStoreLookupResult: Decodable {
+    let kind: String?
     let version: String
     let trackViewURL: String?
     let description: String?
 
     private enum CodingKeys: String, CodingKey {
+        case kind
         case version
         case trackViewURL = "trackViewUrl"
         case description
@@ -537,4 +552,29 @@ final class SparkleAppcastParser: NSObject, XMLParserDelegate {
         element = ""
         text = ""
     }
+}
+
+/// Read only the requested product's Mac version history, never recommendations or another platform.
+/// Apple's page schema is not a public API: if it changes, leave the version unknown.
+func macAppStorePageVersion(_ data: Data, id: Int) -> String? {
+    guard let html = String(data: data, encoding: .utf8),
+          let script = html.range(of: #"<script\b[^>]*\bid=["']serialized-server-data["'][^>]*>"#, options: .regularExpression),
+          let end = html.range(of: "</script>", range: script.upperBound..<html.endIndex),
+          let root = try? JSONSerialization.jsonObject(with: Data(html[script.upperBound..<end.lowerBound].utf8)) as? [String: Any],
+          let pages = root["data"] as? [[String: Any]] else { return nil }
+    for page in pages {
+        guard let intent = page["intent"] as? [String: Any],
+              intent["id"] as? String == String(id), intent["platform"] as? String == "mac",
+              let product = page["data"] as? [String: Any],
+              let mapping = product["shelfMapping"] as? [String: Any],
+              let recent = mapping["mostRecentVersion"] as? [String: Any],
+              let action = recent["seeAllAction"] as? [String: Any],
+              let history = action["pageData"] as? [String: Any],
+              let shelves = history["shelves"] as? [[String: Any]],
+              let items = shelves.first?["items"] as? [[String: Any]],
+              let version = items.first?["primarySubtitle"] as? String,
+              numericVersionComparison(version, version) != nil else { continue }
+        return version
+    }
+    return nil
 }

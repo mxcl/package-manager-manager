@@ -15,11 +15,13 @@ private final class MacAppURLProtocol: URLProtocol, @unchecked Sendable {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var responseData = Data()
     nonisolated(unsafe) private static var responseStatus = 200
+    nonisolated(unsafe) private static var macPage: Data?
     nonisolated(unsafe) private static var requestCount = 0
 
-    static func configure(data: Data, status: Int = 200) {
+    static func configure(data: Data, status: Int = 200, macPage: Data? = nil) {
         lock.lock()
         responseData = data
+        self.macPage = macPage
         responseStatus = status
         requestCount = 0
         lock.unlock()
@@ -37,7 +39,10 @@ private final class MacAppURLProtocol: URLProtocol, @unchecked Sendable {
     override func startLoading() {
         Self.lock.lock()
         Self.requestCount += 1
-        let data = Self.responseData
+        let data = request.url?.host == "apps.apple.com" ? (Self.macPage ?? Data()) : Self.responseData
+        if request.url?.host == "apps.apple.com" {
+            #expect(URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems?.contains(URLQueryItem(name: "platform", value: "mac")) == true)
+        }
         let status = Self.responseStatus
         Self.lock.unlock()
         let response = HTTPURLResponse(
@@ -195,7 +200,7 @@ struct MacAppScannerTests {
         defer { fixture.remove() }
         let app = try fixture.app("Store.app", id: "com.example.Store", shortVersion: "1.0", build: "10", receipt: true)
         MacAppURLProtocol.configure(data: Data("""
-        {"resultCount":1,"results":[{"version":"1.2","trackViewUrl":"https://apps.apple.com/app/id123","description":"A useful Mac app."}]}
+        {"resultCount":1,"results":[{"kind":"mac-software","version":"1.2","trackViewUrl":"https://apps.apple.com/app/id123","description":"A useful Mac app."}]}
         """.utf8))
         let mdls = "/fake/mdls -raw -name kMDItemAppStoreAdamID \(app.path)"
         let scanner = fixture.scanner(
@@ -215,6 +220,47 @@ struct MacAppScannerTests {
         let cached = try #require(try await fixture.packages(scanner: scanner, mode: .fresh).first)
         #expect(cached.summary == "A useful Mac app.")
         #expect(MacAppURLProtocol.requests == 1)
+    }
+
+    @Test(arguments: ["15.4", "15.5", "invalid", "wrong-platform", "wrong-id", "missing"])
+    func sharedAppStoreListingUsesMacVersion(macVersion: String) async throws {
+        let fixture = try MacAppFixture()
+        defer { fixture.remove() }
+        let app = try fixture.app("Numbers.app", id: "com.apple.Numbers", shortVersion: "15.4", build: "7051", receipt: true)
+        let platform = macVersion == "wrong-platform" ? "iphone" : "mac"
+        let productID = macVersion == "wrong-id" ? "999" : "361304891"
+        let reportedVersion = macVersion.hasPrefix("wrong-") ? "15.5" : macVersion
+        let page = """
+        <script type="application/json" id="serialized-server-data">
+        {"data":[{"intent":{"id":"\(productID)","platform":"\(platform)"},"data":{"shelfMapping":{"mostRecentVersion":{"seeAllAction":{"pageData":{"shelves":[{"items":[{"primarySubtitle":"\(reportedVersion)"}]}]}}}}}}]}
+        </script>
+        """
+        MacAppURLProtocol.configure(data: Data("""
+        {"results":[{"kind":"software","version":"15.4.2"}]}
+        """.utf8), macPage: macVersion == "missing" ? nil : Data(page.utf8))
+        let scanner = fixture.scanner(runner: MacAppFakeRunner(responses: [
+            "/fake/mdls -raw -name kMDItemAppStoreAdamID \(app.path)": CommandResult(stdout: "361304891", stderr: "", status: 0)
+        ]), toolPaths: ["mdls": "/fake/mdls"], session: testSession())
+        let package = try #require(try await fixture.packages(scanner: scanner, mode: .fresh).first)
+        #expect(package.latestVersion == (macVersion == "15.5" ? "15.5" : nil))
+        #expect(MacAppURLProtocol.requests == 2)
+    }
+
+    @Test func discardsUnverifiedAppStoreCache() throws {
+        let fixture = try MacAppFixture()
+        defer { fixture.remove() }
+        let old = MacAppVersionCacheRecord(displayVersion: "15.4.2", comparisonVersion: "15.4.2",
+            source: .appStore, advisoryURL: nil, checkedAt: Date())
+        var verified = old
+        verified.appStorePlatformVersion = 1
+        let sparkle = MacAppVersionCacheRecord(displayVersion: "2", comparisonVersion: "2",
+            source: .sparkle, advisoryURL: nil, checkedAt: Date())
+        try MacAppVersionCache(records: ["old": old, "verified": verified, "sparkle": sparkle])
+            .save(to: fixture.cache, fileManager: .default)
+        let cache = MacAppVersionCache.load(from: fixture.cache)
+        #expect(cache.records["old"] == nil)
+        #expect(cache.records["verified"] != nil)
+        #expect(cache.records["sparkle"] != nil)
     }
 
     @Test(arguments: [
