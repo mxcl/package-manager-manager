@@ -854,7 +854,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
-@Test func packageSearchUpdatesSidebarCounts() {
+@Test func packageSearchCombinesCatalogAndInstalledWithoutFilteringOtherSections() {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let ripgrep = ManagedPackage(manager: .cargoInstall, name: "ripgrep", installedVersion: "1", latestVersion: "1", summary: "fast search")
     let git = ManagedPackage(manager: .homebrew, name: "git", installedVersion: "1", latestVersion: "2", summary: "fast search")
@@ -888,14 +888,15 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     model.selectSection(.installed)
     model.searchText = "search"
 
-    #expect(model.displayedPackages.map(\.displayName) == ["git", "ripgrep"])
-    #expect(model.count(for: .installed) == 2)
+    #expect(model.displayedPackages.map(\.displayName) == ["fd", "git", "ripgrep"])
+    #expect(model.count(for: .search) == 3)
+    #expect(model.count(for: .installed) == 3)
     #expect(model.count(for: .outdated) == 1)
     #expect(model.count(for: .rust) == 1)
     #expect(model.count(for: .homebrew) == 1)
-    #expect(model.count(for: .python) == 0)
+    #expect(model.count(for: .python) == 1)
     #expect(model.count(for: .developerTools) == 1)
-    #expect(model.count(for: .networking) == 0)
+    #expect(model.count(for: .networking) == 1)
     #expect(model.count(for: .newUpdated) == 1)
 }
 
@@ -1870,9 +1871,10 @@ private func package(
     #expect(!model.canInstall(outdated))
     #expect(!model.showsLocalFilesystemActions)
 
-    model.searchText = "nothing"
+    model.searchText = "no-package-matches-this-unique-search-query"
     #expect(model.displayedPackages.isEmpty)
-    #expect(model.count(for: .outdated, on: host.id) == 0)
+    #expect(model.count(for: .outdated, on: host.id) == 1)
+    #expect(model.activeSidebarSection == .search)
 
     model.searchText = ""
     model.updateAllOutdatedPackages()
@@ -2572,4 +2574,37 @@ func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
     model.categorySortOrder = .recentlyUpdated
     #expect(model.displayedPackages.map(\.id) == [zulu.id, alpha.id])
     #expect(mainWindowVersionText(alpha, section: .category("games")) == "")
+}
+
+@MainActor
+@Test func searchSidebarSelectionFollowsTextAndRestoresPreviousSection() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    model.selectSection(.python)
+    #expect(!model.hasSearchText)
+    model.searchText = "python"
+    #expect(model.hasSearchText)
+    #expect(model.activeSidebarSection == .search)
+    #expect(!model.showsDashboard)
+    model.searchText = "pip"
+    model.searchText = ""
+    #expect(!model.hasSearchText)
+    #expect(model.activeSidebarSection == .python)
+
+    model.searchText = " "
+    #expect(model.hasSearchText)
+    #expect(model.displayedPackages.isEmpty)
+    model.selectSection(.installed)
+    model.searchText = ""
+    #expect(model.activeSidebarSection == .installed)
+}
+
+@Test func searchIndexMergesInstalledCatalogEntriesAndIncludesUncategorizedPackages() {
+    let installed = ManagedPackage(manager: .homebrew, name: "git", installedVersion: "1", latestVersion: nil)
+    let catalog = ManagedPackage(manager: .homebrew, name: "git", installedVersion: nil, latestVersion: "2", summary: "Version control")
+    let uncategorized = ManagedPackage(manager: .homebrew, name: "fd", installedVersion: nil, latestVersion: "1")
+    let index = PackageIndex(packages: [installed], catalogPackages: [catalog, uncategorized], newUpdatedLastClickedAt: nil)
+
+    #expect(index.packagesBySection[.search]?.map(\.displayName) == ["fd", "git"])
+    #expect(index.packagesBySection[.search]?.last?.installedVersion == "1")
+    #expect(index.packagesBySection[.search]?.last?.summary == "Version control")
 }

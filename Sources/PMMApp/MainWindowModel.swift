@@ -5,6 +5,7 @@ import SystemConfiguration
 
 enum MainWindowSection: Hashable, Identifiable, Sendable {
     case home
+    case search
     case installed
     case outdated
     case newUpdated
@@ -22,6 +23,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
     var id: String {
         switch self {
         case .home: "home"
+        case .search: "search"
         case .installed: "installed"
         case .outdated: "outdated"
         case .newUpdated: "newUpdated"
@@ -60,6 +62,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .home: "Discover"
+        case .search: "Search Results"
         case .installed: "Installed"
         case .outdated: "Outdated"
         case .newUpdated: "New"
@@ -79,6 +82,7 @@ enum MainWindowSection: Hashable, Identifiable, Sendable {
     var systemImage: String {
         switch self {
         case .home: "safari"
+        case .search: "magnifyingglass"
         case .installed: "shippingbox"
         case .outdated: "clock"
         case .newUpdated: "sparkles"
@@ -595,7 +599,28 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published var updateAllFailureMessage: String?
     private var lastUpdateAllFailureMessage: String?
     @Published private(set) var isCheckingAppsBeforeUpdate = false
-    @Published var searchText = ""
+    @Published var searchText = "" {
+        didSet {
+            guard searchText != oldValue else { return }
+            if hasSearchText {
+                if activeSidebarSection != .search {
+                    selectionBeforeSearch = sidebarSelection
+                    selectSection(.search)
+                }
+                reconcilePackageSelection()
+            } else {
+                if activeSidebarSection == .search {
+                    switch selectionBeforeSearch ?? .local(.home) {
+                    case .local(let section): selectSection(section)
+                    case .remote(let hostID, let section): selectRemoteHost(hostID, section: section)
+                    }
+                }
+                selectionBeforeSearch = nil
+            }
+        }
+    }
+    private var selectionBeforeSearch: MainWindowSidebarSelection?
+    var hasSearchText: Bool { !searchText.isEmpty }
     @Published var categorySortOrder: CategorySortOrder = .recentlyUpdated
     @Published var showsCategoryCLIs = true {
         didSet { reconcilePackageSelection() }
@@ -832,8 +857,7 @@ final class MainWindowModel: NSObject, ObservableObject {
             let index = PackageIndex(packages: packages, catalogPackages: [], newUpdatedLastClickedAt: nil)
             let localSection: MainWindowSection = section == .outdated ? .outdated : .installed
             let values = index.packagesBySection[localSection] ?? []
-            let query = searchQuery
-            return query.isEmpty ? values : values.filter { matchesSearch($0, query: query) }
+            return values
         }
         let packages = packages(in: selectedSection)
         guard selectedSection.categoryIdentifier != nil else { return packages }
@@ -1088,8 +1112,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     func count(for section: RemoteHostSection, on hostID: UUID) -> Int? {
         guard let inventory = remoteHostStates[hostID]?.inventory else { return nil }
         let packages = section == .outdated ? inventory.outdatedPackages : inventory.packages
-        let query = searchQuery
-        return query.isEmpty ? packages.count : packages.filter { matchesSearch($0, query: query) }.count
+        return packages.count
     }
 
     func isLoading(_ hostID: UUID) -> Bool {
@@ -1105,7 +1128,10 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func isLoadingCount(for section: MainWindowSection) -> Bool {
-        !section.packageManagers.isDisjoint(with: loadingManagers)
+        if section == .search {
+            return !hasInventory || isReloading || !loadingManagers.isEmpty
+        }
+        return !section.packageManagers.isDisjoint(with: loadingManagers)
     }
 
     func install(_ package: ManagedPackage) {
@@ -1615,14 +1641,14 @@ final class MainWindowModel: NSObject, ObservableObject {
             }
         }
         let query = searchQuery
-        guard !query.isEmpty else { return packages }
+        guard section == .search else { return packages }
+        guard !query.isEmpty else { return [] }
         return packages.filter { matchesSearch($0, query: query) }
     }
 
     private func filteredCount(for section: MainWindowSection) -> Int? {
-        let query = searchQuery
         let categoryIsFiltered = section.categoryIdentifier != nil && (!showsCategoryCLIs || !showsCategoryGUIs)
-        guard !query.isEmpty || categoryIsFiltered else { return nil }
+        guard section == .search || categoryIsFiltered else { return nil }
         return packages(in: section).count
     }
 
@@ -2024,7 +2050,10 @@ struct PackageIndex: Sendable {
             mainWindowManagerSection(for: $0) == .apps
                 && !representedAppIdentifiers.contains($0.catalogIdentifier ?? $0.identifier)
         }
+        let catalogIDs = Set(catalogPackages.map(\.id))
+        let searchPackages = catalogPackages + packages.filter { !catalogIDs.contains($0.id) }
         var bySection: [MainWindowSection: [ManagedPackage]] = [
+            .search: searchPackages.sorted(by: Self.alphabetical),
             .installed: packages.sorted(by: Self.alphabetical),
             .outdated: packages.filter(\.isOutdated).sorted(by: Self.mostOutdatedFirst),
             .newUpdated: newUpdated,

@@ -9,6 +9,11 @@ struct MainWindowSidebarView: View {
 
     var body: some View {
         List(selection: sidebarSelection) {
+            if model.hasSearchText {
+                Section {
+                    sidebarRow(.search)
+                }
+            }
             if model.hasMultipleHosts {
                 Section {
                     sidebarRow(.home)
@@ -329,7 +334,7 @@ struct MainWindowPackageListView: View {
                             PackageRow(
                                 package: package,
                                 selected: model.selectedPackageIDs.contains(package.id),
-                                showsManager: model.isRemoteSelection || model.activeSidebarSection == .outdated || (model.activeSidebarSection?.packageManagers.count ?? 0) > 1,
+                                showsManager: model.activeSidebarSection == .search || model.isRemoteSelection || model.activeSidebarSection == .outdated || (model.activeSidebarSection?.packageManagers.count ?? 0) > 1,
                                 versionText: mainWindowVersionText(
                                     package,
                                     section: model.selectedRemoteSection == .outdated ? .outdated : model.activeSidebarSection
