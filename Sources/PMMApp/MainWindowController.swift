@@ -77,60 +77,58 @@ struct MainWindowRootView: View {
     @State private var dashboardScrollOffset: CGFloat = 0
 
     var body: some View {
-        Group {
-            if model.showsDashboard {
-                NavigationSplitView {
-                    sidebar
-                } detail: {
+        NavigationSplitView {
+            sidebar
+        } detail: {
+            Group {
+                if model.showsDashboard {
                     MainWindowDashboardView(
                         model: model,
                         store: discoverFeedStore,
                         scrollOffset: $dashboardScrollOffset
                     )
-                        .navigationSplitViewColumnWidth(min: 602, ideal: 1128)
-                        .toolbar { appUpdateToolbarItem }
-                }
-                .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
-                .toolbar(removing: .title)
-
-            } else {
-                NavigationSplitView {
-                    sidebar
-                } content: {
-                    MainWindowPackageListView(model: model)
-                        .navigationSplitViewColumnWidth(min: 252, ideal: 252, max: 252)
-                        .toolbar {
-                            ToolbarSpacer() //TODO I only want to space it to the edge of this column! :-/
-                            updateAllToolbarItem
-                        }
-                } detail: {
-                    Group {
-                        if model.hasMultipleSelectedPackages {
-                            ContentUnavailableView {
-                                Label("\(model.selectedPackageIDs.count) Packages Selected", systemImage: "shippingbox")
-                            } description: {
-                                Text("Use Update Selected to update these packages.")
-                            }
-                        } else {
-                            HStack(spacing: 0) {
-                                MainWindowDossierView(model: model)
-                                    .frame(width: 252)
-                                MainWindowLinksView(model: model)
-                                    .frame(minWidth: 350, maxWidth: .infinity)
+                } else {
+                    HStack(spacing: 0) {
+                        MainWindowPackageListView(model: model)
+                            .frame(width: 252)
+                        Divider()
+                        Group {
+                            if model.hasMultipleSelectedPackages {
+                                ContentUnavailableView {
+                                    Label("\(model.selectedPackageIDs.count) Packages Selected", systemImage: "shippingbox")
+                                } description: {
+                                    Text("Use Update Selected to update these packages.")
+                                }
+                            } else {
+                                HStack(spacing: 0) {
+                                    MainWindowDossierView(model: model)
+                                        .frame(width: 252)
+                                    MainWindowLinksView(model: model)
+                                        .frame(minWidth: 350, maxWidth: .infinity)
+                                }
                             }
                         }
-                    }
-                    .navigationSplitViewColumnWidth(min: 602, ideal: 876)
-                    .toolbar {
-                        ToolbarSpacer() // or updateAllToolbarItem comes over here
-                        openInBrowserToolbarItem
-                        appUpdateToolbarItem
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
-                .toolbar(removing: .title)
+            }
+            .navigationSplitViewColumnWidth(
+                min: model.showsDashboard ? 602 : 854,
+                ideal: 1128
+            )
+            .toolbar {
+                if !model.showsDashboard {
+                    updateAllToolbarItem
+                    ToolbarSpacer()
+                    openInBrowserToolbarItem
+                }
+                appUpdateToolbarItem
             }
         }
+        // The navigation container owns the native search field. Keep it alive when
+        // the first/last character switches between Discover and search results.
+        .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search")
+        .toolbar(removing: .title)
         .sheet(isPresented: $model.showsHostManagement) {
             RemoteHostsManagementView(model: model)
         }
