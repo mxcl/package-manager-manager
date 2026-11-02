@@ -495,7 +495,11 @@ public struct NativeCaskManager: Sendable {
         if previous == nil && FileManager.default.fileExists(atPath: destination.path) { throw NativeCaskError("An app already exists at \(destination.path). Adopt it explicitly first.") }
         let staging = parent.appendingPathComponent(".pmm-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
-        let staged = staging.appendingPathComponent("new.app")
+        // Bundles without CFBundleExecutable resolve it from their directory name.
+        // Keep that name intact during verification and rollback (for example, Muse).
+        let incoming = staging.appendingPathComponent("incoming", isDirectory: true)
+        try FileManager.default.createDirectory(at: incoming, withIntermediateDirectories: false)
+        let staged = incoming.appendingPathComponent(destination.lastPathComponent)
         var journalWritten = false
         defer { if !journalWritten { try? FileManager.default.removeItem(at: staging) } }
         try Self.validateBundlePaths(source)
@@ -549,7 +553,11 @@ public struct NativeCaskManager: Sendable {
         journalWritten = true
         onProgress?(.output("Installing \(recipe.targetName)…\n"))
         do {
-            if previous != nil { try moveApp(destination, to: staging.appendingPathComponent("previous.app"), onProgress: onProgress) }
+            if previous != nil {
+                let backup = staging.appendingPathComponent("backup", isDirectory: true)
+                try FileManager.default.createDirectory(at: backup, withIntermediateDirectories: false)
+                try moveApp(destination, to: backup.appendingPathComponent(destination.lastPathComponent), onProgress: onProgress)
+            }
             try moveApp(staged, to: destination, onProgress: onProgress)
             receipts[recipe.token] = receipt
             try store.save(receipts)
@@ -572,7 +580,10 @@ public struct NativeCaskManager: Sendable {
               staging.lastPathComponent.hasPrefix(".pmm-"), staging.resolvingSymlinksInPath().path == staging.path else {
             throw NativeCaskError("Invalid pending native cask transaction.")
         }
-        let previous = staging.appendingPathComponent("previous.app")
+        let namedBackup = staging.appendingPathComponent("backup").appendingPathComponent(destination.lastPathComponent)
+        // Continue recovering journals written by versions that renamed staged apps.
+        let previous = FileManager.default.fileExists(atPath: namedBackup.path)
+            ? namedBackup : staging.appendingPathComponent("previous.app")
         if try store.load()[transaction.receipt.token] != transaction.receipt {
             if FileManager.default.fileExists(atPath: previous.path) {
                 let oldIdentity = try inspect(previous)
@@ -586,6 +597,7 @@ public struct NativeCaskManager: Sendable {
                 }
                 try moveApp(previous, to: destination, allowAuthorization: allowAuthorization, onProgress: onProgress)
             } else if transaction.previous == nil && !FileManager.default.fileExists(atPath: staging.appendingPathComponent("new.app").path),
+                      !FileManager.default.fileExists(atPath: staging.appendingPathComponent("incoming").appendingPathComponent(destination.lastPathComponent).path),
                       FileManager.default.fileExists(atPath: destination.path) {
                 try verifyRecoveryDestination(destination, receipt: transaction.receipt)
                 try removeApp(destination, allowAuthorization: allowAuthorization, onProgress: onProgress)

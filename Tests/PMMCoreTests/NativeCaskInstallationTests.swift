@@ -6,6 +6,7 @@ import Testing
 /// Only signature decisions are simulated. Archive mounting, extraction, copying and trashing use macOS.
 private final class CaskTestRunner: CommandRunning, @unchecked Sendable {
     var rejectSignature = false
+    var verifyRealSignature = false
     var homebrewOwnsApp = false
     var team = "EXAMPLETEAM"
     var isRunning = false
@@ -42,6 +43,8 @@ private final class CaskTestRunner: CommandRunning, @unchecked Sendable {
                 try FileManager.default.setAttributes([.posixPermissions: attributes[.posixPermissions]!], ofItemAtPath: paths[1])
             }
             return result
+        case "codesign" where verifyRealSignature && arguments.first == "--verify":
+            return try SystemCommandRunner().run(executable, arguments)
         case "codesign", "spctl":
             return CommandResult(stdout: "", stderr: "TeamIdentifier=\(team)\n", status: rejectSignature ? 1 : 0)
         case "brew":
@@ -236,7 +239,7 @@ func nativeUpdateRequestsAuthorizationForProtectedApp(denied: Bool) async throws
     }
 }
 
-@Test func nativeRecoveryRollsBackUncommittedReplacement() async throws {
+@Test(arguments: [false, true]) func nativeRecoveryRollsBackUncommittedReplacement(preserveName: Bool) async throws {
     let fixture = try CaskFixture()
     defer { fixture.clean() }
     try await fixture.preferences.setNativeCaskManagementEnabled(true)
@@ -244,7 +247,9 @@ func nativeUpdateRequestsAuthorizationForProtectedApp(denied: Bool) async throws
         let old = try fixture.install(version: "1.0")
         let staging = fixture.apps.appendingPathComponent(".pmm-interrupted")
         try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
-        try FileManager.default.moveItem(at: URL(fileURLWithPath: old.appPath), to: staging.appendingPathComponent("previous.app"))
+        let backup = preserveName ? staging.appendingPathComponent("backup/Example.app") : staging.appendingPathComponent("previous.app")
+        try FileManager.default.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.moveItem(at: URL(fileURLWithPath: old.appPath), to: backup)
         _ = try fixture.app(version: "2.0", in: fixture.apps)
         let new = NativeCaskInstallation(token: old.token, version: "2.0", appPath: old.appPath, bundleIdentifier: old.bundleIdentifier,
             teamIdentifier: old.teamIdentifier, shortVersion: "2.0", bundleVersion: "2.0")
@@ -387,5 +392,27 @@ func directAppReplacementPreservesOriginalOnFailure(scenario: String) async thro
             try PackageUpdater.requireAppsClosed(package, isRunning: { $0 == "com.example.native-test" })
         }
         try PackageUpdater.requireAppsClosed(package, isRunning: { _ in false })
+    }
+}
+
+@Test func nativeInstallPreservesNameForImplicitBundleExecutable() async throws {
+    let fixture = try CaskFixture()
+    defer { fixture.clean() }
+    try await fixture.preferences.setNativeCaskManagementEnabled(true)
+    try await nativeCaskWork {
+        let (archive, recipe, work) = try fixture.archive(version: "1.0")
+        let app = work.appendingPathComponent("source/Example.app")
+        let plist = app.appendingPathComponent("Contents/Info.plist")
+        var info = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: plist), format: nil) as? [String: String])
+        info.removeValue(forKey: "CFBundleExecutable")
+        try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0).write(to: plist)
+        let runner = SystemCommandRunner()
+        #expect(try runner.run("/usr/bin/codesign", ["--force", "--sign", "-", app.path]).status == 0)
+        #expect(try runner.run("/usr/bin/codesign", ["--verify", "--deep", "--strict", app.path]).status == 0)
+        try FileManager.default.removeItem(at: archive)
+        #expect(try runner.run("/usr/bin/ditto", ["-c", "-k", "--keepParent", app.path, archive.path]).status == 0)
+        fixture.runner.verifyRealSignature = true
+        try fixture.manager.installArchive(archive, work: work, recipe: recipe, previous: nil, onProgress: nil)
+        #expect(try runner.run("/usr/bin/codesign", ["--verify", "--deep", "--strict", fixture.apps.appendingPathComponent("Example.app").path]).status == 0)
     }
 }
