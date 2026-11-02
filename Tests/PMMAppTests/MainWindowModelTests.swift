@@ -2608,3 +2608,30 @@ func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
     #expect(index.packagesBySection[.search]?.last?.installedVersion == "1")
     #expect(index.packagesBySection[.search]?.last?.summary == "Version control")
 }
+
+@MainActor
+@Test func searchRanksExactNamesBeforeSubstringMatchesAndKeepsInstalledState() {
+    let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+    let installed = ManagedPackage(manager: .homebrew, name: "unar", catalogIdentifier: "brew:unar", installedVersion: "1.10.8_8", latestVersion: nil)
+    let catalog = [
+        ManagedPackage(manager: .homebrew, name: "unar", catalogIdentifier: "brew:unar", installedVersion: nil, latestVersion: "1.10.8"),
+        ManagedPackage(manager: .homebrew, name: "lunar", installedVersion: nil, latestVersion: "6"),
+        ManagedPackage(manager: .homebrew, name: "unarchiver", installedVersion: nil, latestVersion: "4"),
+    ]
+    model.apply(
+        inventory: PackageInventory(packages: [installed]),
+        index: PackageIndex(packages: [installed], catalogPackages: catalog, newUpdatedLastClickedAt: nil)
+    )
+
+    model.searchText = "  UNAR  "
+    #expect(model.displayedPackages.map(\.displayName) == ["unar", "lunar", "unarchiver"])
+    #expect(model.displayedPackages.first?.installedVersion == "1.10.8_8")
+    #expect(model.displayedPackages.dropFirst().allSatisfy { $0.installedVersion == nil })
+
+    model.searchText = "brew:unar"
+    #expect(model.displayedPackages.first?.identifier == installed.identifier)
+
+    model.searchText = "unar"
+    model.selectSection(.installed)
+    #expect(model.displayedPackages.map(\.displayName) == ["unar"])
+}

@@ -1643,7 +1643,18 @@ final class MainWindowModel: NSObject, ObservableObject {
         let query = searchQuery
         guard section == .search else { return packages }
         guard !query.isEmpty else { return [] }
-        return packages.filter { matchesSearch($0, query: query) }
+        // Preserve alphabetical ordering within each group without sorting on every comparison.
+        var exactMatches: [ManagedPackage] = []
+        var otherMatches: [ManagedPackage] = []
+        for package in packages where matchesSearch(package, query: query) {
+            let names = [package.displayName, package.identifier, package.catalogIdentifier]
+            if names.compactMap({ $0 }).contains(where: { $0.localizedCaseInsensitiveCompare(query) == .orderedSame }) {
+                exactMatches.append(package)
+            } else {
+                otherMatches.append(package)
+            }
+        }
+        return exactMatches + otherMatches
     }
 
     private func filteredCount(for section: MainWindowSection) -> Int? {

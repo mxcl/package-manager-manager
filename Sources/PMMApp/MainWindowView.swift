@@ -334,6 +334,7 @@ struct MainWindowPackageListView: View {
                             PackageRow(
                                 package: package,
                                 selected: model.selectedPackageIDs.contains(package.id),
+                                showsInstalledStatus: model.activeSidebarSection == .search,
                                 showsManager: model.activeSidebarSection == .search || model.isRemoteSelection || model.activeSidebarSection == .outdated || (model.activeSidebarSection?.packageManagers.count ?? 0) > 1,
                                 versionText: mainWindowVersionText(
                                     package,
@@ -1111,6 +1112,7 @@ private struct DossierExecutableStack: View {
 private struct PackageRow: View {
     let package: ManagedPackage
     let selected: Bool
+    let showsInstalledStatus: Bool
     let showsManager: Bool
     let versionText: String
     let action: () -> Void
@@ -1127,6 +1129,9 @@ private struct PackageRow: View {
                         .layoutPriority(1)
                     PackageEcosystemMark(package: package)
                     if package.manager == .mise { MiseMark() }
+                    if showsInstalledStatus && package.installedVersion != nil {
+                        PackageBadgePill(text: "Installed", color: .green)
+                    }
                     if package.isOutdated && !showsManager { PackageBadgePill(text: "Outdated", color: SystemColor.orange) }
                     if !versionText.isEmpty {
                         Spacer(minLength: 8)
