@@ -531,8 +531,13 @@ public struct NativeCaskManager: Sendable {
                Self.isNewer(minimum, than: NativeCaskRecipe.currentOSVersion) {
                 throw NativeCaskError("This update requires macOS \(minimum) or later.")
             }
-            guard let executable = info?["CFBundleExecutable"] as? String, !executable.isEmpty,
-                  !executable.contains("/"), executable != ".." else { throw NativeCaskError("The app has no valid executable.") }
+            // Match macOS's bundle-name fallback when the executable key is absent.
+            // An explicitly malformed value must still fail validation.
+            let executableName = info?["CFBundleExecutable"] == nil
+                ? staged.deletingPathExtension().lastPathComponent
+                : info?["CFBundleExecutable"] as? String
+            guard let executable = executableName, !executable.isEmpty,
+                  !executable.contains("/"), executable != ".", executable != ".." else { throw NativeCaskError("The app has no valid executable.") }
             try command("/usr/bin/lipo", [staged.appendingPathComponent("Contents/MacOS").appendingPathComponent(executable).path,
                 "-verify_arch", NativeCaskRecipe.isAppleSilicon ? "arm64" : "x86_64"])
             // Both bundles stay on the same volume. Atomic exchange leaves the old app intact on failure.

@@ -395,7 +395,7 @@ func directAppReplacementPreservesOriginalOnFailure(scenario: String) async thro
     }
 }
 
-@Test func nativeInstallPreservesNameForImplicitBundleExecutable() async throws {
+@Test(arguments: [false, true]) func nativeInstallPreservesNameForImplicitBundleExecutable(direct: Bool) async throws {
     let fixture = try CaskFixture()
     defer { fixture.clean() }
     try await fixture.preferences.setNativeCaskManagementEnabled(true)
@@ -412,7 +412,17 @@ func directAppReplacementPreservesOriginalOnFailure(scenario: String) async thro
         try FileManager.default.removeItem(at: archive)
         #expect(try runner.run("/usr/bin/ditto", ["-c", "-k", "--keepParent", app.path, archive.path]).status == 0)
         fixture.runner.verifyRealSignature = true
-        try fixture.manager.installArchive(archive, work: work, recipe: recipe, previous: nil, onProgress: nil)
+        var previous: NativeCaskInstallation?
+        if direct {
+            let installed = try fixture.app(version: "0.9", in: fixture.apps)
+            #expect(try runner.run("/usr/bin/codesign", ["--force", "--sign", "-", installed.path]).status == 0)
+            previous = NativeCaskInstallation(token: recipe.token, version: "0.9", appPath: installed.path,
+                bundleIdentifier: "com.example.native-test", teamIdentifier: fixture.runner.team,
+                shortVersion: "0.9", bundleVersion: "0.9")
+        }
+        try fixture.manager.installArchive(archive, work: work, recipe: recipe, previous: previous, direct: direct, onProgress: nil)
+        let installedInfo = try PropertyListSerialization.propertyList(from: Data(contentsOf: fixture.apps.appendingPathComponent("Example.app/Contents/Info.plist")), format: nil) as? [String: String]
+        #expect(installedInfo?["CFBundleShortVersionString"] == "1.0")
         #expect(try runner.run("/usr/bin/codesign", ["--verify", "--deep", "--strict", fixture.apps.appendingPathComponent("Example.app").path]).status == 0)
     }
 }
