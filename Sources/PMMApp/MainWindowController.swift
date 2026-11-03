@@ -63,11 +63,11 @@ final class MainWindowController: NSViewController, NSToolbarDelegate {
         if usesNativeBrowser, nativeToolbar == nil {
             let toolbar = NSToolbar(identifier: "package-browser")
             toolbar.delegate = self
-            toolbar.displayMode = .iconAndLabel
+            toolbar.displayMode = .iconOnly
             toolbar.allowsUserCustomization = false
             nativeToolbar = toolbar
             view.window?.toolbar = toolbar
-            view.window?.toolbarStyle = .unified
+            view.window?.toolbarStyle = .unifiedCompact
             refreshToolbar()
         }
         if ProcessInfo.processInfo.environment["PMM_TERMINAL_DEMO"] != "1" { model.refreshSetupOffers() }
@@ -145,6 +145,7 @@ final class MainWindowController: NSViewController, NSToolbarDelegate {
             return updateItem
         case browserItem.itemIdentifier:
             browserItem.label = "Open in Browser"
+            browserItem.toolTip = "Open in Browser"
             browserItem.image = NSImage(systemSymbolName: "arrow.up.forward.app", accessibilityDescription: nil)
             browserItem.target = self
             browserItem.action = #selector(openBrowser)
@@ -246,7 +247,10 @@ struct MainWindowRootView: View {
         } else {
             HStack(spacing: 0) {
                 Group {
-                    if usesNativeBrowser { NativePackageList(model: model) }
+                    if usesNativeBrowser {
+                        NativePackageList(model: model)
+                            .ignoresSafeArea(.container, edges: .top)
+                    }
                     else { MainWindowPackageListView(model: model) }
                 }
                 .frame(width: 252)

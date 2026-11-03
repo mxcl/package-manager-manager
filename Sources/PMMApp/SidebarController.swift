@@ -8,6 +8,8 @@ struct SidebarEntry: Equatable {
     var selection: MainWindowSidebarSelection?
     var count: Int?
     var loading = false
+    var indented = false
+    var isRemoteHost = false
     var error: String?
     var children: [SidebarEntry] = []
 }
@@ -36,7 +38,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     override func loadView() {
         let background = NSVisualEffectView()
         background.material = .sidebar
-        background.blendingMode = .behindWindow
+        background.blendingMode = .withinWindow
         view = background
         search.placeholderString = "Search"
         search.delegate = self
@@ -48,7 +50,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         outline.outlineTableColumn = column
         outline.headerView = nil
         outline.style = .sourceList
-        outline.rowHeight = 30
+        outline.rowHeight = 32
         outline.indentationPerLevel = 12
         outline.dataSource = self
         outline.delegate = self
@@ -65,8 +67,8 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         NSLayoutConstraint.activate([
             search.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
             search.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
-            search.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            scroll.topAnchor.constraint(equalTo: search.bottomAnchor, constant: 10),
+            search.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            scroll.topAnchor.constraint(equalTo: search.bottomAnchor, constant: 12),
             scroll.leadingAnchor.constraint(equalTo: view.leadingAnchor), scroll.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scroll.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
@@ -137,7 +139,11 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         if model.hasMultipleHosts {
             entries.append(local(.home))
             entries.append(SidebarEntry(id: "local-host", title: hostName,
-                                       children: [local(.installed)] + model.visibleManagerSections.map(local) + [local(.outdated)]))
+                                       children: [local(.installed)] + model.visibleManagerSections.map {
+                                           var entry = local($0)
+                                           entry.indented = true
+                                           return entry
+                                       } + [local(.outdated)]))
         } else {
             entries += MainWindowSection.librarySections.map(local)
             if !model.visibleManagerSections.isEmpty {
@@ -145,7 +151,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             }
         }
         for host in model.remoteHosts {
-            entries.append(SidebarEntry(id: host.id.uuidString, title: host.displayName, error: model.error(for: host.id), children:
+            entries.append(SidebarEntry(id: host.id.uuidString, title: host.displayName, isRemoteHost: true, error: model.error(for: host.id), children:
                 RemoteHostSection.allCases.map {
                     SidebarEntry(id: "\(host.id)-\($0.rawValue)", title: $0.title,
                                  selection: .remote(hostID: host.id, section: $0), count: model.count(for: $0, on: host.id), loading: model.isLoading(host.id))
@@ -187,6 +193,8 @@ private final class NativeSidebarCell: NSTableCellView {
     private let count = NSTextField(labelWithString: "")
     private let icon = NSImageView()
     private let spinner = NSProgressIndicator()
+    private let globe = NSImageView()
+    private let indent = NSView()
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         title.lineBreakMode = .byTruncatingTail
@@ -201,7 +209,18 @@ private final class NativeSidebarCell: NSTableCellView {
         spinner.style = .spinning
         spinner.controlSize = .small
         spinner.isDisplayedWhenStopped = false
-        let stack = NSStackView(views: [icon, title, count, spinner])
+        globe.image = NSImage(systemSymbolName: "globe", accessibilityDescription: "Remote host")
+        globe.contentTintColor = .tertiaryLabelColor
+        globe.widthAnchor.constraint(equalToConstant: 10).isActive = true
+        globe.heightAnchor.constraint(equalToConstant: 10).isActive = true
+        // The stack adds 7 points of spacing, for the original 16-point inset.
+        indent.widthAnchor.constraint(equalToConstant: 9).isActive = true
+        let titleGroup = NSStackView(views: [title, globe])
+        titleGroup.spacing = 3
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        title.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        let stack = NSStackView(views: [indent, icon, titleGroup, spacer, count, spinner])
         stack.distribution = .fill
         stack.spacing = 7
         pin(stack, to: self)
@@ -218,8 +237,11 @@ private final class NativeSidebarCell: NSTableCellView {
         case .remote(_, let section): icon.image = NSImage(systemSymbolName: section.systemImage, accessibilityDescription: nil)
         case nil: icon.image = entry.error == nil ? nil : NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "Connection error")
         }
+        icon.contentTintColor = .labelColor
         icon.isHidden = icon.image == nil
-        count.stringValue = entry.count.map { $0 > 0 ? String($0) : "" } ?? ""
+        indent.isHidden = !entry.indented
+        globe.isHidden = !entry.isRemoteHost
+        count.stringValue = entry.count.map { $0 > 0 ? $0.formatted() : "" } ?? ""
         count.isHidden = entry.loading || count.stringValue.isEmpty
         spinner.isHidden = !entry.loading
         if entry.loading { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }

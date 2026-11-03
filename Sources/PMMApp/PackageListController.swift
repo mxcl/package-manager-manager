@@ -190,6 +190,10 @@ final class PackageListController: NSViewController, NSTableViewDataSource, NSTa
         cell.configure(packages[row], context: rowContext!)
         return cell
     }
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        PackageSelectionRowView()
+    }
+
     func tableViewSelectionDidChange(_ notification: Notification) {
         guard !applyingSelection else { return }
         let ids = Set(table.selectedRowIndexes.compactMap { packages.indices.contains($0) ? packages[$0].id : nil })
@@ -244,7 +248,7 @@ private final class NativePackageCell: NSTableCellView {
         super.init(frame: frameRect)
         name.font = .systemFont(ofSize: 13, weight: .semibold)
         name.lineBreakMode = .byTruncatingMiddle
-        name.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        name.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         name.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         version.font = .systemFont(ofSize: 12, weight: .medium)
         version.textColor = .secondaryLabelColor
@@ -265,7 +269,10 @@ private final class NativePackageCell: NSTableCellView {
         secondaryMark.imageScaling = .scaleProportionallyDown
         sourceBadge.font = .systemFont(ofSize: 8, weight: .heavy)
         sourceBadge.textColor = .secondaryLabelColor
-        let heading = NSStackView(views: [name, mark, secondaryMark, sourceBadge, badge, version])
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let heading = NSStackView(views: [name, mark, secondaryMark, sourceBadge, badge, spacer, version])
         heading.distribution = .fill
         heading.spacing = 4
         let stack = NSStackView(views: [heading, subtitle])
@@ -308,6 +315,19 @@ private final class NativePackageCell: NSTableCellView {
             case .text(let title): mark.image = nil; sourceBadge.stringValue = title
             }
         }
+        let color: NSColor
+        switch section {
+        case .apps: color = .systemTeal
+        case .homebrew: color = .systemOrange
+        case .javascript: color = .systemYellow
+        case .python: color = .systemBlue
+        case .rust: color = .systemRed
+        case .skills: color = .systemPurple
+        default: color = .secondaryLabelColor
+        }
+        mark.contentTintColor = secondaryMark.image == nil ? color : .systemOrange
+        secondaryMark.contentTintColor = .systemTeal
+        sourceBadge.textColor = color
         mark.isHidden = mark.image == nil
         secondaryMark.isHidden = secondaryMark.image == nil
         sourceBadge.isHidden = sourceBadge.stringValue.isEmpty
@@ -357,4 +377,15 @@ func nativeSidebarImage(_ section: MainWindowSection) -> NSImage? {
 /// Native controllers subscribe to their own inputs, not command-output or dossier changes.
 func uiChange<P: Publisher>(_ publisher: P) -> AnyPublisher<Void, Never> where P.Failure == Never {
     publisher.map { _ in () }.eraseToAnyPublisher()
+}
+
+/// Match the former inset selection without giving up native table selection/keyboard behavior.
+@MainActor
+private final class PackageSelectionRowView: NSTableRowView {
+    override var interiorBackgroundStyle: NSView.BackgroundStyle { .normal }
+    override func drawSelection(in dirtyRect: NSRect) {
+        guard selectionHighlightStyle != .none else { return }
+        NSColor.selectedContentBackgroundColor.withAlphaComponent(isEmphasized ? 0.22 : 0.12).setFill()
+        NSBezierPath(roundedRect: bounds.insetBy(dx: 3, dy: 2), xRadius: 10, yRadius: 10).fill()
+    }
 }
