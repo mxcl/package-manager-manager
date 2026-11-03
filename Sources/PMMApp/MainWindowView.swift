@@ -410,7 +410,7 @@ struct MainWindowPackageListView: View {
 ///
 /// Detecting the helper tools shells out, and without this "not detected yet" would render exactly
 /// like "nothing to offer" — the card would simply pop in once the answer arrived.
-private struct ManagerSetupDetectionCard: View {
+struct ManagerSetupDetectionCard: View {
     var body: some View {
         HStack(spacing: 8) {
             ProgressView().controlSize(.small)
@@ -427,7 +427,7 @@ private struct ManagerSetupDetectionCard: View {
 }
 
 /// A one-time offer to install an optional helper tool. Dismissing it is remembered.
-private struct ManagerSetupCard: View {
+struct ManagerSetupCard: View {
     let offer: ManagerSetupOffer
     let isInstalling: Bool
     let canInstall: Bool

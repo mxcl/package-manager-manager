@@ -174,6 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let refreshItem = packageMenu.addItem(withTitle: L10n.string("Refresh"), action: #selector(refreshPackages(_:)), keyEquivalent: "r")
         refreshItem.target = self
+        packageMenu.addItem(withTitle: L10n.string("Search"), action: #selector(MainWindowController.focusSearch(_:)), keyEquivalent: "f")
         packageItem.submenu = packageMenu
         return packageItem
     }

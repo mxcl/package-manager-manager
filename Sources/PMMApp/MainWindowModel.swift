@@ -646,8 +646,9 @@ final class MainWindowModel: NSObject, ObservableObject {
     nonisolated private static let remoteHostsDefaultsKey = "MainWindowModel.remoteHosts"
 
     private var inventory = PackageInventory(packages: [])
+    @Published private(set) var packageListRevision = 0
     private var packageIndex = PackageIndex.empty {
-        didSet { refreshSearchResults(); packageListCache = nil }
+        didSet { refreshSearchResults(); packageListCache = nil; packageListRevision += 1 }
     }
     private var packageListCache: (key: PackageListCacheKey, packages: [ManagedPackage])?
     private struct PackageListCacheKey: Equatable {
@@ -1893,7 +1894,8 @@ final class MainWindowModel: NSObject, ObservableObject {
         hostSyncTask = Task { [weak self] in
             let prepared = await loader.load(clickedAt: clickedAt)
             guard !Task.isCancelled, let self else { return }
-            guard var (snapshot, index) = prepared else { return }
+            guard let (loadedSnapshot, index) = prepared else { return }
+            var snapshot = loadedSnapshot
             if self.localOutputRevision != outputRevision, let action = snapshot.runningAction,
                self.localActionIdentity == PackageActionIdentity(runID: action.runID, kind: action.kind, packageID: action.packageID) {
                 snapshot.runningAction?.output = self.packageActionOutput
