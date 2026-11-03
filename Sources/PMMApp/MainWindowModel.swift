@@ -564,7 +564,9 @@ final class MainWindowModel: NSObject, ObservableObject {
     @Published private(set) var selectedRemoteHostID: UUID?
     @Published private(set) var selectedRemoteSection: RemoteHostSection?
     @Published private(set) var remoteHosts: [RemoteHost]
-    @Published private(set) var remoteHostStates: [UUID: RemoteHostState] = [:]
+    @Published private(set) var remoteHostStates: [UUID: RemoteHostState] = [:] {
+        didSet { packageListCache = nil }
+    }
     @Published private(set) var pendingRemoteUninstall: RemoteUninstallConfirmation?
     @Published private(set) var nativeCaskManagementEnabled = false
     @Published private(set) var nativePreferencesAreLoading = true
@@ -607,7 +609,7 @@ final class MainWindowModel: NSObject, ObservableObject {
                     selectionBeforeSearch = sidebarSelection
                     selectSection(.search)
                 }
-                reconcilePackageSelection()
+                refreshSearchResults()
             } else {
                 if activeSidebarSection == .search {
                     switch selectionBeforeSearch ?? .local(.home) {
@@ -616,9 +618,13 @@ final class MainWindowModel: NSObject, ObservableObject {
                     }
                 }
                 selectionBeforeSearch = nil
+                refreshSearchResults()
             }
         }
     }
+    @Published private(set) var searchIsLoading = false
+    @Published private var searchResults: [ManagedPackage] = []
+    private var searchTask: Task<Void, Never>?
     private var selectionBeforeSearch: MainWindowSidebarSelection?
     var hasSearchText: Bool { !searchText.isEmpty }
     @Published var categorySortOrder: CategorySortOrder = .recentlyUpdated
@@ -640,7 +646,17 @@ final class MainWindowModel: NSObject, ObservableObject {
     nonisolated private static let remoteHostsDefaultsKey = "MainWindowModel.remoteHosts"
 
     private var inventory = PackageInventory(packages: [])
-    private var packageIndex = PackageIndex.empty
+    private var packageIndex = PackageIndex.empty {
+        didSet { refreshSearchResults(); packageListCache = nil }
+    }
+    private var packageListCache: (key: PackageListCacheKey, packages: [ManagedPackage])?
+    private struct PackageListCacheKey: Equatable {
+        let selection: MainWindowSidebarSelection
+        let sort: CategorySortOrder
+        let clis: Bool
+        let guis: Bool
+        let search: String
+    }
     private var installedPackageFirstSeenAtByID: [String: Date]?
     private var hasInventory = false
     private var pendingPackageURLCommand: MainWindowPackageURLCommand?
@@ -654,8 +670,9 @@ final class MainWindowModel: NSObject, ObservableObject {
     private var nativePreferencesGeneration = 0
     /// Injectable so tests can drive detection's timing; shells out in production.
     private let detectCargoSetup: @Sendable (PackagePreferences) -> CargoSetupState
-    private let store: PackageHostStore
-    private let bundledCatalog: [ManagedPackage]
+    private let hostSnapshotLoader: HostSnapshotLoader
+    private var localOutputRevision = 0
+    private var hostSyncTask: Task<Void, Never>?
     private let dossierClient: PackageDossierClient?
     private let remoteClient: RemoteSSHClient
     private let usesPackageHostNotifications: Bool
@@ -677,7 +694,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     init(
         userDefaults: UserDefaults = .standard,
         store: PackageHostStore = PackageHostStore(),
-        bundledCatalog: [ManagedPackage] = PackageHostStore.bundledCatalog(),
+        bundledCatalog: [ManagedPackage]? = nil,
         dossierClient: PackageDossierClient? = nil,
         dashboardBlogURL: URL? = nil,
         remoteClient: RemoteSSHClient = RemoteSSHClient(),
@@ -694,8 +711,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         newUpdatedLastClickedAt = userDefaults.object(forKey: Self.newUpdatedLastClickedAtDefaultsKey) as? Date
         remoteHosts = userDefaults.data(forKey: Self.remoteHostsDefaultsKey)
             .flatMap { try? JSONDecoder().decode([RemoteHost].self, from: $0) } ?? []
-        self.store = store
-        self.bundledCatalog = bundledCatalog
+        self.hostSnapshotLoader = HostSnapshotLoader(store: store, catalog: bundledCatalog)
         self.dossierClient = dossierClient
         self.remoteClient = remoteClient
         self.usesPackageHostNotifications = usesPackageHostNotifications
@@ -733,6 +749,8 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     deinit {
+        hostSyncTask?.cancel()
+        searchTask?.cancel()
         dossierTask?.cancel()
         dashboardBlogEntriesTask?.cancel()
         remoteTasks.values.forEach { $0.cancel() }
@@ -852,20 +870,28 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     var displayedPackages: [ManagedPackage] {
+        let key = PackageListCacheKey(selection: sidebarSelection, sort: categorySortOrder,
+                                      clis: showsCategoryCLIs, guis: showsCategoryGUIs, search: searchText)
+        if let cache = packageListCache, cache.key == key { return cache.packages }
+        let values: [ManagedPackage]
         if let hostID = selectedRemoteHostID, let section = selectedRemoteSection {
             let packages = remoteHostStates[hostID]?.inventory?.packages ?? []
-            let index = PackageIndex(packages: packages, catalogPackages: [], newUpdatedLastClickedAt: nil)
-            let localSection: MainWindowSection = section == .outdated ? .outdated : .installed
-            let values = index.packagesBySection[localSection] ?? []
-            return values
+            values = section == .outdated
+                ? packages.filter(\.isOutdated).sorted(by: PackageIndex.mostOutdatedFirst)
+                : packages.sorted(by: PackageIndex.alphabetical)
+        } else {
+            let packages = packages(in: selectedSection)
+            if selectedSection.categoryIdentifier == nil { values = packages }
+            else {
+                switch categorySortOrder {
+                case .recentlyUpdated: values = packages
+                case .nameAscending: values = packages.sorted(by: PackageIndex.alphabetical)
+                case .nameDescending: values = packages.sorted { PackageIndex.alphabetical($1, $0) }
+                }
+            }
         }
-        let packages = packages(in: selectedSection)
-        guard selectedSection.categoryIdentifier != nil else { return packages }
-        switch categorySortOrder {
-        case .recentlyUpdated: return packages
-        case .nameAscending: return packages.sorted(by: PackageIndex.alphabetical)
-        case .nameDescending: return packages.sorted { PackageIndex.alphabetical($1, $0) }
-        }
+        packageListCache = (key, values)
+        return values
     }
 
     var showsUpdateAllOutdatedPackages: Bool {
@@ -1129,7 +1155,7 @@ final class MainWindowModel: NSObject, ObservableObject {
 
     func isLoadingCount(for section: MainWindowSection) -> Bool {
         if section == .search {
-            return !hasInventory || isReloading || !loadingManagers.isEmpty
+            return searchIsLoading || !hasInventory || isReloading || !loadingManagers.isEmpty
         }
         return !section.packageManagers.isDisjoint(with: loadingManagers)
     }
@@ -1640,19 +1666,44 @@ final class MainWindowModel: NSObject, ObservableObject {
                 mainWindowManagerSection(for: $0) == .apps ? showsCategoryGUIs : showsCategoryCLIs
             }
         }
+        return section == .search ? searchResults : packages
+    }
+
+    private func refreshSearchResults() {
+        searchTask?.cancel()
+        packageListCache = nil
         let query = searchQuery
-        guard section == .search else { return packages }
-        guard !query.isEmpty else { return [] }
-        // Preserve alphabetical ordering within each group without sorting on every comparison.
+        guard !query.isEmpty else {
+            searchResults = []
+            searchIsLoading = false
+            return
+        }
+        searchIsLoading = true
+        searchResults = []
+        let source = packageIndex.packagesBySection[.search] ?? []
+        searchTask = Task { [weak self] in
+            let results = await Self.search(source, query: query)
+            guard !Task.isCancelled, let self else { return }
+            self.packageListCache = nil
+            self.searchResults = results
+            self.searchIsLoading = false
+            if self.activeSidebarSection == .search { self.reconcilePackageSelection() }
+        }
+    }
+
+    func waitForSearch() async { await searchTask?.value }
+
+    @concurrent
+    private static func search(_ packages: [ManagedPackage], query: String) async -> [ManagedPackage] {
         var exactMatches: [ManagedPackage] = []
         var otherMatches: [ManagedPackage] = []
-        for package in packages where matchesSearch(package, query: query) {
+        for package in packages {
+            guard !Task.isCancelled else { return [] }
+            guard matchesSearch(package, query: query) else { continue }
             let names = [package.displayName, package.identifier, package.catalogIdentifier]
             if names.compactMap({ $0 }).contains(where: { $0.localizedCaseInsensitiveCompare(query) == .orderedSame }) {
                 exactMatches.append(package)
-            } else {
-                otherMatches.append(package)
-            }
+            } else { otherMatches.append(package) }
         }
         return exactMatches + otherMatches
     }
@@ -1663,7 +1714,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         return packages(in: section).count
     }
 
-    private func matchesSearch(_ package: ManagedPackage, query: String) -> Bool {
+    nonisolated private static func matchesSearch(_ package: ManagedPackage, query: String) -> Bool {
         package.displayName.localizedCaseInsensitiveContains(query)
             || package.identifier.localizedCaseInsensitiveContains(query)
             || (package.catalogIdentifier?.localizedCaseInsensitiveContains(query) == true)
@@ -1810,6 +1861,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     }
 
     func apply(inventory next: PackageInventory, index: PackageIndex, installedPackageFirstSeenAtByID: [String: Date]? = nil) {
+        hostSyncTask?.cancel()
         inventory = next
         packageIndex = index
         self.installedPackageFirstSeenAtByID = installedPackageFirstSeenAtByID
@@ -1832,21 +1884,38 @@ final class MainWindowModel: NSObject, ObservableObject {
         if selectedPackage == nil { clearDossier() }
     }
 
+    /// Reading/decoding the host snapshot and building its index never blocks AppKit.
     func syncFromHost() {
-        guard var snapshot = (try? store.load()) ?? (bundledCatalog.isEmpty ? nil : PackageHostSnapshot()) else {
-            hasInventory = false
-            installedPackageFirstSeenAtByID = nil
-            isReloading = true
-            loadingManagers = Set(PackageManagerKind.localCases)
-            return
+        hostSyncTask?.cancel()
+        let loader = hostSnapshotLoader
+        let clickedAt = newUpdatedLastClickedAt
+        let outputRevision = localOutputRevision
+        hostSyncTask = Task { [weak self] in
+            let prepared = await loader.load(clickedAt: clickedAt)
+            guard !Task.isCancelled, let self else { return }
+            guard var (snapshot, index) = prepared else { return }
+            if self.localOutputRevision != outputRevision, let action = snapshot.runningAction,
+               self.localActionIdentity == PackageActionIdentity(runID: action.runID, kind: action.kind, packageID: action.packageID) {
+                snapshot.runningAction?.output = self.packageActionOutput
+            }
+            self.apply(snapshot: snapshot, preparedIndex: index)
         }
-        if snapshot.catalogPackages.isEmpty {
-            snapshot.catalogPackages = bundledCatalog
-        }
-        apply(snapshot: snapshot)
     }
 
+    func waitForHostSync() async {
+        await hostSyncTask?.value
+    }
+
+    /// Synchronous fixture/application entry point. Disk snapshots use the prepared path above.
     func apply(snapshot: PackageHostSnapshot) {
+        hostSyncTask?.cancel()
+        apply(snapshot: snapshot, preparedIndex: PackageIndex(
+            packages: snapshot.inventory?.packages ?? [], catalogPackages: snapshot.catalogPackages,
+            newUpdatedLastClickedAt: newUpdatedLastClickedAt
+        ))
+    }
+
+    private func apply(snapshot: PackageHostSnapshot, preparedIndex: PackageIndex) {
         homebrewAvailable = snapshot.homebrewAvailable
         masAvailable = snapshot.masAvailable
         guard let inventory = snapshot.inventory else {
@@ -1854,11 +1923,7 @@ final class MainWindowModel: NSObject, ObservableObject {
             installedPackageFirstSeenAtByID = nil
             isReloading = true
             loadingManagers = Set(PackageManagerKind.localCases)
-            packageIndex = PackageIndex(
-                packages: [],
-                catalogPackages: snapshot.catalogPackages,
-                newUpdatedLastClickedAt: newUpdatedLastClickedAt
-            )
+            packageIndex = preparedIndex
             installingPackageName = nil
             uninstallingPackageName = nil
             updatingPackageName = nil
@@ -1867,7 +1932,7 @@ final class MainWindowModel: NSObject, ObservableObject {
             packageActionOutput = ""
             return
         }
-        apply(snapshot: snapshot, inventory: inventory)
+        apply(snapshot: snapshot, inventory: inventory, index: preparedIndex)
     }
 
 #if DEBUG
@@ -1897,11 +1962,12 @@ final class MainWindowModel: NSObject, ObservableObject {
         output += "\u{1B}[32m✔\u{1B}[0m Pouring terminal-output-demo--1.0.0.arm64_sonoma.bottle.tar.gz\r\n"
         output += "\u{1B}[32m==>\u{1B}[0m Caveats\r\nExactly eighty columns are rendered before this sentence wraps at the edge.......X"
         output += "\u{1B}[?25h"
+        localOutputRevision += 1
         packageActionOutput = output
     }
 #endif
 
-    private func apply(snapshot: PackageHostSnapshot, inventory: PackageInventory) {
+    private func apply(snapshot: PackageHostSnapshot, inventory: PackageInventory, index: PackageIndex) {
         let packageActionWasRunning = isPackageActionRunning
         let newBatchFailure = snapshot.updateAllFailureMessage != lastUpdateAllFailureMessage
             ? snapshot.updateAllFailureMessage : nil
@@ -1915,11 +1981,7 @@ final class MainWindowModel: NSObject, ObservableObject {
         let nextInventory = PackageInventory(generatedAt: inventory.generatedAt, packages: inventory.packages, errors: nextErrors)
         apply(
             inventory: nextInventory,
-            index: PackageIndex(
-                packages: nextInventory.packages,
-                catalogPackages: snapshot.catalogPackages,
-                newUpdatedLastClickedAt: newUpdatedLastClickedAt
-            ),
+            index: index,
             installedPackageFirstSeenAtByID: snapshot.installedPackageFirstSeenAtByID
         )
         // The offer depends on which managers have packages, so it is only answerable once an
@@ -1974,6 +2036,7 @@ final class MainWindowModel: NSObject, ObservableObject {
     func applyHostActionOutput(runID: UUID? = nil, kind: PackageHostActionKind, packageID: String, output: String) {
         guard remoteActionHostID == nil,
               localActionIdentity == PackageActionIdentity(runID: runID, kind: kind, packageID: packageID) else { return }
+        localOutputRevision += 1
         packageActionOutput = output
     }
 
@@ -2147,7 +2210,7 @@ struct PackageIndex: Sendable {
         return alphabetical(lhs, rhs)
     }
 
-    private static func mostOutdatedFirst(_ lhs: ManagedPackage, _ rhs: ManagedPackage) -> Bool {
+    static func mostOutdatedFirst(_ lhs: ManagedPackage, _ rhs: ManagedPackage) -> Bool {
         let lhsGap = versionGap(lhs)
         let rhsGap = versionGap(rhs)
         for index in lhsGap.indices where lhsGap[index] != rhsGap[index] {

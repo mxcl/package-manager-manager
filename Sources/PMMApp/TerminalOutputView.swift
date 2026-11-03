@@ -19,6 +19,9 @@ struct TerminalOutputTextView: NSViewRepresentable {
 
     let output: String
 
+    final class Coordinator { var lastOutput: String? }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
         scrollView.hasVerticalScroller = true
@@ -38,7 +41,9 @@ struct TerminalOutputTextView: NSViewRepresentable {
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? NSTextView else { return }
+        guard context.coordinator.lastOutput != output,
+              let textView = scrollView.documentView as? NSTextView else { return }
+        context.coordinator.lastOutput = output
         let rendered = mainWindowTerminalAttributedOutput(output)
         guard !textView.attributedString().isEqual(to: rendered) else { return }
         textView.textStorage?.setAttributedString(rendered)

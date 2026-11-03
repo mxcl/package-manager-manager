@@ -178,7 +178,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
-@Test func modelLoadsPackagesFromHostSnapshotStore() throws {
+@Test func modelLoadsPackagesFromHostSnapshotStore() async throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: root) }
@@ -206,6 +206,8 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     ))
 
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!, store: store)
+
+    await model.waitForHostSync()
 
     #expect(model.packages == [package])
     #expect(model.isReloading)
@@ -829,7 +831,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
-@Test func packageSearchMatchesDisplayNameIdentifierAndSummary() {
+@Test func packageSearchMatchesDisplayNameIdentifierAndSummary() async {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let packages = [
         ManagedPackage(manager: .uv, identifier: "uv:cpython:3.13", displayName: "uv Managed Python 3.13", installedVersion: "3.13.12", latestVersion: nil, summary: "runtime"),
@@ -844,17 +846,21 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     model.selectSection(.installed)
 
     model.searchText = "Managed Python"
+    await model.waitForSearch()
     #expect(model.displayedPackages.map(\.identifier) == ["uv:cpython:3.13"])
     model.searchText = "npm:@scope"
+    await model.waitForSearch()
     #expect(model.displayedPackages.map(\.identifier) == ["npm:@scope/tool"])
     model.searchText = "scoped"
+    await model.waitForSearch()
     #expect(model.displayedPackages.map(\.identifier) == ["npm:@scope/tool"])
     model.searchText = "gfind"
+    await model.waitForSearch()
     #expect(model.displayedPackages.map(\.identifier) == ["brew:findutils"])
 }
 
 @MainActor
-@Test func packageSearchCombinesCatalogAndInstalledWithoutFilteringOtherSections() {
+@Test func packageSearchCombinesCatalogAndInstalledWithoutFilteringOtherSections() async {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let ripgrep = ManagedPackage(manager: .cargoInstall, name: "ripgrep", installedVersion: "1", latestVersion: "1", summary: "fast search")
     let git = ManagedPackage(manager: .homebrew, name: "git", installedVersion: "1", latestVersion: "2", summary: "fast search")
@@ -887,6 +893,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
     ))
     model.selectSection(.installed)
     model.searchText = "search"
+    await model.waitForSearch()
 
     #expect(model.displayedPackages.map(\.displayName) == ["fd", "git", "ripgrep"])
     #expect(model.count(for: .search) == 3)
@@ -1406,7 +1413,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
-@Test func dashboardUsesPersistedCatalogBeforeInventoryLoads() throws {
+@Test func dashboardUsesPersistedCatalogBeforeInventoryLoads() async throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: root) }
@@ -1440,6 +1447,8 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
         store: store
     )
 
+    await model.waitForHostSync()
+
     #expect(model.dashboardIsLoadingData)
     #expect(!model.dashboardCatalogIsLoading)
     #expect(model.dashboardWhatsNewPackages == [newPackage])
@@ -1448,7 +1457,7 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
 }
 
 @MainActor
-@Test func dashboardUsesBundledCatalogBeforeHostSnapshotExists() {
+@Test func dashboardUsesBundledCatalogBeforeHostSnapshotExists() async {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: root) }
@@ -1466,6 +1475,8 @@ private func attributeRunCount(in string: NSAttributedString) -> Int {
         store: PackageHostStore(directory: root),
         bundledCatalog: [package]
     )
+
+    await model.waitForHostSync()
 
     #expect(model.dashboardIsLoadingData)
     #expect(!model.dashboardCatalogIsLoading)
@@ -1872,11 +1883,13 @@ private func package(
     #expect(!model.showsLocalFilesystemActions)
 
     model.searchText = "no-package-matches-this-unique-search-query"
+    await model.waitForSearch()
     #expect(model.displayedPackages.isEmpty)
     #expect(model.count(for: .outdated, on: host.id) == 1)
     #expect(model.activeSidebarSection == .search)
 
     model.searchText = ""
+    await model.waitForSearch()
     model.updateAllOutdatedPackages()
     await waitForRemoteModel { runner.invocationCount == 2 }
     #expect(runner.lastArguments?.last?.contains("'remote' 'update-all'") == true)
@@ -2549,7 +2562,7 @@ func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
 }
 
 @MainActor
-@Test func categorySortOrderAppliesToFilteredResultsAndPreservesSelection() {
+@Test func categorySortOrderAppliesToFilteredResultsAndPreservesSelection() async {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let alpha = ManagedPackage(manager: .homebrew, name: "alpha", installedVersion: nil, latestVersion: "1",
                                category: "games", lastUpdatedAt: "2026-09-01")
@@ -2569,32 +2582,39 @@ func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
     model.categorySortOrder = .nameDescending
     #expect(model.displayedPackages.map(\.id) == [zulu.id, alpha.id])
     model.searchText = "alpha"
+    await model.waitForSearch()
     #expect(model.displayedPackages.map(\.id) == [alpha.id])
     model.searchText = ""
+    await model.waitForSearch()
     model.categorySortOrder = .recentlyUpdated
     #expect(model.displayedPackages.map(\.id) == [zulu.id, alpha.id])
     #expect(mainWindowVersionText(alpha, section: .category("games")) == "")
 }
 
 @MainActor
-@Test func searchSidebarSelectionFollowsTextAndRestoresPreviousSection() {
+@Test func searchSidebarSelectionFollowsTextAndRestoresPreviousSection() async {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     model.selectSection(.python)
     #expect(!model.hasSearchText)
     model.searchText = "python"
+    await model.waitForSearch()
     #expect(model.hasSearchText)
     #expect(model.activeSidebarSection == .search)
     #expect(!model.showsDashboard)
     model.searchText = "pip"
+    await model.waitForSearch()
     model.searchText = ""
+    await model.waitForSearch()
     #expect(!model.hasSearchText)
     #expect(model.activeSidebarSection == .python)
 
     model.searchText = " "
+    await model.waitForSearch()
     #expect(model.hasSearchText)
     #expect(model.displayedPackages.isEmpty)
     model.selectSection(.installed)
     model.searchText = ""
+    await model.waitForSearch()
     #expect(model.activeSidebarSection == .installed)
 }
 
@@ -2610,7 +2630,7 @@ func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
 }
 
 @MainActor
-@Test func searchRanksExactNamesBeforeSubstringMatchesAndKeepsInstalledState() {
+@Test func searchRanksExactNamesBeforeSubstringMatchesAndKeepsInstalledState() async {
     let model = MainWindowModel(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
     let installed = ManagedPackage(manager: .homebrew, name: "unar", catalogIdentifier: "brew:unar", installedVersion: "1.10.8_8", latestVersion: nil)
     let catalog = [
@@ -2624,14 +2644,17 @@ func appStoreUpdateFallsBackWhenMasIsMissing(available: Bool) {
     )
 
     model.searchText = "  UNAR  "
+    await model.waitForSearch()
     #expect(model.displayedPackages.map(\.displayName) == ["unar", "lunar", "unarchiver"])
     #expect(model.displayedPackages.first?.installedVersion == "1.10.8_8")
     #expect(model.displayedPackages.dropFirst().allSatisfy { $0.installedVersion == nil })
 
     model.searchText = "brew:unar"
+    await model.waitForSearch()
     #expect(model.displayedPackages.first?.identifier == installed.identifier)
 
     model.searchText = "unar"
+    await model.waitForSearch()
     model.selectSection(.installed)
     #expect(model.displayedPackages.map(\.displayName) == ["unar"])
 }
