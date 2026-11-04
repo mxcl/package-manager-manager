@@ -18,7 +18,7 @@ struct SidebarEntry: Equatable {
 final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSSearchFieldDelegate {
     let model: MainWindowModel
     let outline = NSOutlineView()
-    let search = NSSearchField()
+    let search = AccentSearchField()
     private var nodes: [Node] = []
     private var entries: [SidebarEntry] = []
     private var applyingSelection = false
@@ -176,6 +176,13 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         cell.configure(entry)
         return cell
     }
+    func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? {
+        let row = NeutralSelectionRowView()
+        row.horizontalInset = 0
+        row.cornerRadius = 8
+        return row
+    }
+
     func outlineViewSelectionDidChange(_ notification: Notification) {
         guard !applyingSelection, outline.selectedRow >= 0, let node = outline.item(atRow: outline.selectedRow) as? Node,
               let selection = node.entry.selection, selection != model.sidebarSelection else { return }
@@ -247,5 +254,48 @@ private final class NativeSidebarCell: NSTableCellView {
         if entry.loading { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }
         toolTip = entry.error
         setAccessibilityLabel([entry.title, entry.loading ? "Loading" : count.stringValue, entry.error ?? ""].filter { !$0.isEmpty }.joined(separator: ", "))
+    }
+}
+
+/// Draw the app accent directly instead of AppKit's blended focus-ring color.
+/// Keep the native field editor and keyboard navigation.
+@MainActor
+final class AccentSearchField: NSSearchField {
+    private var observation: AnyCancellable?
+    private var showsAccentRing = false
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        focusRingType = .none
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        observation = nil
+        if let window {
+            observation = NotificationCenter.default.publisher(for: NSWindow.didUpdateNotification, object: window)
+                .sink { [weak self] _ in self?.updateFocusRing() }
+        }
+        updateFocusRing()
+    }
+
+    private func updateFocusRing() {
+        let editing = window?.firstResponder === self
+            || currentEditor().map { window?.firstResponder === $0 } == true
+        let focused = window?.isKeyWindow == true && editing
+        guard focused != showsAccentRing else { return }
+        showsAccentRing = focused
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard showsAccentRing else { return }
+        NSColor.controlAccentColor.setStroke()
+        let ring = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1),
+                                xRadius: bounds.height / 2, yRadius: bounds.height / 2)
+        ring.lineWidth = 2
+        ring.stroke()
     }
 }
