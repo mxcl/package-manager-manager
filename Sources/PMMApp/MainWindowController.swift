@@ -243,7 +243,12 @@ struct MainWindowRootView: View {
     @ViewBuilder
     private var content: some View {
         if model.showsDashboard {
-            MainWindowDashboardView(model: model, store: discoverFeedStore, scrollOffset: $dashboardScrollOffset)
+            if usesNativeBrowser {
+                NativeDiscover(model: model, store: discoverFeedStore, scrollOffset: $dashboardScrollOffset)
+                    .ignoresSafeArea(.container, edges: .top)
+            } else {
+                MainWindowDashboardView(model: model, store: discoverFeedStore, scrollOffset: $dashboardScrollOffset)
+            }
         } else {
             HStack(spacing: 0) {
                 Group {

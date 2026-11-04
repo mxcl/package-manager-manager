@@ -17,7 +17,7 @@ struct DiscoverFeedPage: Decodable, Identifiable, Sendable {
 
 }
 
-struct DiscoverFeedContent: Decodable, Identifiable, Sendable {
+struct DiscoverFeedContent: Decodable, Identifiable, Sendable, Equatable {
     let id: String
     let type: String
     let batchID: String?
@@ -44,18 +44,18 @@ struct DiscoverFeedContent: Decodable, Identifiable, Sendable {
     }
 }
 
-struct DiscoverFeedArtwork: Decodable, Sendable {
+struct DiscoverFeedArtwork: Decodable, Sendable, Equatable {
     let path: String
     let boxColors: BoxColors?
 
-    struct BoxColors: Decodable, Sendable {
+    struct BoxColors: Decodable, Sendable, Equatable {
         let backgroundStart: String
         let backgroundEnd: String
         let foreground: String
     }
 }
 
-struct DiscoverFeedPackage: Decodable, Identifiable, Sendable {
+struct DiscoverFeedPackage: Decodable, Identifiable, Sendable, Equatable {
     let id: String
     let displayName: String
     let agentSummary: String

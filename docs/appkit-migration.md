@@ -1,7 +1,7 @@
 # AppKit browser migration
 
 The default main window now uses AppKit for its split view, sidebar, search,
-package table, and toolbar. Discover, dossier/browser content, setup offers,
+package table, toolbar, and Discover feed. The editorial reader, dossier/browser content, setup offers,
 settings, and operation/confirmation sheets remain hosted SwiftUI views.
 This is the first comparison point in the incremental migration, not a full
 SwiftUI removal.
@@ -14,7 +14,14 @@ SwiftUI removal.
 - `PackageListController` owns reusable native cells, selection, loading/error
   presentation, category options, and retry. Stable package IDs drive row
   insertions/removals, targeted metadata reloads, and scroll preservation.
-- Both native controllers subscribe to their relevant model properties rather
+- `DiscoverController` owns an NSCollectionView with recycled native editorial,
+  sponsored, blog, and package cards. Responsive grids preserve feed ordering,
+  artwork, loading/retry states, package actions, and scroll restoration.
+  Pagination starts near the bottom of the scroll view; it does not eagerly
+  drain the feed. Image requests are cancelled on card reuse. Feed updates reload
+  changed sections; inventory updates only refresh visible install buttons.
+  The editorial reader remains a hosted SwiftUI sheet with explicit AppKit dismissal.
+- Native controllers subscribe to their relevant model properties rather
   than command-output or dossier changes. Published updates are coalesced until
   the current mutation completes before reading the model.
 - `MainWindowModel` retains package operations, navigation, deep links, and
@@ -80,7 +87,15 @@ Before expanding the conversion:
   terminal parsing when output actually changes. They have not been made
   incremental by changing the browser framework.
 - If the browser improvement justifies continuing, convert the dossier and
-  operation sheets next, reusing WKWebView/NSTextView directly. Convert Discover
-  last with reusable NSCollectionView items; preserve pagination, artwork,
-  editorial layout, and scroll restoration. Keep settings/host management hosted
+  operation sheets next, reusing WKWebView/NSTextView directly. Keep
+  settings/host management hosted
   until their conversion has a demonstrated benefit or full removal is desired.
+
+## Discover follow-up (2026-11-04)
+
+Discover now uses native collection items by default; the comparison flag still
+selects the original SwiftUI page. Focused tests cover feed ordering, loading and
+retry presentation, responsive sizing, reuse, and package navigation alongside
+the existing feed/pagination/image-loader tests. Manual checks cover opening and
+dismissing the editorial sheet, scrolling recycled cards, Details navigation,
+and restoring the feed position after returning from a package.

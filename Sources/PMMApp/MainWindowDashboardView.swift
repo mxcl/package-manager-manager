@@ -402,13 +402,18 @@ private extension Color {
     }
 }
 
-private struct DashboardDiscoverEditorialReader: View {
+struct DashboardDiscoverEditorialReader: View {
     let editorial: DiscoverFeedContent
     let package: DiscoverFeedPackage?
     let isPackageInstalled: (DiscoverFeedPackage) -> Bool
     let openPackage: (DiscoverFeedPackage) -> Void
     let installPackage: (DiscoverFeedPackage) -> Void
+    var close: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
+
+    private func closeReader() {
+        if let close { close() } else { dismiss() }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -416,7 +421,7 @@ private struct DashboardDiscoverEditorialReader: View {
                 Text(editorial.title ?? "Discover")
                     .font(.headline)
                 Spacer()
-                Button("Done") { dismiss() }
+                Button("Done") { closeReader() }
                     .keyboardShortcut(.cancelAction)
             }
             .padding()
@@ -439,11 +444,11 @@ private struct DashboardDiscoverEditorialReader: View {
                             maximumPackageCount: 5,
                             isPackageInstalled: isPackageInstalled,
                             openPackage: { package in
-                                dismiss()
+                                closeReader()
                                 openPackage(package)
                             },
                             installPackage: { package in
-                                dismiss()
+                                closeReader()
                                 installPackage(package)
                             }
                         )
