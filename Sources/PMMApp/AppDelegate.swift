@@ -103,6 +103,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.setContentSize(initialContentSize)
         window.center()
         window.makeKeyAndOrderFront(nil)
+        // AppKit otherwise selects the first editable control (Search) on opening.
+        // Cmd-F and explicit clicks still focus it normally.
+        window.makeFirstResponder(nil)
         self.window = window
         syncToolbarItems()
         NSApp.activate()

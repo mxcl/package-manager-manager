@@ -291,12 +291,29 @@ private final class NativePackageCell: NSTableCellView {
         textField = name
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override var backgroundStyle: NSView.BackgroundStyle {
+        didSet { updateTextColors() }
+    }
+
+    private func updateTextColors() {
+        let selected = backgroundStyle == .emphasized
+        // AppKit's selectedContentBackgroundColor darkens the app accent.
+        // Use the original accent and choose text for its actual brightness.
+        let accent = NSColor.controlAccentColor.usingColorSpace(.sRGB)
+        let brightness = accent.map { 0.2126 * $0.redComponent + 0.7152 * $0.greenComponent + 0.0722 * $0.blueComponent } ?? 0
+        let selectionText: NSColor = brightness > 0.6 ? .black : .white
+        name.textColor = selected ? selectionText : .labelColor
+        version.textColor = selected ? selectionText : .secondaryLabelColor
+        subtitle.textColor = selected ? selectionText : .secondaryLabelColor
+    }
+
     override func layout() {
         let width = max(0, bounds.width - 20)
         if subtitle.preferredMaxLayoutWidth != width { subtitle.preferredMaxLayoutWidth = width }
         super.layout()
     }
     func configure(_ package: ManagedPackage, context: PackageRowContext) {
+        updateTextColors()
         name.stringValue = package.displayName
         version.stringValue = mainWindowVersionText(package, section: context.section)
         version.isHidden = version.stringValue.isEmpty
@@ -382,10 +399,10 @@ func uiChange<P: Publisher>(_ publisher: P) -> AnyPublisher<Void, Never> where P
 /// Match the former inset selection without giving up native table selection/keyboard behavior.
 @MainActor
 private final class PackageSelectionRowView: NSTableRowView {
-    override var interiorBackgroundStyle: NSView.BackgroundStyle { .normal }
     override func drawSelection(in dirtyRect: NSRect) {
         guard selectionHighlightStyle != .none else { return }
-        NSColor.selectedContentBackgroundColor.withAlphaComponent(isEmphasized ? 0.22 : 0.12).setFill()
+        let color = isEmphasized ? NSColor.controlAccentColor : NSColor.unemphasizedSelectedContentBackgroundColor
+        color.setFill()
         NSBezierPath(roundedRect: bounds.insetBy(dx: 3, dy: 2), xRadius: 10, yRadius: 10).fill()
     }
 }
