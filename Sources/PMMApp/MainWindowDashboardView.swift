@@ -2,6 +2,15 @@ import CoreImage
 import PMMCore
 import SwiftUI
 
+let discoverDitherImage: CGImage? = {
+    let extent = CGRect(x: 0, y: 0, width: 64, height: 64)
+    guard let noise = CIFilter(name: "CIRandomGenerator")?.outputImage?
+        .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 0])
+        .cropped(to: extent)
+    else { return nil }
+    return CIContext(options: [.cacheIntermediates: false]).createCGImage(noise, from: extent)
+}()
+
 private let dashboardItemCornerRadius: CGFloat = 17.5
 private let dashboardBlogURL = URL(string: "https://mxcl.dev/package-manager-manager/blog/")!
 private let dashboardBlogColumns = [GridItem(.adaptive(minimum: 200), spacing: 12)]
@@ -631,14 +640,7 @@ private struct DashboardDiscoverPackageLink: View {
 private struct DashboardSponsoredCard: View {
     @Environment(\.colorScheme) private var colorScheme
     private let url = URL(string: "https://automicvault.com?utm_source=pmm")!
-    private static let ditherImage: CGImage? = {
-        let extent = CGRect(x: 0, y: 0, width: 64, height: 64)
-        guard let noise = CIFilter(name: "CIRandomGenerator")?.outputImage?
-            .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 0])
-            .cropped(to: extent)
-        else { return nil }
-        return CIContext(options: [.cacheIntermediates: false]).createCGImage(noise, from: extent)
-    }()
+
 
     var body: some View {
         Link(destination: url) {
@@ -684,7 +686,7 @@ private struct DashboardSponsoredCard: View {
                     colorSpace: .perceptual
                 )
                     .overlay {
-                        if let ditherImage = Self.ditherImage {
+                        if let ditherImage = discoverDitherImage {
                             Image(decorative: ditherImage, scale: 2)
                                 .resizable(resizingMode: .tile)
                                 .interpolation(.none)

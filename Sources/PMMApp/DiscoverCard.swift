@@ -86,6 +86,9 @@ final class DiscoverCard: NSView {
     private var imageTask: Task<Void, Never>?
     private var imageToken = UUID()
     private var gradientColors: [NSColor] = []
+    private static let ditherColor = discoverDitherImage.map {
+        NSColor(patternImage: NSImage(cgImage: $0, size: NSSize(width: 32, height: 32)))
+    }
     private var foreground: NSColor = .labelColor
     private var hasInstallURL = false
     private var imageFailed = false
@@ -328,6 +331,15 @@ final class DiscoverCard: NSView {
         }
         if kind == .editorial, let color = gradientColors.first {
             NSGradient(colors: [color.withAlphaComponent(0.98), color.withAlphaComponent(0.7), color.withAlphaComponent(0)])?.draw(in: bounds, angle: 0)
+        }
+        if kind == .sponsor, let dither = Self.ditherColor {
+            // Match the original card's tiled noise to break up gradient banding.
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current?.cgContext.setAlpha(2 / 255)
+            NSGraphicsContext.current?.imageInterpolation = .none
+            dither.setFill()
+            bounds.fill(using: .sourceOver)
+            NSGraphicsContext.restoreGraphicsState()
         }
         if kind == .sponsor, labels.count == 5 {
             let pill = labels[3].frame.offsetBy(dx: 0, dy: -6)
