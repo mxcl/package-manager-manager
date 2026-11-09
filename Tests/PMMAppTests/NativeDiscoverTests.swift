@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import PMMCore
+import SwiftUI
 import Testing
 @testable import PMMApp
 
@@ -94,4 +95,15 @@ private func nativeDiscoverPage() throws -> DiscoverFeedPage {
     #expect(card.subviews.compactMap { $0 as? NSButton }.isEmpty)
     #expect(!opened)
     #expect(card.subviews.contains { ($0 as? NSProgressIndicator)?.isHidden == false })
+}
+
+@Test @MainActor func nativeDiscoverReusesOriginalSponsoredCard() throws {
+    let card = DiscoverCard(frame: NSRect(x: 0, y: 0, width: 310, height: 360))
+    card.sponsor()
+    let hosted = try #require(card.subviews.first { $0 is NSHostingView<DashboardSponsoredCard> })
+    card.sponsor()
+    #expect(card.subviews.filter { $0 is NSHostingView<DashboardSponsoredCard> }.count == 1)
+    #expect(!hosted.isHidden)
+    card.status("Loading Discover", loading: true, retry: nil)
+    #expect(hosted.isHidden)
 }

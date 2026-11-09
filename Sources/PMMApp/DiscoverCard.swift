@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 func discoverTextHeight(_ text: String, width: CGFloat, size: CGFloat, weight: NSFont.Weight = .regular) -> CGFloat {
     ceil((text as NSString).boundingRect(
@@ -86,14 +87,11 @@ final class DiscoverCard: NSView {
     private var imageTask: Task<Void, Never>?
     private var imageToken = UUID()
     private var gradientColors: [NSColor] = []
-    private static let ditherColor = discoverDitherImage.map {
-        NSColor(patternImage: NSImage(cgImage: $0, size: NSSize(width: 32, height: 32)))
-    }
+    private var sponsoredCard: NSHostingView<DashboardSponsoredCard>?
     private var foreground: NSColor = .labelColor
     private var hasInstallURL = false
     private var imageFailed = false
     private var fallbackSymbol = "photo"
-    private let sponsorSymbol = NSImageView()
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -102,12 +100,6 @@ final class DiscoverCard: NSView {
         spinner.controlSize = .small
         spinner.isDisplayedWhenStopped = false
         addSubview(spinner)
-        sponsorSymbol.image = NSImage(systemSymbolName: "lock.shield", accessibilityDescription: nil)
-        sponsorSymbol.contentTintColor = .white
-        sponsorSymbol.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 34, weight: .semibold)
-        sponsorSymbol.imageScaling = .scaleProportionallyUpOrDown
-        sponsorSymbol.isHidden = true
-        addSubview(sponsorSymbol)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
@@ -117,7 +109,7 @@ final class DiscoverCard: NSView {
         imageToken = UUID()
         image = nil
         imageFailed = false
-        sponsorSymbol.isHidden = true
+        sponsoredCard?.isHidden = true
         for label in labels { label.removeFromSuperview() }
         labels = []
         icons.values.forEach { $0.removeFromSuperview() }
@@ -209,17 +201,13 @@ final class DiscoverCard: NSView {
     func sponsor() {
         reset()
         kind = .sponsor
-        foreground = .white
-        gradientColors = [NSColor(discoverHex: "#59299E"), NSColor(discoverHex: "#FA7040"), NSColor(discoverHex: "#CD422E"), NSColor(discoverHex: "#0D0F1A")]
-        label(" ", size: 34, weight: .semibold)
-        sponsorSymbol.isHidden = false
-        label("Command line security is broken. We fix it at the packaging layer.", size: 24, weight: .bold)
-        label("Raising the bar on macOS command line security. From the creator of Homebrew.", size: 13, weight: .medium, color: .white.withAlphaComponent(0.78))
-        label("Learn more", size: 13, weight: .semibold)
-        label("SPONSORED", size: 8, weight: .bold, color: .white.withAlphaComponent(0.7))
-        action("Command line security is broken. Learn more. Sponsored.") {
-            NSWorkspace.shared.open(URL(string: "https://automicvault.com?utm_source=pmm")!)
+        if sponsoredCard == nil {
+            // Preserve the original mesh interpolation and dithering as one reusable card.
+            let hosted = NSHostingView(rootView: DashboardSponsoredCard())
+            addSubview(hosted)
+            sponsoredCard = hosted
         }
+        sponsoredCard?.isHidden = false
         needsLayout = true
     }
 
@@ -271,16 +259,17 @@ final class DiscoverCard: NSView {
 
     override func layout() {
         super.layout()
-        let inset: CGFloat = kind == .editorial ? 36 : kind == .blog || kind == .sponsor ? 16 : 18
+        if kind == .sponsor {
+            sponsoredCard?.frame = bounds
+            return
+        }
+        let inset: CGFloat = kind == .editorial ? 36 : kind == .blog ? 16 : 18
         let width = max(1, min(kind == .editorial ? 320 : .greatestFiniteMagnitude, bounds.width - inset * 2))
         var y: CGFloat = kind == .blog ? 156 : inset
         var heights = labels.map { label in
             min(label.maximumNumberOfLines > 0 ? CGFloat(label.maximumNumberOfLines) * ceil((label.font?.pointSize ?? 13) * 1.3) : .greatestFiniteMagnitude,
                 discoverTextHeight(label.stringValue, width: width, size: label.font?.pointSize ?? 13,
                                    weight: (label.font?.fontDescriptor.symbolicTraits.contains(.bold) == true) ? .bold : .regular))
-        }
-        if kind == .sponsor {
-            y = max(16, bounds.height - heights.reduce(0, +) - CGFloat(max(0, labels.count - 1)) * 12 - 16)
         }
         if kind == .status {
             y = bounds.midY
@@ -290,16 +279,7 @@ final class DiscoverCard: NSView {
             let iconInset: CGFloat = icons[index] == nil ? 0 : 16
             label.frame = NSRect(x: inset + iconInset, y: y, width: width - iconInset, height: heights[index])
             icons[index]?.frame = NSRect(x: inset, y: y + 2, width: 12, height: 12)
-            y += heights[index] + (kind == .editorial ? 14 : kind == .sponsor ? 12 : 7)
-        }
-        if kind == .sponsor, let first = labels.first {
-            sponsorSymbol.frame = NSRect(x: first.frame.minX, y: first.frame.minY, width: 38, height: 38)
-            if labels.count == 5 {
-                labels[3].frame.size = NSSize(width: 118, height: 32)
-                labels[3].alignment = .center
-                labels[3].textColor = .black.withAlphaComponent(0.86)
-                labels[4].alignment = .right
-            }
+            y += heights[index] + (kind == .editorial ? 14 : 7)
         }
         primary?.frame = bounds
         if kind == .package {
@@ -313,6 +293,7 @@ final class DiscoverCard: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
+        guard kind != .sponsor else { return }
         NSGraphicsContext.saveGraphicsState()
         let path = NSBezierPath(roundedRect: bounds, xRadius: kind == .editorial ? 22 : 18, yRadius: kind == .editorial ? 22 : 18)
         path.addClip()
@@ -331,20 +312,6 @@ final class DiscoverCard: NSView {
         }
         if kind == .editorial, let color = gradientColors.first {
             NSGradient(colors: [color.withAlphaComponent(0.98), color.withAlphaComponent(0.7), color.withAlphaComponent(0)])?.draw(in: bounds, angle: 0)
-        }
-        if kind == .sponsor, let dither = Self.ditherColor {
-            // Match the original card's tiled noise to break up gradient banding.
-            NSGraphicsContext.saveGraphicsState()
-            NSGraphicsContext.current?.cgContext.setAlpha(2 / 255)
-            NSGraphicsContext.current?.imageInterpolation = .none
-            dither.setFill()
-            bounds.fill(using: .sourceOver)
-            NSGraphicsContext.restoreGraphicsState()
-        }
-        if kind == .sponsor, labels.count == 5 {
-            let pill = labels[3].frame.offsetBy(dx: 0, dy: -6)
-            NSColor.white.withAlphaComponent(0.9).setFill()
-            NSBezierPath(roundedRect: pill, xRadius: 6, yRadius: 6).fill()
         }
         NSColor.separatorColor.withAlphaComponent(0.3).setStroke()
         path.lineWidth = 1
