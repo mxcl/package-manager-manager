@@ -1861,3 +1861,48 @@ func bunListPreservesNamesWhenLocalPathsContainAtSigns(_ name: String) throws {
     #expect(gum?.latestVersion == "2.1.0")
     #expect(gum?.isOutdated == true)
 }
+
+@Test(arguments: [true, false])
+func homebrewScannerReadsSelfUpdatedAppInsteadOfReceipt(autoUpdates: Bool) throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let receipt = "2.31.2,6470801290035200"
+    let location = root.appendingPathComponent("Caskroom/antigravity/\(receipt)")
+    let app = root.appendingPathComponent("Applications/Antigravity.app")
+    let contents = app.appendingPathComponent("Contents")
+    try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: location, withIntermediateDirectories: true)
+    try FileManager.default.createSymbolicLink(at: location.appendingPathComponent("Antigravity.app"), withDestinationURL: app)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let json = """
+    {"formulae":[],"casks":[{"token":"antigravity","installed":"\(receipt)",
+    "version":"2.32.1,6001966350991360","auto_updates":\(autoUpdates),"artifacts":[{"app":["Antigravity.app"]}]}]}
+    """
+    let runner = FakeRunner(responses: [
+        "/fake/brew --prefix": CommandResult(stdout: root.path, stderr: "", status: 0),
+        "/fake/brew info --json=v2 --installed": CommandResult(stdout: json, stderr: "", status: 0),
+        "/fake/brew outdated --json=v2": CommandResult(stdout: #"{"formulae":[],"casks":[{"name":"antigravity","current_version":"2.32.1,6001966350991360"}]}"#, stderr: "", status: 0),
+    ])
+    let scanner = PackageScanner(runner: runner, toolPaths: ["brew": "/fake/brew"], environment: [:])
+    for (short, build, expectedOutdated) in [
+        ("2.31.2", "6470801290035200", true),
+        ("2.32.1", "6001966350991360", false),
+        ("2.33.0", "1", false),
+        ("2.31.3", "1", true),
+        ("2.32.1", "different-build", true),
+        ("2.30.0", "1", true),
+        ("preview", "1", true),
+    ] {
+        let data = try PropertyListSerialization.data(fromPropertyList: ["CFBundleShortVersionString": short,
+            "CFBundleVersion": build], format: .xml, options: 0)
+        try data.write(to: contents.appendingPathComponent("Info.plist"), options: .atomic)
+        let package = try #require(scanner.scanHomebrew(database: PackageDatabase()).first)
+        #expect(package.isOutdated == (!autoUpdates || expectedOutdated))
+        let usesAppVersion = autoUpdates && numericVersionComparison(short, "2.31.2") == .orderedDescending
+        #expect(package.installedVersion == (usesAppVersion ? short : receipt))
+        #expect(package.installLocation == location.path)
+    }
+    try FileManager.default.removeItem(at: contents.appendingPathComponent("Info.plist"))
+    let missing = try #require(scanner.scanHomebrew(database: PackageDatabase()).first)
+    #expect(missing.installedVersion == receipt)
+    #expect(missing.isOutdated)
+}

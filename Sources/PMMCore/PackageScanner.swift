@@ -1345,13 +1345,26 @@ public struct PackageScanner: @unchecked Sendable {
             let infoMetadata = homebrewMetadata(from: item)
             let cachedMetadata = homebrewCachedMetadata(name: name, kindFlag: "--cask")
             let curation = database.metadata(for: .homebrew, name: name)
-            let version = item["installed"] as? String
+            let receiptVersion = item["installed"] as? String
+            let location = homebrewInstallLocation(prefix: prefix, kindFlag: "--cask", name: name, version: receiptVersion)
+            var version = receiptVersion
+            var latest = outdated[name] ?? infoMetadata.version ?? cachedMetadata?.version
+            if let app = selfUpdatedCaskVersion(item, location: location, receiptVersion: receiptVersion) {
+                version = app.short
+                let parts = latest?.split(separator: ",", omittingEmptySubsequences: false).map(String.init) ?? []
+                if parts.count == 1 || (parts.count == 2 && parts[1].allSatisfy({ $0.isASCII && $0.isNumber }) && !parts[1].isEmpty),
+                   let order = numericVersionComparison(app.short, parts.first),
+                   order == .orderedDescending || (order == .orderedSame && (parts.count == 1 || parts[1] == app.build)) {
+                    // Equal versions mark this current without letting catalog enrichment restore the stale update.
+                    latest = app.short
+                }
+            }
             return ManagedPackage(
                 manager: .homebrew,
                 identifier: "brew:cask:\(name)",
                 displayName: name,
                 installedVersion: version,
-                latestVersion: outdated[name] ?? infoMetadata.version ?? cachedMetadata?.version,
+                latestVersion: latest,
                 summary: infoMetadata.summary ?? cachedMetadata?.summary,
                 category: curation?.category,
                 homepage: infoMetadata.homepage ?? cachedMetadata?.homepage,
@@ -1359,11 +1372,28 @@ public struct PackageScanner: @unchecked Sendable {
                 repo: curation?.repo ?? infoMetadata.repo ?? cachedMetadata?.repo,
                 lastUpdatedAt: curation?.lastUpdatedAt,
                 pulseKind: curation?.pulseKind,
-                installLocation: homebrewInstallLocation(prefix: prefix, kindFlag: "--cask", name: name, version: version),
+                installLocation: location,
                 binaryPath: homebrewCaskBinaryPath(item) ?? homebrewBinaryPath(prefix: prefix, name: name),
                 appProvenance: homebrewCaskContainsApp(item) ? .homebrew : nil
             )
         }
+    }
+
+    private func selfUpdatedCaskVersion(
+        _ item: [String: Any], location: String?, receiptVersion: String?
+    ) -> (short: String, build: String?)? {
+        guard item["auto_updates"] as? Bool == true, let location, let receiptVersion,
+              let artifacts = item["artifacts"] as? [[String: Any]] else { return nil }
+        let apps = artifacts.compactMap { ($0["app"] as? [Any])?.first as? String }
+        // shortcut: multi-app casks keep receipt versions until each app can be matched unambiguously.
+        guard apps.count == 1 else { return nil }
+        // Read the plist directly: Bundle caches Info.plist across self-updates.
+        let plist = URL(fileURLWithPath: location).appendingPathComponent(apps[0]).appendingPathComponent("Contents/Info.plist")
+        guard let data = try? Data(contentsOf: plist),
+              let info = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              let short = info["CFBundleShortVersionString"] as? String,
+              numericVersionComparison(short, receiptVersion.components(separatedBy: ",").first) == .orderedDescending else { return nil }
+        return (short, info["CFBundleVersion"] as? String)
     }
 
     private func homebrewFormulaBinaryPaths(prefix: String?) -> [String: [String]] {
